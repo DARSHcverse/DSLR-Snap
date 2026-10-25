@@ -18,6 +18,7 @@ import { CanonBridgeCamera } from './camera/CanonBridgeCamera'
 import { MockCamera } from './camera/MockCamera'
 import { galleryFromEnv } from './cloud/CloudGallery'
 import { compose, previewDataUrl } from './compose/composer'
+import { createSampleShots } from './compose/sampleShots'
 import { defaultSlots, detectSlots, guessLayout, type Layout, normalizeArtwork, suggestFit } from './compose/templateImport'
 import { BoothDatabase } from './db/database'
 import { MockPrinter } from './printer/MockPrinter'
@@ -27,6 +28,10 @@ import { PrintQueue } from './queue/PrintQueue'
 import { UploadQueue } from './queue/UploadQueue'
 
 if (!app.requestSingleInstanceLock()) app.quit()
+
+// Don't let libvips keep input files open between operations: if a file is rewritten at the same path
+// (test print, re-imported artwork), a cached reader would hit the shorter file and crash with SIGBUS.
+sharp.cache({ files: 0 })
 
 const userData = app.getPath('userData')
 const dataDir = join(app.getPath('documents'), 'DSLR Snap')
@@ -159,15 +164,7 @@ function handle(name: string, fn: (...args: any[]) => unknown): void {
   })
 }
 
-/** Placeholder photos so templates can be previewed and test-printed without a camera. */
-async function sampleShots(n: number): Promise<string[]> {
-  const cam = new MockCamera({ w: 900, h: 600 })
-  await cam.connect()
-  const dir = join(userData, 'template-previews')
-  const shots = []
-  for (let i = 0; i < n; i++) shots.push(await cam.capture(dir))
-  return shots
-}
+const sampleShots = createSampleShots(join(userData, 'template-previews'))
 
 const IMPORTED_ID = /^imported-[0-9a-f]{8}$/
 
