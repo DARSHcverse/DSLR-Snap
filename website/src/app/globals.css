@@ -1,0 +1,58 @@
+@import "tailwindcss";
+
+/* Same tokens as the desktop app (src/renderer/src/styles.css) so the site and the booth look like one product. */
+@theme {
+  --color-bg: #0b0b0f;
+  --color-surface: #16161d;
+  --color-surface-2: #20202a;
+  --color-line: #2c2c38;
+  --color-fg: #f4f2ee;
+  --color-muted: #9a98a3;
+  --color-accent: #ff7a59;
+  --color-accent-ink: #1a0d08;
+  --color-ok: #3ccf8e;
+  --color-busy: #f5b942;
+  --color-bad: #ff5d6c;
+  --color-booth-glow: #241a2a;
+
+  --radius-card: 18px;
+
+  --font-sans: "Segoe UI Variable", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --font-display: "Segoe UI Variable Display", "Segoe UI", system-ui, -apple-system, sans-serif;
+}
+
+:root {
+  color-scheme: dark;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--color-bg);
+  color: var(--color-fg);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: var(--color-accent);
+  color: var(--color-accent-ink);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 3px;
+}
+
+/* Section anchors land below the sticky header */
+section[id] {
+  scroll-margin-top: 80px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}

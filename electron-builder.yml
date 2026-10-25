@@ -1,5 +1,5 @@
-appId: com.snapdesk.booth
-productName: SnapDesk Booth
+appId: com.dslrsnap.app
+productName: DSLR Snap
 directories:
   output: dist
   buildResources: resources

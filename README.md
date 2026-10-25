@@ -1,9 +1,7 @@
-# SnapDesk Booth (working name)
+# DSLR Snap – Photo Booth Software for Windows
 
 Windows photo booth app for event operators — Surface Pro + Canon EOS R100 + DNP DS-RX1HS.
 Capture and printing are 100% local; cloud is only used for optional QR galleries.
-
-> Name is provisional. Check trademark availability before branding.
 
 ## Status
 
@@ -34,8 +32,8 @@ npm run dev          # opens the app with mock camera + mock printer
 First run shows "No event selected" → **Open admin** → **+ New event** → follow the 5 steps (Event, Template, Camera, Print & share, Test & launch) → **Launch event**.
 Operator menu: the **⚙** button on the "Tap to start" screen, **Ctrl+Shift+A** at any time, or tap the top-left corner 5 times. If an operator PIN is set (Devices → Operator PIN), a keypad asks for it first.
 
-Forgot the PIN? Close the app and run `sqlite3 "<app data>/data/booth.db" "DELETE FROM settings WHERE key = 'operator_pin'"` (app data: `%APPDATA%\SnapDesk Booth` on Windows, `~/Library/Application Support/SnapDesk Booth` on Mac).
-Mock prints land in `Documents/SnapDesk Booth/mock-prints`.
+Forgot the PIN? Close the app and run `sqlite3 "<app data>/data/booth.db" "DELETE FROM settings WHERE key = 'operator_pin'"` (app data: `%APPDATA%\DSLR Snap` on Windows, `~/Library/Application Support/DSLR Snap` on Mac).
+Mock prints land in `Documents/DSLR Snap/mock-prints`.
 
 ## Scripts
 
@@ -77,7 +75,11 @@ Key decisions:
 
 ## Cloud gallery (optional)
 
-Copy `.env.example` to `%APPDATA%/snapdesk-booth/.env` (or the project root while developing) and fill in your Supabase project. Create a **private** bucket named `booth-sessions`.
+Copy `.env.example` to `%APPDATA%/dslr-snap/.env` (or the project root while developing) and fill in your Supabase project. Create a **private** bucket named `booth-sessions`.
 The service key is fine on your own booths; **before selling to other operators**, replace it with a small upload API that issues per-device tokens.
+
+## Website
+
+The marketing site lives in [`website/`](website/) (Next.js + Tailwind, deployed on Vercel). It has its own `package.json` and is not part of the app build or installer. See [website/README.md](website/README.md).
 
 See [docs/ROADMAP.md](docs/ROADMAP.md) for what comes next.

@@ -1,8 +1,8 @@
 {
-  "name": "snapdesk-booth",
-  "productName": "SnapDesk Booth",
+  "name": "dslr-snap",
+  "productName": "DSLR Snap",
   "version": "0.1.0",
-  "description": "Windows photo booth application for event operators (working name)",
+  "description": "DSLR Snap – Photo Booth Software for Windows",
   "main": "./out/main/index.js",
   "author": "Darshan Subramaniam",
   "private": true,

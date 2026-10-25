@@ -29,7 +29,7 @@ import { UploadQueue } from './queue/UploadQueue'
 if (!app.requestSingleInstanceLock()) app.quit()
 
 const userData = app.getPath('userData')
-const dataDir = join(app.getPath('documents'), 'SnapDesk Booth')
+const dataDir = join(app.getPath('documents'), 'DSLR Snap')
 const logFile = join(userData, 'logs', 'booth.log')
 
 async function log(level: 'info' | 'warn' | 'error', msg: string): Promise<void> {
