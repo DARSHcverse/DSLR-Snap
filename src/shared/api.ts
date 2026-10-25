@@ -1,0 +1,96 @@
+import type {
+  BoothEvent,
+  CameraStatus,
+  CaptureResult,
+  DeviceSettings,
+  EventInput,
+  EventStats,
+  ExposureKey,
+  ExposureSettings,
+  ExposureState,
+  FinishResult,
+  PrintJob,
+  PrinterStatus,
+  SessionRecord,
+  Template,
+  TemplateImportDraft,
+  TemplateImportOptions,
+  TestShot
+} from './types'
+
+export interface DeviceSnapshot {
+  camera: CameraStatus
+  printer: PrinterStatus
+  uploads: { enabled: boolean; pending: number; failed: number; done: number }
+}
+
+/** Everything the renderer may ask the main process to do. Exposed as window.booth by the preload. */
+export interface BoothApi {
+  // booth flow
+  getActiveEvent(): Promise<{ event: BoothEvent; template: Template } | null>
+  startSession(): Promise<{ sessionId: string; event: BoothEvent }>
+  capture(sessionId: string): Promise<CaptureResult>
+  finish(sessionId: string, photoPaths: string[], requestKey: string): Promise<FinishResult>
+  reprint(sessionId: string, requestKey: string, copies: number): Promise<string>
+  liveViewStart(): Promise<boolean>
+  liveViewFrame(): Promise<string | null>
+  liveViewStop(): Promise<void>
+  /** Guest gallery: finished sessions of the active event (empty if the event hides the gallery). */
+  galleryList(): Promise<{ id: string; createdAt: string; thumb: string; hasGif: boolean }[]>
+  galleryItem(sessionId: string): Promise<{ image: string; gif?: string }>
+
+  // admin
+  listEvents(): Promise<BoothEvent[]>
+  duplicateEvent(id: string): Promise<BoothEvent>
+  eventStats(id: string): Promise<EventStats>
+  /** Asks for a folder (e.g. a USB stick), copies the event's photos there and opens it. null if cancelled. */
+  exportEventPhotos(eventId: string, originals: boolean): Promise<{ folder: string; prints: number; originals: number; missing: number } | null>
+  hasPin(): Promise<boolean>
+  verifyPin(pin: string): Promise<{ ok: boolean; lockedForSeconds?: number }>
+  /** Set, change or remove (next = null) the operator PIN; needs the current PIN once one exists. */
+  setPin(current: string | null, next: string | null): Promise<void>
+  saveEvent(e: EventInput): Promise<BoothEvent>
+  deleteEvent(id: string): Promise<void>
+  setActiveEvent(id: string): Promise<void>
+  listTemplates(): Promise<Template[]>
+  previewTemplate(templateId: string, eventName: string): Promise<string>
+  chooseTemplateFile(): Promise<string | null>
+  prepareTemplateImport(filePath: string, opts?: TemplateImportOptions): Promise<TemplateImportDraft>
+  getTemplateArtwork(templateId: string): Promise<string | null>
+  saveTemplate(t: Template): Promise<Template>
+  deleteTemplate(id: string): Promise<void>
+  discardTemplateDraft(id: string): Promise<void>
+  previewTemplateDraft(t: Template, eventName: string): Promise<string>
+  testPrintTemplate(t: Template): Promise<string>
+  /** Local path of a file dropped onto the window (Electron no longer exposes File.path). */
+  pathForFile(file: File): string
+  listSessions(eventId: string): Promise<SessionRecord[]>
+  openEventFolder(eventId: string): Promise<void>
+
+  getDeviceSettings(): Promise<DeviceSettings>
+  saveDeviceSettings(s: DeviceSettings): Promise<void>
+  listPrinters(): Promise<string[]>
+  reconnectCamera(): Promise<void>
+  getDevices(): Promise<DeviceSnapshot>
+  onDevices(cb: (d: DeviceSnapshot) => void): () => void
+
+  /** Shutter speeds faster than flash sync are never included. */
+  getExposure(): Promise<ExposureState>
+  /** Applies to the camera immediately and is remembered on `eventId` (default: the active event). */
+  setExposure(key: ExposureKey, value: string, eventId?: string): Promise<ExposureState>
+  /** Several settings at once (presets); each snapped to the nearest value the camera allows. */
+  applyExposure(settings: ExposureSettings, eventId?: string): Promise<{ state: ExposureState; skipped: ExposureKey[] }>
+  testShot(): Promise<TestShot>
+  /** Exposure changed on the camera itself (dial, zoom) or was re-applied after a reconnect. */
+  onExposure(cb: () => void): () => void
+
+  listPrintJobs(): Promise<PrintJob[]>
+  retryPrintJob(id: string): Promise<boolean>
+  cancelPrintJob(id: string): Promise<boolean>
+  markPrintJobPrinted(id: string): Promise<boolean>
+  onPrintJobs(cb: () => void): () => void
+
+  testPrint(format: '4x6' | '2x6'): Promise<string>
+  appInfo(): Promise<{ version: string; dataDir: string; logFile: string }>
+  quit(): Promise<void>
+}

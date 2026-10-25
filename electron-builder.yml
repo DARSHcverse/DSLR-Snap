@@ -1,0 +1,24 @@
+appId: com.snapdesk.booth
+productName: SnapDesk Booth
+directories:
+  output: dist
+  buildResources: resources
+files:
+  - out/**
+  - package.json
+asarUnpack:
+  - node_modules/sharp/**
+  - node_modules/@img/**
+  - node_modules/better-sqlite3/**
+extraResources:
+  # The compiled Canon bridge (see native/CanonBridge/README.md). Optional: app falls back to mock camera if missing.
+  - from: native/CanonBridge/publish
+    to: canon-bridge
+    filter: ["**/*"]
+win:
+  target: [{ target: nsis, arch: [x64] }]
+  # Authenticode signing: set CSC_LINK / CSC_KEY_PASSWORD env vars in CI to avoid SmartScreen warnings.
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
