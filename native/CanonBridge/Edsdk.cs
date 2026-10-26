@@ -1,9 +1,9 @@
 // Minimal P/Invoke surface for Canon EDSDK (64-bit, EDSDK 13.x).
 //
-// IMPORTANT: verify every signature and constant below against EDSDK.h / EDSDKTypes.h /
-// EDSDKErrors.h from the SDK version you download from Canon's developer programme. Since
-// EDSDK 13.x several sizes are 64-bit (EdsUInt64) — older SDK samples use 32-bit and will
-// corrupt the stack if mixed. The EOS R100 needs a recent SDK; check Canon's supported model list.
+// Verified against the EDSDK 13.20.21 (Windows) headers: every constant, struct layout
+// (#pragma pack 8), callback and function signature below matches EDSDK.h / EDSDKTypes.h /
+// EDSDKErrors.h. Re-check when upgrading the SDK: since 13.x several sizes are 64-bit
+// (EdsUInt64), and older samples that use 32-bit sizes corrupt the stack if mixed.
 
 using System;
 using System.Runtime.InteropServices;

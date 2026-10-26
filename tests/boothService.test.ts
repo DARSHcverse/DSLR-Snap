@@ -11,7 +11,7 @@ import { MockPrinter } from '../src/main/printer/MockPrinter'
 import { PrintQueue } from '../src/main/queue/PrintQueue'
 import { UploadQueue } from '../src/main/queue/UploadQueue'
 
-async function setup(gallery: CloudGallery = new DisabledGallery(), templateId = 'classic-strip-3') {
+async function setup(gallery: CloudGallery = new DisabledGallery(), templateId = 'classic-strip-3', qrWaitMs = 1500) {
   const dataDir = mkdtempSync(join(tmpdir(), 'booth-'))
   const db = new BoothDatabase(':memory:')
   const ev = db.saveEvent({ name: 'Priya & Tom', date: '2026-10-24', templateId, photosPerSession: 99, countdownSeconds: 3, retakesAllowed: 1, printCopies: 2, autoPrint: true, galleryEnabled: gallery.enabled })
@@ -21,8 +21,8 @@ async function setup(gallery: CloudGallery = new DisabledGallery(), templateId =
   const printer = new MockPrinter(join(dataDir, 'prints'), 10)
   const printQueue = new PrintQueue(db, () => printer)
   const uploadQueue = new UploadQueue(db, gallery)
-  const service = new BoothService({ db, dataDir, camera: () => camera, printQueue, uploadQueue, gallery, qrWaitMs: 1500 })
-  return { db, ev, service, printQueue, dataDir }
+  const service = new BoothService({ db, dataDir, camera: () => camera, printQueue, uploadQueue, gallery, qrWaitMs })
+  return { db, ev, service, printQueue, uploadQueue, dataDir }
 }
 
 describe('BoothService end to end (mock hardware)', () => {
@@ -113,5 +113,48 @@ describe('BoothService end to end (mock hardware)', () => {
     expect(res.qrDataUrl).toBeUndefined()
     expect(res.printJobId).toBeDefined()
     expect(db.uploadStats().failed).toBe(1)
+  })
+
+  describe('instant QR (gallery knows the link before upload)', () => {
+    const pageUrl = (id: string) => `https://gallery.test/s/${id}`
+
+    it('shows the QR straight away while offline, and uploads later', async () => {
+      let online = false
+      const gallery: CloudGallery = {
+        enabled: true,
+        sessionUrl: pageUrl,
+        upload: async (id) => {
+          if (!online) throw new Error('offline')
+          return pageUrl(id)
+        }
+      }
+      // A long wait would time the test out if finish() still waited for the upload.
+      const { db, service, uploadQueue } = await setup(gallery, 'portrait-single', 60_000)
+      const { sessionId } = service.startSession()
+      const shot = await service.capture(sessionId)
+      const res = await service.finish(sessionId, [shot.path], 'k')
+
+      expect(res.galleryUrl).toBe(pageUrl(sessionId))
+      expect(res.qrDataUrl).toMatch(/^data:image\/png;base64,/)
+      expect(res.printJobId).toBeDefined()
+      // Not uploaded yet, so the session isn't marked as uploaded.
+      expect(db.getSession(sessionId)!.galleryUrl).toBeUndefined()
+
+      online = true
+      await uploadQueue.tick(new Date(Date.now() + 60 * 60_000))
+      expect(db.getSession(sessionId)!.galleryUrl).toBe(pageUrl(sessionId))
+    }, 10_000)
+
+    it('gives no QR when the event has the gallery turned off', async () => {
+      const gallery: CloudGallery = { enabled: true, sessionUrl: pageUrl, upload: async (id) => pageUrl(id) }
+      const { db, ev, service } = await setup(gallery, 'portrait-single')
+      db.saveEvent({ ...ev, galleryEnabled: false })
+      const { sessionId } = service.startSession()
+      const shot = await service.capture(sessionId)
+      const res = await service.finish(sessionId, [shot.path], 'k')
+      expect(res.qrDataUrl).toBeUndefined()
+      expect(res.galleryUrl).toBeUndefined()
+      expect(db.uploadStats().pending + db.uploadStats().done).toBe(0)
+    })
   })
 })

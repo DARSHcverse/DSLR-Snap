@@ -208,6 +208,8 @@ export interface CaptureResult {
 export interface FinishResult {
   session: SessionRecord
   printPreview: string
+  /** Guest page for this session; may be live before the upload finishes. */
+  galleryUrl?: string
   qrDataUrl?: string
   printJobId?: string
 }

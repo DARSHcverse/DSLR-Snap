@@ -5,6 +5,12 @@ export interface CloudGallery {
   readonly enabled: boolean
   /** Uploads a session's final image and returns a private, shareable URL. */
   upload(sessionId: string, eventId: string, filePath: string): Promise<string>
+  /**
+   * The session's gallery page, if it is known before upload (hosted gallery: built from the random
+   * session ID). Lets the booth show the QR instantly, even offline; the page waits for the photo.
+   * Backends without it (signed storage URLs) only get a QR once the upload has finished.
+   */
+  sessionUrl?(sessionId: string, eventId: string): string
 }
 
 export class DisabledGallery implements CloudGallery {

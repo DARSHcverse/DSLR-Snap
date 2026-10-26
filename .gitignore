@@ -6,7 +6,8 @@ out/
 dist/
 *.tsbuildinfo
 
-# Canon bridge build output
+# Canon bridge build output, and Canon's licensed SDK DLLs (never commit them)
+native/CanonBridge/EDSDK/
 native/CanonBridge/bin/
 native/CanonBridge/obj/
 native/CanonBridge/publish/

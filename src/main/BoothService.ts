@@ -122,15 +122,17 @@ export class BoothService {
       printJobId = printQueue.enqueue(sessionId, `auto:${requestKey}`, printPath, template.format, ev.printCopies).id
     }
 
+    let galleryUrl: string | undefined
     let qrDataUrl: string | undefined
     if (ev.galleryEnabled && gallery.enabled) {
       uploadQueue.enqueue(sessionId, compositePath)
-      const url = await this.waitForGalleryUrl(sessionId)
-      if (url) qrDataUrl = await QRCode.toDataURL(url, { margin: 1, width: 512, errorCorrectionLevel: 'M' })
+      // Instant QR when the link is known up front; the upload finishes in the background.
+      galleryUrl = gallery.sessionUrl?.(sessionId, ev.id) ?? (await this.waitForGalleryUrl(sessionId))
+      if (galleryUrl) qrDataUrl = await QRCode.toDataURL(galleryUrl, { margin: 1, width: 512, errorCorrectionLevel: 'M' })
     }
 
     db.updateSession(sessionId, { status: 'complete' })
-    return { session: db.getSession(sessionId)!, printPreview: await previewDataUrl(composite, 700), qrDataUrl, printJobId }
+    return { session: db.getSession(sessionId)!, printPreview: await previewDataUrl(composite, 700), galleryUrl, qrDataUrl, printJobId }
   }
 
   private async waitForGalleryUrl(sessionId: string): Promise<string | undefined> {
