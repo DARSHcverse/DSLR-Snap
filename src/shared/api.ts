@@ -107,6 +107,10 @@ export interface BoothApi {
   onAccountError(cb: (message: string) => void): () => void
 
   testPrint(format: '4x6' | '2x6'): Promise<string>
+  /** Shareable page with every photo of the event, for the host (link + QR image). */
+  eventGalleryLink(eventId: string): Promise<{ url: string; qr: string }>
+  /** Free bytes on the drive that holds the photos. */
+  diskFree(): Promise<number>
   appInfo(): Promise<{ version: string; dataDir: string; logFile: string }>
   quit(): Promise<void>
 }

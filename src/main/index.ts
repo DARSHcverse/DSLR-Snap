@@ -1,9 +1,10 @@
 import { app, BrowserWindow, dialog, ipcMain, powerSaveBlocker, safeStorage, shell } from 'electron'
 import { randomUUID } from 'node:crypto'
 import { existsSync, readFileSync } from 'node:fs'
-import { appendFile, mkdir, readdir, rm, writeFile } from 'node:fs/promises'
+import { appendFile, mkdir, readdir, rm, statfs, writeFile } from 'node:fs/promises'
 import { hostname } from 'node:os'
 import { basename, extname, join, resolve } from 'node:path'
+import QRCode from 'qrcode'
 import sharp from 'sharp'
 import type { DeviceSnapshot } from '../shared/api'
 import { flashSafe } from '../shared/exposure'
@@ -18,7 +19,8 @@ import { applyExposure, readExposure, withFlashSafeShutters } from './camera/app
 import type { CameraAdapter } from './camera/CameraAdapter'
 import { CanonBridgeCamera } from './camera/CanonBridgeCamera'
 import { MockCamera } from './camera/MockCamera'
-import { galleryFromEnv } from './cloud/CloudGallery'
+import { type CloudGallery, galleryFromEnv } from './cloud/CloudGallery'
+import { HostedGallery } from './cloud/HostedGallery'
 import { compose, previewDataUrl } from './compose/composer'
 import { createSampleShots } from './compose/sampleShots'
 import { defaultSlots, detectSlots, guessLayout, type Layout, normalizeArtwork, suggestFit } from './compose/templateImport'
@@ -77,11 +79,9 @@ let uploadQueue: UploadQueue
 let service: BoothService
 let pinLock: PinLock
 let account: AccountService
-const gallery = (() => {
-  loadEnv(join(userData, '.env'))
-  loadEnv(join(process.cwd(), '.env')) // dev convenience
-  return galleryFromEnv(process.env)
-})()
+let gallery: CloudGallery
+loadEnv(join(userData, '.env'))
+loadEnv(join(process.cwd(), '.env')) // dev convenience
 
 function bridgePath(): string {
   return app.isPackaged
@@ -149,7 +149,7 @@ async function devices(): Promise<DeviceSnapshot> {
   return {
     camera: camera.getStatus(),
     printer: { ...p, queueLength: printQueue.pendingCount() },
-    uploads: { enabled: gallery.enabled, ...db.uploadStats() }
+    uploads: { enabled: gallery?.enabled ?? false, ...db.uploadStats() }
   }
 }
 
@@ -411,6 +411,17 @@ function registerIpc(): void {
   handle('accountRefresh', () => account.refresh())
   handle('accountSignOut', () => account.signOut())
   handle('openAccountWebsite', (page: 'account' | 'pricing') => shell.openExternal(page === 'pricing' ? `${ACCOUNT_URL}/#pricing` : `${ACCOUNT_URL}/account`))
+  handle('eventGalleryLink', async (eventId: string) => {
+    if (!(gallery instanceof HostedGallery)) throw new Error('The host gallery needs the DSLR Snap cloud (sign in under Account).')
+    if (!gallery.enabled) throw new Error('Sign in with an active plan under Account to share the host gallery.')
+    const url = await gallery.eventLink(eventId)
+    return { url, qr: await QRCode.toDataURL(url, { margin: 1, width: 360 }) }
+  })
+  handle('diskFree', async () => {
+    await mkdir(dataDir, { recursive: true })
+    const s = await statfs(dataDir)
+    return s.bavail * s.bsize
+  })
   handle('appInfo', () => ({ version: app.getVersion(), dataDir, logFile }))
   handle('quit', () => app.quit())
 }
@@ -473,8 +484,6 @@ app.whenReady().then(async () => {
     void broadcastDevices()
   })
   printQueue.on('jobFailed', (id: string, e: unknown) => void log('error', `print job ${id} failed: ${e}`))
-  uploadQueue = new UploadQueue(db, gallery)
-  uploadQueue.on('changed', () => void broadcastDevices())
   pinLock = new PinLock(db)
   account = new AccountService({
     store: { get: (k) => db.getSetting(k), set: (k, v) => db.setSetting(k, v) },
@@ -491,6 +500,19 @@ app.whenReady().then(async () => {
     log: (level, m) => void log(level, `account: ${m}`)
   })
   account.on('changed', () => win?.webContents.send('booth:account', account.state()))
+  // Developer override: a Supabase service key in .env uploads straight to storage (own booths only).
+  // Otherwise photos go through dslrsnap.com, which checks the booth's sign-in and plan.
+  const devGallery = galleryFromEnv(process.env)
+  gallery = devGallery.enabled
+    ? devGallery
+    : new HostedGallery({
+        accountUrl: account.accountUrl,
+        credentials: () => account.apiCredentials(),
+        allowed: () => account.state().mode === 'licensed',
+        event: (id) => db.getEvent(id)
+      })
+  uploadQueue = new UploadQueue(db, gallery)
+  uploadQueue.on('changed', () => void broadcastDevices())
   service = new BoothService({
     db,
     dataDir,

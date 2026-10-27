@@ -21,9 +21,8 @@ export class DisabledGallery implements CloudGallery {
 }
 
 /**
- * Supabase Storage implementation: private bucket + long-lived signed URL, so links can't be
- * enumerated. Fine for the operator's own booths. Before selling to other operators, put a small
- * API in front (per-device tokens, licence checks) instead of shipping any storage key.
+ * Developer override: uploads straight to Supabase Storage with a service key from .env. Never ship
+ * this to customers; the product uses HostedGallery (dslrsnap.com checks sign-in and plan).
  */
 export class SupabaseGallery implements CloudGallery {
   readonly enabled = true

@@ -20,8 +20,9 @@ export class UploadQueue extends EventEmitter {
     db.resetStuckUploads()
   }
 
+  /** Runs even while the gallery is off: it can switch on later (e.g. the booth signs in). */
   start(): void {
-    if (!this.gallery.enabled || this.timer) return
+    if (this.timer) return
     this.timer = setInterval(() => void this.tick(), this.intervalMs)
     void this.tick()
   }
@@ -38,7 +39,7 @@ export class UploadQueue extends EventEmitter {
   }
 
   async tick(now = new Date()): Promise<void> {
-    if (this.busy) return
+    if (this.busy || !this.gallery.enabled) return
     this.busy = true
     try {
       for (const job of this.db.dueUploads(now)) {

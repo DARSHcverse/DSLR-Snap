@@ -87,6 +87,16 @@ export class AccountService extends EventEmitter {
     })
   }
 
+  /** What the booth sends to the website's /api/app routes; null when signed out. */
+  apiCredentials(): { refreshToken: string; machine: string } | null {
+    const refreshToken = this.refreshToken()
+    return refreshToken && this.configured ? { refreshToken, machine: this.deps.machineHash } : null
+  }
+
+  get accountUrl(): string {
+    return this.deps.accountUrl
+  }
+
   /** Text stamped on photos while unlicensed; undefined when licensed (or in a developer build). */
   watermark(): string | undefined {
     return this.state().mode === 'trial' ? 'DSLR Snap · trial' : undefined

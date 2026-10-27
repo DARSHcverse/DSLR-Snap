@@ -1,41 +1,97 @@
-import { useEffect, useState } from 'react'
+import { type ReactNode, useEffect, useState } from 'react'
 import type { DeviceSnapshot } from '@shared/api'
-import type { DeviceSettings, EventStats, PrinterDetection, PrintJob, SessionRecord } from '@shared/types'
+import type { DeviceSettings, DeviceState, EventStats, PrinterDetection, PrintJob, SessionRecord } from '@shared/types'
 import AccountTab, { useAccount } from './Account'
 import CameraSetup from './CameraSetup'
 import EventsTab from './Events'
+import Home from './Home'
 import TemplatesTab, { message } from './Templates'
 
-type Tab = 'events' | 'templates' | 'camera' | 'devices' | 'prints' | 'sessions' | 'account'
+type Tab = 'home' | 'events' | 'templates' | 'prints' | 'sessions' | 'camera' | 'devices' | 'account'
+
+/** Sidebar groups follow when the operator needs them: set up an event, run it, then rarely-touched setup. */
+const NAV: { group?: string; items: { tab: Tab; label: string; icon: ReactNode }[] }[] = [
+  { items: [{ tab: 'home', label: 'Home', icon: <path d="M3 11 12 4l9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z" /> }] },
+  {
+    group: 'Event',
+    items: [
+      { tab: 'events', label: 'Events', icon: <><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M3 10h18M8 3v4M16 3v4" /></> },
+      { tab: 'templates', label: 'Templates', icon: <><rect x="3" y="3" width="18" height="18" rx="2" /><path d="M3 9h18M9 9v12" /></> }
+    ]
+  },
+  {
+    group: 'During the event',
+    items: [
+      { tab: 'prints', label: 'Print queue', icon: <><path d="M7 9V4h10v5" /><rect x="3" y="9" width="18" height="8" rx="1.5" /><path d="M7 14h10v6H7z" /></> },
+      { tab: 'sessions', label: 'Photos & stats', icon: <><rect x="3" y="3" width="8" height="8" rx="1.5" /><rect x="13" y="3" width="8" height="8" rx="1.5" /><rect x="3" y="13" width="8" height="8" rx="1.5" /><rect x="13" y="13" width="8" height="8" rx="1.5" /></> }
+    ]
+  },
+  {
+    group: 'Setup',
+    items: [
+      { tab: 'camera', label: 'Camera', icon: <><path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1Z" /><circle cx="12" cy="13" r="3.5" /></> },
+      { tab: 'devices', label: 'Printer & devices', icon: <><path d="M12 2v4M12 18v4M4.9 4.9l2.8 2.8M16.3 16.3l2.8 2.8M2 12h4M18 12h4M4.9 19.1l2.8-2.8M16.3 7.7l2.8-2.8" /><circle cx="12" cy="12" r="3" /></> },
+      { tab: 'account', label: 'Account', icon: <><circle cx="12" cy="8" r="4" /><path d="M4 21a8 8 0 0 1 16 0" /></> }
+    ]
+  }
+]
+
+const dot = (s?: DeviceState) => (s === 'ready' ? 'ok' : s === 'busy' || s === 'connecting' ? 'busy' : 'bad')
 
 export default function Admin({ onExit }: { onExit: () => void }) {
-  const [tab, setTab] = useState<Tab>('events')
+  const [tab, setTab] = useState<Tab>('home')
   const [devices, setDevices] = useState<DeviceSnapshot | null>(null)
+  const [failedPrints, setFailedPrints] = useState(0)
   const account = useAccount()
 
   useEffect(() => {
     window.booth.getDevices().then(setDevices)
     return window.booth.onDevices(setDevices)
   }, [])
+  useEffect(() => {
+    const load = () =>
+      window.booth.listPrintJobs().then((jobs) => setFailedPrints(jobs.filter((j) => j.status === 'failed' || j.status === 'needs_check').length))
+    void load()
+    return window.booth.onPrintJobs(() => void load())
+  }, [])
+
+  /** Small status shown next to a menu item: a coloured dot or a count. */
+  const marker = (t: Tab): ReactNode => {
+    if (t === 'camera') return <span className={`side-dot ${dot(devices?.camera.state)}`} title={devices?.camera.state} />
+    if (t === 'devices') return <span className={`side-dot ${dot(devices?.printer.state)}`} title={devices?.printer.state} />
+    if (t === 'prints') {
+      if (failedPrints) return <span className="side-badge bad">{failedPrints}</span>
+      if (devices?.printer.queueLength) return <span className="side-badge">{devices.printer.queueLength}</span>
+    }
+    if (t === 'account' && account?.mode === 'trial') return <span className="side-badge busy">Trial</span>
+    return null
+  }
 
   return (
     <div className="admin">
-      <header className="admin-bar">
-        <strong>Operator</strong>
-        <nav>
-          {(['events', 'templates', 'camera', 'devices', 'prints', 'sessions', 'account'] as Tab[]).map((t) => (
-            <button key={t} className={tab === t ? 'tab active' : 'tab'} onClick={() => setTab(t)}>
-              {{ events: 'Events', templates: 'Templates', camera: 'Camera', devices: 'Devices', prints: 'Print queue', sessions: 'Stats & photos', account: 'Account' }[t]}
-            </button>
+      <aside className="side">
+        <div className="side-brand">
+          <img src="/logo-wordmark.png" alt="DSLR Snap" />
+          <span className="muted small">Operator</span>
+        </div>
+        <nav className="side-nav">
+          {NAV.map((g, i) => (
+            <div key={g.group ?? i} className="side-group">
+              {g.group && <p className="side-label">{g.group}</p>}
+              {g.items.map((it) => (
+                <button key={it.tab} className={`side-item ${tab === it.tab ? 'on' : ''}`} onClick={() => setTab(it.tab)} title={it.label}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>{it.icon}</svg>
+                  <span className="side-text">{it.label}</span>
+                  {marker(it.tab)}
+                </button>
+              ))}
+            </div>
           ))}
         </nav>
-        {devices && <StatusPills d={devices} />}
-        {account?.mode === 'trial' && (
-          <button className="pill busy" title={account.message} onClick={() => setTab('account')}>Trial: watermark on</button>
-        )}
-        <button className="btn primary" onClick={onExit}>Start booth</button>
-      </header>
+        <button className="btn primary side-start" onClick={onExit}>▶ <span className="side-text">Start booth</span></button>
+      </aside>
       <main className="admin-body">
+        {tab === 'home' && <Home devices={devices} account={account} onStart={onExit} onNavigate={setTab} />}
         {tab === 'events' && <EventsTab devices={devices} onLaunch={onExit} />}
         {tab === 'templates' && <TemplatesTab />}
         {tab === 'camera' && <CameraSetup devices={devices} />}
@@ -44,22 +100,6 @@ export default function Admin({ onExit }: { onExit: () => void }) {
         {tab === 'sessions' && <SessionsTab />}
         {tab === 'account' && <AccountTab />}
       </main>
-    </div>
-  )
-}
-
-function StatusPills({ d }: { d: DeviceSnapshot }) {
-  const cls = (s: string) => (s === 'ready' ? 'ok' : s === 'busy' || s === 'connecting' ? 'busy' : 'bad')
-  return (
-    <div className="pills">
-      <span className={`pill ${cls(d.camera.state)}`} title={d.camera.message}>Camera: {d.camera.state}</span>
-      <span className={`pill ${cls(d.printer.state)}`} title={d.printer.message}>
-        Printer: {d.printer.state}
-        {d.printer.queueLength ? ` (${d.printer.queueLength})` : ''}
-      </span>
-      {d.uploads.enabled && (
-        <span className={`pill ${d.uploads.failed ? 'bad' : d.uploads.pending ? 'busy' : 'ok'}`}>Uploads: {d.uploads.pending} pending</span>
-      )}
     </div>
   )
 }
@@ -151,7 +191,7 @@ function DevicesTab({ devices }: { devices: DeviceSnapshot | null }) {
         <p className="muted">
           {devices?.uploads.enabled
             ? `Cloud gallery connected · ${devices.uploads.done} uploaded, ${devices.uploads.pending} pending, ${devices.uploads.failed} retrying`
-            : 'Not configured. Add SUPABASE_URL and SUPABASE_SERVICE_KEY to the .env file in the app data folder, then restart.'}
+            : 'Off. QR downloads and the host gallery need this booth signed in with an active plan (Account).'}
         </p>
       </div>
       <PinCard />
@@ -266,6 +306,7 @@ function SessionsTab() {
         </div>
         {status && <p className="muted small">{status}</p>}
       </div>
+      <HostGallery eventId={eventId} />
       <table className="table">
         <tbody>
           {done.map((s) => (
@@ -277,6 +318,41 @@ function SessionsTab() {
         </tbody>
       </table>
     </section>
+  )
+}
+
+/** The host's shareable page with every photo of the event: show the QR at the end of the night, or send the link. */
+function HostGallery({ eventId }: { eventId: string }) {
+  const [link, setLink] = useState<{ url: string; qr: string } | null>(null)
+  const [status, setStatus] = useState<string | null>(null)
+  const get = async () => {
+    setStatus('Creating the link…')
+    try {
+      setLink(await window.booth.eventGalleryLink(eventId))
+      setStatus(null)
+    } catch (e) {
+      setStatus(message(e))
+    }
+  }
+  return (
+    <div className="card">
+      <h3>Host gallery</h3>
+      <p className="muted small">One page with every photo from this event, for the couple or client. Photos appear as they upload and stay online for a year.</p>
+      {link ? (
+        <div className="row host-link">
+          <img src={link.qr} alt="QR code for the host gallery" />
+          <div className="field">
+            <code className="small">{link.url}</code>
+            <div className="row">
+              <button className="btn small" onClick={() => void navigator.clipboard.writeText(link.url).then(() => setStatus('Link copied.'))}>Copy link</button>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="row"><button className="btn" onClick={get}>Get host gallery link</button></div>
+      )}
+      {status && <p className="muted small">{status}</p>}
+    </div>
   )
 }
 

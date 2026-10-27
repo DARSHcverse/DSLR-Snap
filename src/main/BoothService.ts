@@ -1,12 +1,13 @@
 import { existsSync } from 'node:fs'
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
-import { dirname, join } from 'node:path'
+import { join } from 'node:path'
 import QRCode from 'qrcode'
 import sharp from 'sharp'
 import type { BoothEvent, CaptureResult, FinishResult } from '../shared/types'
 import type { CameraAdapter } from './camera/CameraAdapter'
 import type { CloudGallery } from './cloud/CloudGallery'
 import { compose, previewDataUrl } from './compose/composer'
+import { colourPathFor, gifPathFor, thumbPathFor } from './sessionFiles'
 import type { BoothDatabase } from './db/database'
 import type { PrintQueue } from './queue/PrintQueue'
 import type { UploadQueue } from './queue/UploadQueue'
@@ -22,8 +23,6 @@ async function makeGif(photoPaths: string[], out: string): Promise<void> {
   await sharp(frames, { join: { animated: true } }).gif({ loop: 0, delay: frames.map(() => GIF_FRAME_MS) }).toFile(out)
 }
 
-const thumbPathFor = (compositePath: string) => join(dirname(compositePath), 'thumb.jpg')
-export const colourPathFor = (compositePath: string) => join(dirname(compositePath), 'final-colour.jpg')
 
 async function writeThumb(composite: Buffer | string, out: string): Promise<void> {
   await sharp(composite).resize({ height: 480, withoutEnlargement: true }).jpeg({ quality: 80 }).toFile(out)
@@ -119,7 +118,7 @@ export class BoothService {
       colourPreview = await previewDataUrl(colour.composite, 700)
     }
     const printPath = join(dir, 'print-sheet.jpg')
-    const gifPath = join(dir, 'animation.gif')
+    const gifPath = gifPathFor(compositePath)
     await writeFile(compositePath, composite)
     await writeFile(printPath, printSheet)
     // GIF and gallery thumbnail are extras: a failure here must never stop the print.
