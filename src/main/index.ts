@@ -268,6 +268,7 @@ function registerIpc(): void {
   })
   handle('startSession', () => service.startSession())
   handle('capture', (sessionId: string) => service.capture(sessionId))
+  handle('recordBoomerang', (sessionId: string) => service.recordBoomerang(sessionId))
   handle('finish', (sessionId: string, paths: string[], key: string) => service.finish(sessionId, paths, key))
   handle('reprint', (sessionId: string, key: string, copies: number) => service.reprint(sessionId, key, copies))
   handle('galleryList', () => service.galleryList())

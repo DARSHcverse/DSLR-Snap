@@ -13,6 +13,10 @@ const good = {
 };
 
 describe("parseUploadRequest", () => {
+  it("accepts a boomerang alongside the photo", () => {
+    expect(parseUploadRequest({ ...good, files: [...good.files, { kind: "boomerang", contentType: "image/gif", bytes: 3_000_000 }] })).not.toHaveProperty("error");
+  });
+
   it("accepts a normal session upload", () => {
     expect(parseUploadRequest(good)).toMatchObject({ sessionId: SESSION, event: { name: "Priya & Tom", date: "2026-10-31" } });
   });
@@ -52,8 +56,8 @@ describe("gallery helpers", () => {
   });
 
   it("labels B&W and colour versions for guests", () => {
-    const f = (kind: "photo" | "colour" | "gif") => ({ kind, path: "", contentType: "" });
-    expect(describeFiles([f("gif"), f("photo"), f("colour")]).map((d) => d.label)).toEqual(["Black & white", "Colour", "Animated GIF"]);
+    const f = (kind: "photo" | "colour" | "gif" | "boomerang") => ({ kind, path: "", contentType: "" });
+    expect(describeFiles([f("gif"), f("photo"), f("boomerang"), f("colour")]).map((d) => d.label)).toEqual(["Black & white", "Colour", "Boomerang", "Animated GIF"]);
     expect(describeFiles([f("photo")])[0].label).toBe("Your photo strip");
   });
 });

@@ -1,7 +1,7 @@
 /**
  * Guest-facing booth flow as a pure reducer, so it can be unit tested without the UI.
  *
- * welcome → countdown → capturing → preview → (next shot: countdown) … → finishing → done → welcome
+ * welcome → countdown → capturing → preview → (next shot: countdown) … → [boomerang] → finishing → done → welcome
  * Each photo is shown right after it's taken; the guest can retake it there (limited by
  * retakesAllowed) instead of waiting for the end. With reviewSeconds = 0 the preview is skipped.
  */
@@ -15,7 +15,12 @@ export interface BoothConfig {
   /** How long each photo is shown after it's taken; 0 = don't show it. */
   reviewSeconds: number
   retakesAllowed: number
+  /** After the last photo: "Boomerang! 3-2-1", then a short clip from the live view. */
+  boomerang: boolean
 }
+
+/** Seconds of "Boomerang! 3, 2, 1" before recording. */
+export const BOOMERANG_COUNTDOWN = 3
 
 type Shooting = { shot: number; photos: string[]; retakesUsed: number }
 
@@ -24,6 +29,8 @@ export type BoothState =
   | ({ name: 'countdown'; remaining: number } & Shooting)
   | ({ name: 'capturing' } & Shooting)
   | ({ name: 'preview'; remaining: number } & Shooting)
+  | { name: 'boomerangCountdown'; remaining: number; photos: string[] }
+  | { name: 'boomerang'; photos: string[] }
   | { name: 'finishing'; photos: string[] }
   | { name: 'done' }
   | ({ name: 'error'; message: string } & Shooting)
@@ -38,10 +45,14 @@ export type BoothAction =
   | { type: 'FINISHED' }
   | { type: 'RESET' }
   | { type: 'RETRY_SHOT' }
+  /** The boomerang clip is recorded (or failed: the session carries on without it). */
+  | { type: 'BOOMERANG_DONE' }
 
 /** After a photo is accepted: next countdown, or finishing once every slot has a photo. */
 function advance(s: Shooting, cfg: BoothConfig): BoothState {
-  if (s.photos.length >= cfg.photosPerSession) return { name: 'finishing', photos: s.photos }
+  if (s.photos.length >= cfg.photosPerSession) {
+    return cfg.boomerang ? { name: 'boomerangCountdown', remaining: BOOMERANG_COUNTDOWN, photos: s.photos } : { name: 'finishing', photos: s.photos }
+  }
   return { name: 'countdown', shot: s.photos.length, remaining: cfg.intervalSeconds, photos: s.photos, retakesUsed: s.retakesUsed }
 }
 
@@ -51,6 +62,9 @@ export function boothReducer(state: BoothState, action: BoothAction, cfg: BoothC
   switch (action.type) {
     case 'RESET':
       return { name: 'welcome' }
+
+    case 'BOOMERANG_DONE':
+      return state.name === 'boomerang' ? { name: 'finishing', photos: state.photos } : state
 
     case 'FINISHED':
       return state.name === 'finishing' ? { name: 'done' } : state
@@ -63,6 +77,9 @@ export function boothReducer(state: BoothState, action: BoothAction, cfg: BoothC
       if (state.name === 'countdown') {
         if (state.remaining > 1) return { ...state, remaining: state.remaining - 1 }
         return { name: 'capturing', ...shooting(state) }
+      }
+      if (state.name === 'boomerangCountdown') {
+        return state.remaining > 1 ? { ...state, remaining: state.remaining - 1 } : { name: 'boomerang', photos: state.photos }
       }
       if (state.name === 'preview') {
         if (state.remaining > 1) return { ...state, remaining: state.remaining - 1 }

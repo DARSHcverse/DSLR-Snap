@@ -43,6 +43,8 @@ export interface BoothApi {
   getActiveEvent(): Promise<{ event: BoothEvent; template: Template } | null>
   startSession(): Promise<{ sessionId: string; event: BoothEvent }>
   capture(sessionId: string): Promise<CaptureResult>
+  /** ~1.5 s from the live view, saved as the session's boomerang. false = skipped (no live view). */
+  recordBoomerang(sessionId: string): Promise<boolean>
   finish(sessionId: string, photoPaths: string[], requestKey: string): Promise<FinishResult>
   reprint(sessionId: string, requestKey: string, copies: number): Promise<string>
   liveViewStart(): Promise<boolean>
@@ -50,7 +52,7 @@ export interface BoothApi {
   liveViewStop(): Promise<void>
   /** Guest gallery: finished sessions of the active event (empty if the event hides the gallery). */
   galleryList(): Promise<{ id: string; createdAt: string; thumb: string; hasGif: boolean }[]>
-  galleryItem(sessionId: string): Promise<{ image: string; gif?: string; colour?: string }>
+  galleryItem(sessionId: string): Promise<{ image: string; gif?: string; colour?: string; boomerang?: string }>
 
   // admin
   listEvents(): Promise<BoothEvent[]>

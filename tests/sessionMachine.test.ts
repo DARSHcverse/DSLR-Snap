@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { boothReducer, retakesLeft, type BoothAction, type BoothConfig, type BoothState } from '../src/shared/sessionMachine'
 
-const cfg: BoothConfig = { photosPerSession: 3, firstCountdownSeconds: 3, intervalSeconds: 2, reviewSeconds: 2, retakesAllowed: 1 }
+const cfg: BoothConfig = { photosPerSession: 3, firstCountdownSeconds: 3, intervalSeconds: 2, reviewSeconds: 2, retakesAllowed: 1, boomerang: false }
 const run = (actions: BoothAction[], start: BoothState = { name: 'welcome' }, c = cfg) => actions.reduce((s, a) => boothReducer(s, a, c), start)
 const ticks = (n: number): BoothAction[] => Array.from({ length: n }, () => ({ type: 'TICK' }))
 /** Countdown of `n` seconds, then the camera returns `path`. */
@@ -73,5 +73,26 @@ describe('booth session flow', () => {
   it('FINISHED outside finishing is ignored', () => {
     const s: BoothState = { name: 'welcome' }
     expect(run([{ type: 'FINISHED' }], s)).toBe(s)
+  })
+})
+
+describe('boomerang', () => {
+  const withBoomerang = { ...cfg, reviewSeconds: 0, photosPerSession: 1, boomerang: true }
+
+  it('records a boomerang after the last photo, then finishes', () => {
+    const afterPhoto = run([{ type: 'START' }, ...ticks(3), { type: 'CAPTURED', path: 'a.jpg' }], undefined, withBoomerang)
+    expect(afterPhoto).toEqual({ name: 'boomerangCountdown', remaining: 3, photos: ['a.jpg'] })
+    const recording = run(ticks(3), afterPhoto, withBoomerang)
+    expect(recording).toEqual({ name: 'boomerang', photos: ['a.jpg'] })
+    expect(run([{ type: 'BOOMERANG_DONE' }], recording, withBoomerang)).toEqual({ name: 'finishing', photos: ['a.jpg'] })
+  })
+
+  it('goes straight to finishing when the event has no boomerang', () => {
+    const s = run([{ type: 'START' }, ...ticks(3), { type: 'CAPTURED', path: 'a.jpg' }], undefined, { ...withBoomerang, boomerang: false })
+    expect(s.name).toBe('finishing')
+  })
+
+  it('ignores BOOMERANG_DONE outside recording', () => {
+    expect(run([{ type: 'BOOMERANG_DONE' }])).toEqual({ name: 'welcome' })
   })
 })

@@ -72,6 +72,22 @@ describe('BoothService end to end (mock hardware)', () => {
     expect((await service.galleryItem(sessionId)).colour).toMatch(/^data:image\/jpeg/)
   })
 
+  it('records a boomerang from the live view that plays forward then back, and offers it with the session', async () => {
+    const { db, ev, service } = await setup()
+    db.saveEvent({ ...ev, boomerang: true })
+    const { sessionId } = service.startSession()
+    const shots = []
+    for (let i = 0; i < 3; i++) shots.push((await service.capture(sessionId)).path)
+    expect(await service.recordBoomerang(sessionId, 600)).toBe(true)
+    const res = await service.finish(sessionId, shots, 'k')
+    const clip = await sharp(join(res.session.compositePath!, '..', 'boomerang.gif'), { animated: true }).metadata()
+    expect(clip.pages).toBeGreaterThanOrEqual(6) // n frames forward + n-2 back
+    expect(clip.loop).toBe(0)
+    expect(clip.width).toBe(540)
+    expect(res.boomerang).toMatch(/^data:image\/gif/)
+    expect((await service.galleryItem(sessionId)).boomerang).toMatch(/^data:image\/gif/)
+  })
+
   it('makes a looping GIF of the session photos and lists the session in the guest gallery', async () => {
     const { db, ev, service } = await setup()
     const { sessionId } = service.startSession()

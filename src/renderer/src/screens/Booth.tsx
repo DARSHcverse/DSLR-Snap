@@ -14,13 +14,14 @@ interface Props {
 type Active = { event: BoothEvent; template: Template }
 
 function configFor(a: Active | null | undefined): BoothConfig {
-  if (!a) return { photosPerSession: 1, firstCountdownSeconds: 3, intervalSeconds: 3, reviewSeconds: 3, retakesAllowed: 0 }
+  if (!a) return { photosPerSession: 1, firstCountdownSeconds: 3, intervalSeconds: 3, reviewSeconds: 3, retakesAllowed: 0, boomerang: false }
   return {
     photosPerSession: a.template.slots.length,
     firstCountdownSeconds: a.event.countdownSeconds,
     intervalSeconds: a.event.shotIntervalSeconds,
     reviewSeconds: a.event.photoReviewSeconds,
-    retakesAllowed: a.event.retakesAllowed
+    retakesAllowed: a.event.retakesAllowed,
+    boomerang: a.event.boomerang
   }
 }
 
@@ -36,7 +37,7 @@ export default function Booth({ onNeedSetup }: Props) {
   const [state, dispatch] = useReducer((s: BoothState, a: BoothAction) => boothReducer(s, a, cfgRef.current), { name: 'welcome' })
   const [previews, setPreviews] = useState<Record<string, string>>({})
   const [result, setResult] = useState<FinishResult | null>(null)
-  const [showColour, setShowColour] = useState(false)
+  const [doneView, setDoneView] = useState<'print' | 'colour' | 'boomerang'>('print')
   const [flash, setFlash] = useState(false)
   const [fatal, setFatal] = useState<string | null>(null)
   const [gallery, setGallery] = useState<Awaited<ReturnType<typeof window.booth.galleryList>>>([])
@@ -57,7 +58,7 @@ export default function Booth({ onNeedSetup }: Props) {
 
   // Countdown and photo-preview ticks
   useEffect(() => {
-    if (state.name !== 'countdown' && state.name !== 'preview') return
+    if (state.name !== 'countdown' && state.name !== 'preview' && state.name !== 'boomerangCountdown') return
     const t = setTimeout(() => dispatch({ type: 'TICK' }), 1000)
     return () => clearTimeout(t)
   }, [state])
@@ -80,6 +81,15 @@ export default function Booth({ onNeedSetup }: Props) {
       cancelled = true
     }
   }, [state.name, state.name === 'capturing' ? state.shot : -1]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Boomerang: record from the live view; carry on to printing whatever happens.
+  useEffect(() => {
+    if (state.name !== 'boomerang' || !sessionId.current) return
+    window.booth
+      .recordBoomerang(sessionId.current)
+      .catch(() => false)
+      .finally(() => dispatch({ type: 'BOOMERANG_DONE' }))
+  }, [state.name]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Compose + print
   useEffect(() => {
@@ -104,7 +114,7 @@ export default function Booth({ onNeedSetup }: Props) {
     sessionId.current = null
     setPreviews({})
     setResult(null)
-    setShowColour(false)
+    setDoneView('print')
     setFatal(null)
     dispatch({ type: 'RESET' })
   }, [])
@@ -147,9 +157,10 @@ export default function Booth({ onNeedSetup }: Props) {
 
   const cameraReady = devices?.camera.state === 'ready' || devices?.camera.state === 'busy'
   const showLive = state.name === 'countdown' || state.name === 'capturing'
+  const boomerangLive = state.name === 'boomerangCountdown' || state.name === 'boomerang'
   // The feed runs from "Tap to start" through every photo (also behind the photo review),
   // so guests see themselves the whole time and the camera never restarts mid-session.
-  const liveOn = cameraReady && (state.name === 'welcome' || showLive || state.name === 'preview')
+  const liveOn = cameraReady && (state.name === 'welcome' || showLive || state.name === 'preview' || boomerangLive)
 
   return (
     <div className="screen booth">
@@ -176,6 +187,16 @@ export default function Booth({ onNeedSetup }: Props) {
           {!cameraReady && devices && <p className="warn">{devices.camera.message ?? 'Waiting for camera…'}</p>}
           <button className="operator-btn" aria-label="Operator menu" onClick={(e) => (e.stopPropagation(), onNeedSetup())}>⚙</button>
           <GalleryCorner items={gallery} onOpen={() => setGalleryOpen(true)} />
+        </div>
+      )}
+      {boomerangLive && (
+        <div className="capture-stage">
+          <div className="shot-counter">Boomerang</div>
+          {state.name === 'boomerangCountdown' ? (
+            <div className="countdown" key={state.remaining}>{state.remaining}</div>
+          ) : (
+            <div className="countdown smile recording">Move!</div>
+          )}
         </div>
       )}
       {state.name === 'welcome' && galleryOpen && <Gallery items={gallery} onClose={() => setGalleryOpen(false)} />}
@@ -222,12 +243,13 @@ export default function Booth({ onNeedSetup }: Props) {
 
       {state.name === 'done' && result && (
         <div className="done">
-          <img className="final" src={showColour && result.colourPreview ? result.colourPreview : result.printPreview} alt="Your print" />
+          <img className="final" src={(doneView === 'colour' && result.colourPreview) || (doneView === 'boomerang' && result.boomerang) || result.printPreview} alt="Your print" />
           <div className="done-side">
-            {result.colourPreview && (
+            {(result.colourPreview || result.boomerang) && (
               <div className="seg done-choice">
-                <button className={!showColour ? 'on' : ''} onClick={() => setShowColour(false)}>{lookInfo(active.event.look).label}</button>
-                <button className={showColour ? 'on' : ''} onClick={() => setShowColour(true)}>Colour</button>
+                <button className={doneView === 'print' ? 'on' : ''} onClick={() => setDoneView('print')}>{result.colourPreview ? lookInfo(active.event.look).label : 'Photo'}</button>
+                {result.colourPreview && <button className={doneView === 'colour' ? 'on' : ''} onClick={() => setDoneView('colour')}>Colour</button>}
+                {result.boomerang && <button className={doneView === 'boomerang' ? 'on' : ''} onClick={() => setDoneView('boomerang')}>Boomerang</button>}
               </div>
             )}
             <h2 className="title">{result.printJobId ? 'Printing now!' : 'All done!'}</h2>

@@ -89,6 +89,8 @@ export interface BoothEvent {
   skinSmoothing: number
   /** With a filter: also save the photo in colour, so guests can have both. */
   colourCopy: boolean
+  /** After the photos, record a short back-and-forth clip from the live view. */
+  boomerang: boolean
   createdAt: string
 }
 
@@ -103,7 +105,7 @@ export interface EventStats {
 }
 
 /** Fields added after the first release; optional when saving so older callers keep working. */
-type NewerEventFields = 'shotIntervalSeconds' | 'photoReviewSeconds' | 'doneScreenSeconds' | 'showGallery' | 'look' | 'skinSmoothing' | 'colourCopy'
+type NewerEventFields = 'shotIntervalSeconds' | 'photoReviewSeconds' | 'doneScreenSeconds' | 'showGallery' | 'look' | 'skinSmoothing' | 'colourCopy' | 'boomerang'
 export type EventInput = Omit<BoothEvent, 'id' | 'createdAt' | NewerEventFields> & Partial<Pick<BoothEvent, NewerEventFields>> & { id?: string }
 
 export type ExposureKey = 'iso' | 'aperture' | 'shutter' | 'whiteBalance'
@@ -233,6 +235,8 @@ export interface FinishResult {
   printPreview: string
   /** The same design in colour, when the event's look is a filter and colourCopy is on. */
   colourPreview?: string
+  /** The session's boomerang (animated GIF data URL), when the event records one. */
+  boomerang?: string
   /** Guest page for this session; may be live before the upload finishes. */
   galleryUrl?: string
   qrDataUrl?: string

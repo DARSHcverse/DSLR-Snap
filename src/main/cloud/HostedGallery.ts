@@ -1,9 +1,9 @@
 import { existsSync } from 'node:fs'
 import { readFile } from 'node:fs/promises'
-import { colourPathFor, gifPathFor } from '../sessionFiles'
+import { boomerangPathFor, colourPathFor, gifPathFor } from '../sessionFiles'
 import type { CloudGallery } from './CloudGallery'
 
-export type GalleryFileKind = 'photo' | 'colour' | 'gif'
+export type GalleryFileKind = 'photo' | 'colour' | 'gif' | 'boomerang'
 
 export interface HostedGalleryDeps {
   /** e.g. https://dslrsnap.com */
@@ -38,6 +38,7 @@ export class HostedGallery implements CloudGallery {
     const files: { kind: GalleryFileKind; path: string; contentType: string }[] = [{ kind: 'photo', path: filePath, contentType: 'image/jpeg' }]
     if (existsSync(colourPathFor(filePath))) files.push({ kind: 'colour', path: colourPathFor(filePath), contentType: 'image/jpeg' })
     if (existsSync(gifPathFor(filePath))) files.push({ kind: 'gif', path: gifPathFor(filePath), contentType: 'image/gif' })
+    if (existsSync(boomerangPathFor(filePath))) files.push({ kind: 'boomerang', path: boomerangPathFor(filePath), contentType: 'image/gif' })
     const bodies = await Promise.all(files.map((f) => readFile(f.path)))
 
     const { uploads, pageUrl } = await this.post<{ uploads: { kind: GalleryFileKind; url: string; headers?: Record<string, string> }[]; pageUrl: string }>('/api/app/uploads', {

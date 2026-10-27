@@ -6,7 +6,7 @@ export const GALLERY_BUCKET = "galleries";
 export const RETENTION_DAYS = 365;
 export const MAX_FILE_BYTES = 25 * 1024 * 1024;
 
-export type GalleryFileKind = "photo" | "colour" | "gif";
+export type GalleryFileKind = "photo" | "colour" | "gif" | "boomerang";
 export interface GalleryFile {
   kind: GalleryFileKind;
   path: string;
@@ -17,6 +17,7 @@ const KINDS: Record<GalleryFileKind, { contentType: string; ext: string }> = {
   photo: { contentType: "image/jpeg", ext: "jpg" },
   colour: { contentType: "image/jpeg", ext: "jpg" },
   gif: { contentType: "image/gif", ext: "gif" },
+  boomerang: { contentType: "image/gif", ext: "gif" },
 };
 
 export const isUuid = (s: unknown): s is string =>
@@ -36,7 +37,7 @@ export function parseUploadRequest(body: Record<string, unknown> | null): Upload
   const name = typeof ev.name === "string" ? ev.name.trim().slice(0, 120) : "";
   const date = typeof ev.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(ev.date) ? ev.date : null;
   const files = Array.isArray(body?.files) ? (body.files as Record<string, unknown>[]) : [];
-  if (!files.length || files.length > 3) return { error: "Nothing to upload." };
+  if (!files.length || files.length > Object.keys(KINDS).length) return { error: "Nothing to upload." };
   const seen = new Set<string>();
   const parsed: UploadRequest["files"] = [];
   for (const f of files) {
@@ -70,12 +71,12 @@ export function isExpired(createdAt: string, now: number): boolean {
 /** How each file is offered to guests, in page order. */
 export function describeFiles(files: GalleryFile[]): { kind: GalleryFileKind; label: string; filename: string }[] {
   const hasColour = files.some((f) => f.kind === "colour");
-  const order: GalleryFileKind[] = ["photo", "colour", "gif"];
+  const order: GalleryFileKind[] = ["photo", "colour", "boomerang", "gif"];
   return order
     .filter((k) => files.some((f) => f.kind === k))
     .map((kind) => ({
       kind,
-      label: kind === "gif" ? "Animated GIF" : kind === "colour" ? "Colour" : hasColour ? "Black & white" : "Your photo strip",
-      filename: kind === "gif" ? "dslr-snap.gif" : kind === "colour" ? "dslr-snap-colour.jpg" : "dslr-snap.jpg",
+      label: { photo: hasColour ? "Black & white" : "Your photo strip", colour: "Colour", boomerang: "Boomerang", gif: "Animated GIF" }[kind],
+      filename: { photo: "dslr-snap.jpg", colour: "dslr-snap-colour.jpg", boomerang: "dslr-snap-boomerang.gif", gif: "dslr-snap.gif" }[kind],
     }));
 }

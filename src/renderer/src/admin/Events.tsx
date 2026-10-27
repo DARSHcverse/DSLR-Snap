@@ -12,7 +12,7 @@ type Draft = Omit<BoothEvent, 'id' | 'createdAt'> & { id?: string }
 const blankEvent = (templateId: string): Draft => ({
   name: '', date: todayIso(), templateId, photosPerSession: 3, countdownSeconds: 5, shotIntervalSeconds: 3, photoReviewSeconds: 3, doneScreenSeconds: 20,
   retakesAllowed: 2, printCopies: 1, autoPrint: true, galleryEnabled: false, showGallery: true,
-  look: 'colour', skinSmoothing: 50, colourCopy: false
+  look: 'colour', skinSmoothing: 50, colourCopy: false, boomerang: false
 })
 
 /** Big − / + control; easier on a touch screen than a number box. */
@@ -194,6 +194,12 @@ function EventSetup({ initial, devices, onClose, onLaunch }: {
               <Stepper label="Final screen stays for" value={draft.doneScreenSeconds} min={5} max={120} step={5} format={secs}
                 hint='Then the booth goes back to "Tap to start".' onChange={(v) => set('doneScreenSeconds', v)} />
             </div>
+            <h3 className="section-title">Extras</h3>
+            <label className="check">
+              <input type="checkbox" checked={draft.boomerang} onChange={(e) => set('boomerang', e.target.checked)} />
+              Boomerang: after the photos, guests get "3, 2, 1, move!" and a short back-and-forth clip
+            </label>
+            <p className="muted small">An animated GIF of the photos is always made too. Both are on the guest's QR page and in the booth gallery.</p>
           </div>
         )}
 

@@ -7,7 +7,7 @@ const GB = 1024 ** 3
 const event: BoothEvent = {
   id: 'e1', name: 'Priya & Tom', date: '2026-10-27', templateId: 't', photosPerSession: 3, countdownSeconds: 3, retakesAllowed: 1,
   printCopies: 1, autoPrint: true, galleryEnabled: false, shotIntervalSeconds: 3, photoReviewSeconds: 3, doneScreenSeconds: 20,
-  showGallery: true, look: 'glam', skinSmoothing: 50, colourCopy: false, exposure: { iso: '400', aperture: '5.6', shutter: '1/125' },
+  showGallery: true, look: 'glam', skinSmoothing: 50, colourCopy: false, boomerang: false, exposure: { iso: '400', aperture: '5.6', shutter: '1/125' },
   createdAt: '2026-10-27T10:00:00Z'
 }
 const devices: DeviceSnapshot = {

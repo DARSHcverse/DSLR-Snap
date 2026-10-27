@@ -16,8 +16,8 @@ export function GalleryCorner({ items, onOpen }: { items: Item[]; onOpen: () => 
 
 /** Full-screen browser of this event's photos and GIFs. View only: guests can't reprint from here. */
 export default function Gallery({ items, onClose }: { items: Item[]; onClose: () => void }) {
-  const [open, setOpen] = useState<{ id: string; image: string; gif?: string; colour?: string } | null>(null)
-  const [view, setView] = useState<'photo' | 'colour' | 'gif'>('photo')
+  const [open, setOpen] = useState<{ id: string; image: string; gif?: string; colour?: string; boomerang?: string } | null>(null)
+  const [view, setView] = useState<'photo' | 'colour' | 'gif' | 'boomerang'>('photo')
   const idle = useRef<ReturnType<typeof setTimeout>>(undefined)
 
   // An abandoned gallery must never block the booth: close after a minute without touches.
@@ -41,18 +41,19 @@ export default function Gallery({ items, onClose }: { items: Item[]; onClose: ()
     <div className="gallery" onPointerDown={poke} onClick={(e) => e.stopPropagation()}>
       <div className="gallery-bar">
         <h2 className="title">{open ? 'Your photos' : 'Photo gallery'}</h2>
-        {(open?.gif || open?.colour) && (
+        {(open?.gif || open?.colour || open?.boomerang) && (
           <div className="seg gallery-toggle">
             <button className={view === 'photo' ? 'on' : ''} onClick={() => setView('photo')}>Photo</button>
             {open.colour && <button className={view === 'colour' ? 'on' : ''} onClick={() => setView('colour')}>Colour</button>}
             {open.gif && <button className={view === 'gif' ? 'on' : ''} onClick={() => setView('gif')}>GIF</button>}
+            {open.boomerang && <button className={view === 'boomerang' ? 'on' : ''} onClick={() => setView('boomerang')}>Boomerang</button>}
           </div>
         )}
         <button className="close-x" aria-label="Close" onClick={() => (open ? setOpen(null) : onClose())}>✕</button>
       </div>
       {open ? (
         <div className="gallery-view">
-          <img src={(view === 'gif' && open.gif) || (view === 'colour' && open.colour) || open.image} alt="" />
+          <img src={(view === 'gif' && open.gif) || (view === 'boomerang' && open.boomerang) || (view === 'colour' && open.colour) || open.image} alt="" />
         </div>
       ) : (
         <div className="gallery-grid">

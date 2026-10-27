@@ -7,7 +7,7 @@ import type { BoothEvent, CaptureResult, FinishResult } from '../shared/types'
 import type { CameraAdapter } from './camera/CameraAdapter'
 import type { CloudGallery } from './cloud/CloudGallery'
 import { compose, previewDataUrl } from './compose/composer'
-import { colourPathFor, gifPathFor, thumbPathFor } from './sessionFiles'
+import { boomerangPathFor, colourPathFor, gifPathFor, thumbPathFor } from './sessionFiles'
 import type { BoothDatabase } from './db/database'
 import type { PrintQueue } from './queue/PrintQueue'
 import type { UploadQueue } from './queue/UploadQueue'
@@ -23,6 +23,16 @@ async function makeGif(photoPaths: string[], out: string): Promise<void> {
   await sharp(frames, { join: { animated: true } }).gif({ loop: 0, delay: frames.map(() => GIF_FRAME_MS) }).toFile(out)
 }
 
+
+const BOOMERANG_WIDTH = 540
+const BOOMERANG_FRAME_MS = 70
+
+/** Plays the frames forward then backward, looping: the classic boomerang. */
+export async function makeBoomerang(frames: Buffer[], out: string): Promise<void> {
+  const sized = await Promise.all(frames.map((f) => sharp(f).resize({ width: BOOMERANG_WIDTH }).png().toBuffer()))
+  const sequence = [...sized, ...sized.slice(1, -1).reverse()]
+  await sharp(sequence, { join: { animated: true } }).gif({ loop: 0, delay: sequence.map(() => BOOMERANG_FRAME_MS) }).toFile(out)
+}
 
 async function writeThumb(composite: Buffer | string, out: string): Promise<void> {
   await sharp(composite).resize({ height: 480, withoutEnlargement: true }).jpeg({ quality: 80 }).toFile(out)
@@ -90,6 +100,32 @@ export class BoothService {
   }
 
   /**
+   * Records ~1.5 s of live view for the session's boomerang. Returns false (and the session simply
+   * carries on) when the camera has no live view or too few frames arrive.
+   */
+  async recordBoomerang(sessionId: string, durationMs = 1500): Promise<boolean> {
+    const session = this.deps.db.getSession(sessionId)
+    if (!session) throw new Error('Session not found')
+    const ev = this.deps.db.getEvent(session.eventId)!
+    const cam = this.deps.camera()
+    if (!(await cam.startLiveView().catch(() => false))) return false
+    const frames: Buffer[] = []
+    const end = Date.now() + durationMs
+    // A slow camera gets up to 1.5 s extra to deliver enough frames for a smooth loop.
+    const hardEnd = end + 1500
+    while (frames.length < 30 && (Date.now() < end || (frames.length < 6 && Date.now() < hardEnd))) {
+      const f = await cam.getLiveViewFrame().catch(() => null)
+      if (f && !(frames.length && f.equals(frames[frames.length - 1]))) frames.push(f)
+      await new Promise((r) => setTimeout(r, 50))
+    }
+    if (frames.length < 4) return false
+    const dir = this.sessionDir(ev, sessionId)
+    await mkdir(dir, { recursive: true })
+    await makeBoomerang(frames, boomerangPathFor(join(dir, 'final.jpg')))
+    return true
+  }
+
+  /**
    * @param photoPaths the guest's final selection, in order (after any retakes)
    * @param requestKey unique per "finish" press; repeats return the existing print job
    */
@@ -143,7 +179,9 @@ export class BoothService {
     }
 
     db.updateSession(sessionId, { status: 'complete' })
-    return { session: db.getSession(sessionId)!, printPreview: await previewDataUrl(composite, 700), colourPreview, galleryUrl, qrDataUrl, printJobId }
+    const boomerangPath = boomerangPathFor(compositePath)
+    const boomerang = existsSync(boomerangPath) ? `data:image/gif;base64,${(await readFile(boomerangPath)).toString('base64')}` : undefined
+    return { session: db.getSession(sessionId)!, printPreview: await previewDataUrl(composite, 700), colourPreview, boomerang, galleryUrl, qrDataUrl, printJobId }
   }
 
   private async waitForGalleryUrl(sessionId: string): Promise<string | undefined> {
@@ -183,7 +221,7 @@ export class BoothService {
   }
 
   /** One gallery entry at viewing size. Only finished sessions of the active event are ever returned to guests. */
-  async galleryItem(sessionId: string): Promise<{ image: string; gif?: string; colour?: string }> {
+  async galleryItem(sessionId: string): Promise<{ image: string; gif?: string; colour?: string; boomerang?: string }> {
     const ev = this.activeEventOrNull()
     const s = this.deps.db.getSession(sessionId)
     if (!ev?.showGallery || !s || s.eventId !== ev.id || s.status !== 'complete' || !s.compositePath || !existsSync(s.compositePath)) {
@@ -192,7 +230,9 @@ export class BoothService {
     const gif = s.gifPath && existsSync(s.gifPath) ? `data:image/gif;base64,${(await readFile(s.gifPath)).toString('base64')}` : undefined
     const colourPath = colourPathFor(s.compositePath)
     const colour = existsSync(colourPath) ? await previewDataUrl(colourPath, 1000) : undefined
-    return { image: await previewDataUrl(s.compositePath, 1000), gif, colour }
+    const boomerangPath = boomerangPathFor(s.compositePath)
+    const boomerang = existsSync(boomerangPath) ? `data:image/gif;base64,${(await readFile(boomerangPath)).toString('base64')}` : undefined
+    return { image: await previewDataUrl(s.compositePath, 1000), gif, colour, boomerang }
   }
 
   private activeEventOrNull(): BoothEvent | undefined {
