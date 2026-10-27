@@ -2,7 +2,8 @@ import sharp, { type OverlayOptions } from 'sharp'
 import { canvasSize, fillTokens, SHEET } from '../../shared/layout'
 import type { Look, Template, TextItem } from '../../shared/types'
 import { applyLook } from './looks'
-import { type KeyColour, keyOntoBackground } from './chromaKey'
+import { aiOntoBackground, type KeyColour, keyOntoBackground } from './chromaKey'
+import { portraitMatter } from './aiModel'
 
 export interface ComposeInput {
   template: Template
@@ -12,7 +13,8 @@ export interface ComposeInput {
   /** Stamped across the bottom of the design while the booth is unlicensed (trial). */
   watermark?: string
   /** Green/blue screen: replace the backdrop in each photo with this image. */
-  background?: { path: string; key: KeyColour }
+  /** 'ai' cuts people out with the on-device model instead of a green/blue key. */
+  background?: { path: string; key: KeyColour | 'ai' }
   /** Filter for the photos (not the template artwork). */
   look?: Look
   skinSmoothing?: number
@@ -78,7 +80,10 @@ export async function compose(input: ComposeInput): Promise<ComposeOutput> {
       // Swap the backdrop on the whole frame first (as the live view shows it), then crop to the slot
       // like any photo, so the client's logo sits where guests saw it.
       const frame = await sharp(photoPaths[i]).rotate().resize(sw, sh, { fit: 'outside' }).toBuffer()
-      const keyed = await keyOntoBackground(frame, input.background.path, input.background.key)
+      const { key, path } = input.background
+      const matter = key === 'ai' ? portraitMatter() : undefined
+      if (key === 'ai' && !matter) throw new Error('AI backgrounds need the AI model. Reinstall DSLR Snap or switch the event to green screen.')
+      const keyed = key === 'ai' ? await aiOntoBackground(frame, path, matter!) : await keyOntoBackground(frame, path, key)
       photo = await sharp(keyed).resize(sw, sh, { fit: 'cover', position: 'centre' }).toBuffer()
     } else {
       photo = await sharp(photoPaths[i]).rotate().resize(sw, sh, { fit: 'cover', position: 'centre' }).toBuffer()

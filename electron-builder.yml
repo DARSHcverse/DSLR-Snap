@@ -6,11 +6,21 @@ directories:
 files:
   - out/**
   - package.json
+  # The AI runtime ships builds for every platform; the Windows installer needs only win32/x64.
+  - "!node_modules/onnxruntime-node/bin/napi-v*/{darwin,linux}/**"
+  - "!node_modules/onnxruntime-node/bin/napi-v*/win32/arm64/**"
 asarUnpack:
   - node_modules/sharp/**
   - node_modules/@img/**
   - node_modules/better-sqlite3/**
+  - node_modules/onnxruntime-node/**
 extraResources:
+  # AI cut-out model (npm run fetch-models) and its licence notice.
+  - from: resources/models
+    to: models
+    filter: ["*.onnx"]
+  - from: resources/THIRD_PARTY_NOTICES.txt
+    to: THIRD_PARTY_NOTICES.txt
   # The compiled Canon bridge (see native/CanonBridge/README.md). Optional: app falls back to mock camera if missing.
   - from: native/CanonBridge/publish
     to: canon-bridge

@@ -72,6 +72,7 @@ const now = () => new Date().toISOString()
 const LOOK_IDS = new Set<string>(LOOKS.map((l) => l.id))
 /** Imported background files are named by these ids, so ids from the renderer can't point elsewhere. */
 export const BACKGROUND_ID = /^bg-[0-9a-f]{12}$/
+const BACKDROPS = new Set<string>(['none', 'green', 'blue', 'ai'])
 
 export class BoothDatabase {
   readonly db: Database.Database
@@ -182,7 +183,7 @@ export class BoothDatabase {
       shotIntervalSeconds: r.shot_interval_seconds, photoReviewSeconds: r.photo_review_seconds,
       doneScreenSeconds: r.done_screen_seconds, showGallery: !!r.show_gallery,
       look: LOOK_IDS.has(r.look) ? r.look : 'colour', skinSmoothing: r.skin_smoothing, colourCopy: !!r.colour_copy, boomerang: !!r.boomerang,
-      backdrop: r.backdrop === 'green' || r.backdrop === 'blue' ? r.backdrop : 'none', backgrounds: JSON.parse(r.backgrounds || '[]'), folder: r.folder ?? undefined,
+      backdrop: BACKDROPS.has(r.backdrop) ? r.backdrop : 'none', backgrounds: JSON.parse(r.backgrounds || '[]'), folder: r.folder ?? undefined,
       exposure: r.exposure ? JSON.parse(r.exposure) : undefined, createdAt: r.created_at
     }
   }
@@ -214,7 +215,7 @@ export class BoothDatabase {
       skinSmoothing: clamp(e.skinSmoothing ?? 50, 0, 100),
       colourCopy: e.colourCopy ?? false,
       boomerang: e.boomerang ?? false,
-      backdrop: e.backdrop === 'green' || e.backdrop === 'blue' ? e.backdrop : 'none',
+      backdrop: e.backdrop && BACKDROPS.has(e.backdrop) ? e.backdrop : 'none',
       backgrounds: (e.backgrounds ?? []).filter((b) => BACKGROUND_ID.test(b.id)).slice(0, 24),
       retakesAllowed: clamp(e.retakesAllowed, 0, 10),
       printCopies: clamp(e.printCopies, 0, 10)

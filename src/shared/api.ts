@@ -1,5 +1,6 @@
 import type {
   AccountState,
+  Backdrop,
   BackgroundRef,
   BoothEvent,
   CameraStatus,
@@ -27,7 +28,7 @@ import type {
 export interface PreviewLook {
   look: Look
   skinSmoothing: number
-  backdrop?: 'none' | 'green' | 'blue'
+  backdrop?: Backdrop
   backgroundId?: string
 }
 
@@ -58,7 +59,10 @@ export interface BoothApi {
   finish(sessionId: string, photoPaths: string[], requestKey: string, opts?: { backgroundId?: string }): Promise<FinishResult>
   reprint(sessionId: string, requestKey: string, copies: number): Promise<string>
   liveViewStart(): Promise<boolean>
-  liveViewFrame(): Promise<string | null>
+  /** aiBackgroundId: return the frame already cut out over that background (AI backgrounds), mirrored. */
+  liveViewFrame(opts?: { aiBackgroundId?: string }): Promise<string | null>
+  /** The AI cut-out model is installed. */
+  aiAvailable(): Promise<boolean>
   liveViewStop(): Promise<void>
   /** Guest gallery: finished sessions of the active event (empty if the event hides the gallery). */
   galleryList(): Promise<{ id: string; createdAt: string; thumb: string; hasGif: boolean }[]>

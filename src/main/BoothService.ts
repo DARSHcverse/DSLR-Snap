@@ -262,7 +262,7 @@ export class BoothService {
   }
 
   /** The guest's chosen background, or the event's first; none unless the event uses a green/blue screen. */
-  private backgroundFor(ev: BoothEvent, chosenId?: string): { path: string; key: 'green' | 'blue' } | undefined {
+  private backgroundFor(ev: BoothEvent, chosenId?: string): { path: string; key: 'green' | 'blue' | 'ai' } | undefined {
     if (ev.backdrop === 'none' || !ev.backgrounds.length || !this.deps.backgroundPath) return undefined
     const bg = ev.backgrounds.find((b) => b.id === chosenId) ?? ev.backgrounds[0]
     const path = this.deps.backgroundPath(bg.id)

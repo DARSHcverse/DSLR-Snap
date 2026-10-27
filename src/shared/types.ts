@@ -91,8 +91,11 @@ export interface BoothEvent {
   colourCopy: boolean
   /** After the photos, record a short back-and-forth clip from the live view. */
   boomerang: boolean
-  /** Green/blue screen: the backdrop is replaced by one of `backgrounds` (e.g. a client's branded artwork). */
-  backdrop: 'none' | 'green' | 'blue'
+  /**
+   * Replace what's behind the guests with one of `backgrounds` (e.g. a client's branded artwork):
+   * a green/blue screen backdrop, or 'ai' to cut people out with no backdrop at all.
+   */
+  backdrop: Backdrop
   backgrounds: BackgroundRef[]
   /** The event's folder on disk, fixed at its first session (see main/eventFolders). */
   folder?: string
@@ -104,6 +107,8 @@ export interface BackgroundRef {
   id: string
   name: string
 }
+
+export type Backdrop = 'none' | 'green' | 'blue' | 'ai'
 
 export type Look = 'colour' | 'glam' | 'bw' | 'warm' | 'vintage'
 

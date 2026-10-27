@@ -1,0 +1,9 @@
+DSLR Snap includes the following third-party components.
+
+MODNet (portrait matting model, resources/models/modnet.onnx)
+  Copyright (c) Zhanghan Ke and contributors. https://github.com/ZHKKKe/MODNet
+  ONNX conversion: https://huggingface.co/Xenova/modnet
+  Licensed under the Apache License, Version 2.0: http://www.apache.org/licenses/LICENSE-2.0
+
+ONNX Runtime (onnxruntime-node)
+  Copyright (c) Microsoft Corporation. Licensed under the MIT License.

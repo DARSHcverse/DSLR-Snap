@@ -315,6 +315,8 @@ const previewLook = (d: Draft) => ({ look: d.look, skinSmoothing: d.skinSmoothin
 function BackgroundsSection({ draft, set }: { draft: Draft; set: <K extends keyof Draft>(k: K, v: Draft[K]) => void }) {
   const [thumbs, setThumbs] = useState<Record<string, string>>({})
   const [error, setError] = useState<string | null>(null)
+  const [aiReady, setAiReady] = useState(true)
+  useEffect(() => void window.booth.aiAvailable().then(setAiReady).catch(() => setAiReady(false)), [])
   useEffect(() => {
     for (const b of draft.backgrounds) {
       if (thumbs[b.id]) continue
@@ -334,9 +336,9 @@ function BackgroundsSection({ draft, set }: { draft: Draft; set: <K extends keyo
     <>
       <h3 className="section-title">Background</h3>
       <div className="seg">
-        {(['none', 'green', 'blue'] as const).map((b) => (
+        {(['none', 'ai', 'green', 'blue'] as const).map((b) => (
           <button key={b} className={draft.backdrop === b ? 'on' : ''} onClick={() => set('backdrop', b)}>
-            {{ none: 'Off', green: 'Green screen', blue: 'Blue screen' }[b]}
+            {{ none: 'Off', ai: 'AI (no backdrop)', green: 'Green screen', blue: 'Blue screen' }[b]}
           </button>
         ))}
       </div>
@@ -360,9 +362,19 @@ function BackgroundsSection({ draft, set }: { draft: Draft; set: <K extends keyo
             <button className="bg-tile add" onClick={() => add()}>+ Add backgrounds<span className="muted small">or drop images here</span></button>
           </div>
           {!draft.backgrounds.length && <p className="warn small">Add at least one background: the client's artwork, logo wall or scene.</p>}
+          {draft.backdrop === 'ai' && (
+            aiReady ? (
+              <p className="muted small">
+                AI finds the people in each photo and puts the background behind them: no backdrop needed. Works best with guests standing clear of busy scenery; for the cleanest hair edges at big events, a green screen is still sharper.
+                The preview uses placeholder shots, so take a test shot under Camera to check a real person.
+              </p>
+            ) : (
+              <p className="warn small">The AI model isn't installed on this computer. Reinstall DSLR Snap, or use a green screen.</p>
+            )
+          )}
           <p className="muted small">
             Best at the camera's shape (landscape 3:2, e.g. 3600×2400). It fills the camera frame exactly as guests see it live; layouts with narrower photo windows trim the sides, so keep logos away from the edges (check the preview). With more than one, guests choose on the start screen.
-            Light the backdrop evenly and keep guests a step away from it.
+            {draft.backdrop !== 'ai' && 'Light the backdrop evenly and keep guests a step away from it.'}
           </p>
           {error && <p className="warn small">{error}</p>}
         </>

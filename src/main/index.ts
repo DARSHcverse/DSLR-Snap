@@ -26,6 +26,8 @@ import { type CloudGallery, galleryFromEnv } from './cloud/CloudGallery'
 import { HostedGallery } from './cloud/HostedGallery'
 import { compose, previewDataUrl } from './compose/composer'
 import { createSampleShots } from './compose/sampleShots'
+import { setPortraitModel } from './compose/aiModel'
+import { aiOntoBackground } from './compose/chromaKey'
 import { defaultSlots, detectSlots, guessLayout, type Layout, normalizeArtwork, suggestFit } from './compose/templateImport'
 import { BACKGROUND_ID, BoothDatabase } from './db/database'
 import { AccountService } from './licence/AccountService'
@@ -188,7 +190,22 @@ function handle(name: string, fn: (...args: any[]) => unknown): void {
 const sampleShots = createSampleShots(join(userData, 'template-previews'))
 const sampleShotsBackdrop = {
   green: createSampleShots(join(userData, 'template-previews-green'), 'green'),
-  blue: createSampleShots(join(userData, 'template-previews-blue'), 'blue')
+  blue: createSampleShots(join(userData, 'template-previews-blue'), 'blue'),
+  ai: sampleShots
+}
+
+// AI backgrounds: the MODNet model ships next to the app (npm run fetch-models in development).
+const aiModel = setPortraitModel(app.isPackaged ? join(process.resourcesPath, 'models', 'modnet.onnx') : join(app.getAppPath(), 'resources', 'models', 'modnet.onnx'))
+
+/** Backgrounds scaled for the live view, so each frame doesn't decode a 3600 px file. */
+const liveBackgrounds = new Map<string, Promise<Buffer>>()
+const liveBackground = (id: string) => {
+  let b = liveBackgrounds.get(id)
+  if (!b) {
+    b = sharp(backgroundPath(id)).rotate().resize({ width: 800, height: 800, fit: 'inside' }).jpeg().toBuffer()
+    liveBackgrounds.set(id, b)
+  }
+  return b
 }
 
 // ---------- green-screen backgrounds ----------
@@ -202,7 +219,8 @@ function backgroundPath(id: string): string {
 function syncMockBackdrop(): void {
   if (!(camera instanceof MockCamera)) return
   const id = db.getActiveEventId()
-  camera.backdrop = (id && db.getEvent(id)?.backdrop) || 'none'
+  const backdrop = (id && db.getEvent(id)?.backdrop) || 'none'
+  camera.backdrop = backdrop === 'ai' ? 'none' : backdrop
 }
 
 const IMPORTED_ID = /^imported-[0-9a-f]{8}$/
@@ -315,10 +333,17 @@ function registerIpc(): void {
   handle('galleryList', () => service.galleryList())
   handle('galleryItem', (sessionId: string) => service.galleryItem(sessionId))
   handle('liveViewStart', () => camera.startLiveView())
-  handle('liveViewFrame', async () => {
+  /** aiBackgroundId: AI-background events get the frame with the guest already cut out, mirrored, over the background. */
+  handle('liveViewFrame', async (opts?: { aiBackgroundId?: string }) => {
     const f = await camera.getLiveViewFrame()
-    return f ? `data:image/jpeg;base64,${f.toString('base64')}` : null
+    if (!f) return null
+    if (opts?.aiBackgroundId && aiModel.available) {
+      const keyed = await aiOntoBackground(f, await liveBackground(opts.aiBackgroundId), aiModel, { shortEdge: 256, mirrorPerson: true })
+      return `data:image/jpeg;base64,${keyed.toString('base64')}`
+    }
+    return `data:image/jpeg;base64,${f.toString('base64')}`
   })
+  handle('aiAvailable', () => aiModel.available)
   handle('liveViewStop', () => camera.stopLiveView())
 
   handle('listEvents', () => db.listEvents())

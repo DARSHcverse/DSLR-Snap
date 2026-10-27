@@ -12,6 +12,9 @@ native/CanonBridge/bin/
 native/CanonBridge/obj/
 native/CanonBridge/publish/
 
+# AI models: downloaded by npm run fetch-models (too big for git)
+resources/models/
+
 # generated previews (npm run render-samples)
 samples-output/
 

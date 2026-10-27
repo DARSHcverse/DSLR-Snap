@@ -192,7 +192,8 @@ export default function Booth({ onNeedSetup }: Props) {
         active={liveOn}
         hint={showLive ? 'Look at the camera ↑' : undefined}
         filter={lookInfo(active.event.look).liveView}
-        chroma={active.event.backdrop !== 'none' && bgId && bgImages[bgId] ? { key: active.event.backdrop, background: bgImages[bgId] } : undefined}
+        chroma={(active.event.backdrop === 'green' || active.event.backdrop === 'blue') && bgId && bgImages[bgId] ? { key: active.event.backdrop, background: bgImages[bgId] } : undefined}
+        aiBackgroundId={active.event.backdrop === 'ai' ? bgId : undefined}
       />
 
       {state.name === 'welcome' && (

@@ -7,13 +7,17 @@ import { type KeyColour, keyAlpha } from '@shared/chroma'
  * If the camera has no live view, shows `hint` (if given) so the flow still works.
  * `filter` previews the event's look (CSS approximation) so guests pose for it.
  */
-export default function LiveView({ active, hint, filter, chroma }: {
+export default function LiveView({ active, hint, filter, chroma, aiBackgroundId }: {
   active: boolean
   hint?: string
   filter?: string
   /** Green/blue screen preview: the backdrop is replaced by `background` (a data URL) live. */
   chroma?: { key: KeyColour; background: string }
+  /** AI backgrounds: frames arrive already cut out over this background (and mirrored) from the app. */
+  aiBackgroundId?: string
 }) {
+  const aiBg = useRef(aiBackgroundId)
+  aiBg.current = aiBackgroundId
   const [frame, setFrame] = useState<string | null>(null)
   const [supported, setSupported] = useState<boolean | null>(null)
 
@@ -26,7 +30,7 @@ export default function LiveView({ active, hint, filter, chroma }: {
       setSupported(ok)
       while (ok && !stop) {
         const started = performance.now()
-        const f = await window.booth.liveViewFrame().catch(() => null)
+        const f = await window.booth.liveViewFrame(aiBg.current ? { aiBackgroundId: aiBg.current } : undefined).catch(() => null)
         if (f && !stop) setFrame(f)
         await new Promise((r) => setTimeout(r, Math.max(0, 80 - (performance.now() - started))))
       }
@@ -44,7 +48,7 @@ export default function LiveView({ active, hint, filter, chroma }: {
   if (supported === false) {
     return <div className="liveview placeholder">{hint && <p>{hint}</p>}</div>
   }
-  return <div className="liveview">{frame && <img src={frame} alt="" className="mirror" style={filter ? { filter } : undefined} />}</div>
+  return <div className="liveview">{frame && <img src={frame} alt="" className={aiBackgroundId ? undefined : 'mirror'} style={filter ? { filter } : undefined} />}</div>
 }
 
 /**

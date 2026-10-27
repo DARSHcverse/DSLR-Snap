@@ -22,12 +22,25 @@ export async function keyOntoBackground(photo: Buffer, backgroundPath: string, k
     if (key === 'blue' && b > Math.max(r, g)) fg[p + 2] = Math.max(r, g)
   }
   const softAlpha = await sharp(alpha, { raw: { width: w, height: h, channels: 1 } }).blur(Math.max(0.6, w / 1500)).extractChannel(0).raw().toBuffer()
-  const person = await sharp(fg, { raw: { width: w, height: h, channels: 3 } }).joinChannel(softAlpha, { raw: { width: w, height: h, channels: 1 } }).png().toBuffer()
+  return placeOnBackground(fg, softAlpha, w, h, backgroundPath)
+}
+
+/** The person (RGB + alpha, same size) over the background, which fills the frame ("cover"). */
+export async function placeOnBackground(rgb: Buffer, alpha: Buffer, w: number, h: number, backgroundPath: string | Buffer, mirrorPerson = false): Promise<Buffer> {
+  let person = sharp(rgb, { raw: { width: w, height: h, channels: 3 } }).joinChannel(alpha, { raw: { width: w, height: h, channels: 1 } })
+  if (mirrorPerson) person = person.flop()
   return sharp(backgroundPath)
     .rotate()
     .resize(w, h, { fit: 'cover', position: 'centre' })
-    .composite([{ input: person }])
+    .composite([{ input: await person.png().toBuffer() }])
     .removeAlpha()
     .jpeg({ quality: 95 })
     .toBuffer()
+}
+
+/** AI cut-out (no backdrop needed): MODNet finds the people, the background goes behind them. */
+export async function aiOntoBackground(photo: Buffer, backgroundPath: string | Buffer, matter: { matte(img: Buffer, shortEdge?: number): Promise<{ alpha: Buffer; width: number; height: number }> }, opts: { shortEdge?: number; mirrorPerson?: boolean } = {}): Promise<Buffer> {
+  const { alpha, width, height } = await matter.matte(photo, opts.shortEdge)
+  const rgb = await sharp(photo).removeAlpha().raw().toBuffer()
+  return placeOnBackground(rgb, alpha, width, height, backgroundPath, opts.mirrorPerson)
 }
