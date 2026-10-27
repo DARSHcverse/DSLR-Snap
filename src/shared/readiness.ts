@@ -24,6 +24,8 @@ export interface ReadinessInput {
 }
 
 const GB = 1024 ** 3
+/** Warn while there's still time to swap the roll between guests. */
+export const LOW_PAPER = 50
 
 /**
  * The Home screen's "can I open the doors?" checklist. 'bad' blocks a smooth event (guests would
@@ -66,6 +68,14 @@ export function readiness(input: ReadinessInput): { ready: boolean; items: Check
   } else {
     const waiting = printer.queueLength ? ` · ${printer.queueLength} waiting` : ''
     items.push({ key: 'printer', status: 'ok', label: 'Printer', detail: `${printer.printerName ?? 'Ready'}${waiting}${printer.message ? ` · ${printer.message}` : ''}` })
+  }
+
+  const paper = devices?.paper
+  if (paper && !(event && event.printCopies === 0)) {
+    const left = `${paper.remaining} of ${paper.capacity} prints left on the roll`
+    if (paper.remaining === 0) items.push({ key: 'paper', status: 'bad', label: 'Paper', detail: 'The roll is used up. Load a new one.', fix: { label: 'New roll', target: 'devices' } })
+    else if (paper.remaining <= LOW_PAPER) items.push({ key: 'paper', status: 'warn', label: 'Paper', detail: `Running low: ${left}`, fix: { label: 'New roll', target: 'devices' } })
+    else items.push({ key: 'paper', status: 'ok', label: 'Paper', detail: left })
   }
 
   if (event?.galleryEnabled) {

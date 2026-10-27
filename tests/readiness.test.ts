@@ -13,7 +13,8 @@ const event: BoothEvent = {
 const devices: DeviceSnapshot = {
   camera: { driver: 'canon-edsdk', state: 'ready', model: 'Canon EOS R100', liveViewSupported: true },
   printer: { driver: 'windows-driver', state: 'ready', printerName: 'DS-RX1', queueLength: 0 },
-  uploads: { enabled: false, pending: 0, failed: 0, done: 0 }
+  uploads: { enabled: false, pending: 0, failed: 0, done: 0 },
+  paper: null
 }
 const stats = { sessions: 0, prints: { sent: 0, pending: 0, failed: 0 }, uploads: { done: 0, pending: 0, failed: 0 } }
 const base: ReadinessInput = {
@@ -55,6 +56,15 @@ describe('readiness', () => {
     const warn = Object.fromEntries(r.items.filter((i) => i.status === 'warn').map((i) => [i.key, i.fix?.target]))
     expect(warn).toEqual({ exposure: 'camera', printer: 'prints', uploads: 'account', licence: 'account' })
     expect(r.items.find((i) => i.key === 'printer')?.detail).toBe('2 prints failed: Out of paper')
+  })
+
+  it('tracks paper once a roll is recorded', () => {
+    const withPaper = (remaining: number) => ({ ...base, devices: { ...devices, paper: { capacity: 700, used: 700 - remaining, remaining, loadedAt: '' } } })
+    expect(item(base, 'paper')).toBeUndefined()
+    expect(item(withPaper(412), 'paper')).toMatchObject({ status: 'ok', detail: '412 of 700 prints left on the roll' })
+    expect(item(withPaper(30), 'paper')).toMatchObject({ status: 'warn', fix: { target: 'devices' } })
+    expect(item(withPaper(0), 'paper')?.status).toBe('bad')
+    expect(readiness(withPaper(0)).ready).toBe(false)
   })
 
   it('checks free disk space', () => {

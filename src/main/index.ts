@@ -149,7 +149,8 @@ async function devices(): Promise<DeviceSnapshot> {
   return {
     camera: camera.getStatus(),
     printer: { ...p, queueLength: printQueue.pendingCount() },
-    uploads: { enabled: gallery?.enabled ?? false, ...db.uploadStats() }
+    uploads: { enabled: gallery?.enabled ?? false, ...db.uploadStats() },
+    paper: db.getPaper()
   }
 }
 
@@ -411,6 +412,11 @@ function registerIpc(): void {
   handle('accountRefresh', () => account.refresh())
   handle('accountSignOut', () => account.signOut())
   handle('openAccountWebsite', (page: 'account' | 'pricing') => shell.openExternal(page === 'pricing' ? `${ACCOUNT_URL}/#pricing` : `${ACCOUNT_URL}/account`))
+  handle('newPaperRoll', async (capacity: number) => {
+    const paper = db.newPaperRoll(Number(capacity))
+    await broadcastDevices()
+    return paper
+  })
   handle('eventGalleryLink', async (eventId: string) => {
     if (!(gallery instanceof HostedGallery)) throw new Error('The host gallery needs the DSLR Snap cloud (sign in under Account).')
     if (!gallery.enabled) throw new Error('Sign in with an active plan under Account to share the host gallery.')

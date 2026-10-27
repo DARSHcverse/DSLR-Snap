@@ -249,3 +249,11 @@ export interface AccountState {
   /** Sign-in is possible (this build knows the website and its public key). */
   canSignIn: boolean
 }
+
+/** Media left on the printer's roll, counted from sheets sent since the operator loaded it. */
+export interface PaperState {
+  capacity: number
+  used: number
+  remaining: number
+  loadedAt: string
+}

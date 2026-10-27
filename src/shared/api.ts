@@ -11,6 +11,7 @@ import type {
   ExposureState,
   FinishResult,
   Look,
+  PaperState,
   PrintJob,
   PrinterDetection,
   PrinterStatus,
@@ -25,6 +26,8 @@ export interface DeviceSnapshot {
   camera: CameraStatus
   printer: PrinterStatus
   uploads: { enabled: boolean; pending: number; failed: number; done: number }
+  /** null until the operator records a roll. */
+  paper: PaperState | null
 }
 
 /** Everything the renderer may ask the main process to do. Exposed as window.booth by the preload. */
@@ -107,6 +110,8 @@ export interface BoothApi {
   onAccountError(cb: (message: string) => void): () => void
 
   testPrint(format: '4x6' | '2x6'): Promise<string>
+  /** The operator loaded a new roll with room for `capacity` prints. */
+  newPaperRoll(capacity: number): Promise<PaperState>
   /** Shareable page with every photo of the event, for the host (link + QR image). */
   eventGalleryLink(eventId: string): Promise<{ url: string; qr: string }>
   /** Free bytes on the drive that holds the photos. */

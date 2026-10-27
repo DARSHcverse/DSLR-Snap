@@ -4,6 +4,7 @@ import { todayIso } from '../../shared/dates'
 import { LOOKS } from '../../shared/looks'
 import { BUILT_IN_TEMPLATES } from '../../shared/templates'
 import type {
+  PaperState,
   BoothEvent,
   DeviceSettings,
   EventInput,
@@ -102,6 +103,21 @@ export class BoothDatabase {
 
   saveDeviceSettings(s: DeviceSettings): void {
     this.db.prepare("INSERT INTO settings (key, value) VALUES ('devices', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").run(JSON.stringify(s))
+  }
+
+  // ---------- paper ----------
+  /** null until the operator records a roll; then sheets sent (copies of 'sent' jobs) since loading it. */
+  getPaper(): PaperState | null {
+    const raw = this.getSetting('paper')
+    if (!raw) return null
+    const { capacity, loadedAt } = JSON.parse(raw) as { capacity: number; loadedAt: string }
+    const used = (this.db.prepare("SELECT COALESCE(SUM(copies), 0) AS n FROM print_jobs WHERE status = 'sent' AND updated_at >= ?").get(loadedAt) as { n: number }).n
+    return { capacity, used, remaining: Math.max(0, capacity - used), loadedAt }
+  }
+
+  newPaperRoll(capacity: number, at = now()): PaperState {
+    this.setSetting('paper', JSON.stringify({ capacity: clamp(capacity, 1, 5000), loadedAt: at }))
+    return this.getPaper()!
   }
 
   getSetting(key: string): string | undefined {

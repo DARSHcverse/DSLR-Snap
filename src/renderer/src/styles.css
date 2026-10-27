@@ -350,3 +350,6 @@ input[type='checkbox'] { width: 22px; height: 22px; accent-color: var(--accent);
 
 .host-link img { width: 132px; height: 132px; border-radius: 10px; background: #fff; padding: 6px; }
 .host-link code { word-break: break-all; }
+.meter { height: 10px; border-radius: 999px; background: var(--surface-2); overflow: hidden; }
+.meter span { display: block; height: 100%; background: var(--ok); }
+.meter span.low { background: var(--busy); }

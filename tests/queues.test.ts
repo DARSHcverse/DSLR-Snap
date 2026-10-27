@@ -128,3 +128,24 @@ describe('upload queue', () => {
     expect(db.getSession(s.id)!.galleryUrl).toBe(`https://example.test/${s.id}`)
   })
 })
+
+describe('paper counter', () => {
+  it('is unknown until a roll is recorded, then counts sheets actually sent since loading it', async () => {
+    const { db, s } = setup()
+    const printer = new FakePrinter()
+    const q = new PrintQueue(db, () => printer)
+    expect(db.getPaper()).toBeNull()
+
+    q.enqueue(s.id, 'before-roll', '/tmp/a.jpg', '4x6', 2)
+    await q.drain()
+    const loaded = new Date(Date.now() + 5).toISOString()
+    await new Promise((r) => setTimeout(r, 10))
+    expect(db.newPaperRoll(700, loaded)).toMatchObject({ capacity: 700, used: 0, remaining: 700 })
+
+    q.enqueue(s.id, 'k1', '/tmp/a.jpg', '2x6', 3)
+    printer.fail = 1
+    q.enqueue(s.id, 'k2', '/tmp/b.jpg', '4x6', 1) // fails: no paper used
+    await q.drain()
+    expect(db.getPaper()).toMatchObject({ used: 3, remaining: 697 })
+  })
+})

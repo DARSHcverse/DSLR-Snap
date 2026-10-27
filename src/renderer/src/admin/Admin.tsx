@@ -186,6 +186,7 @@ function DevicesTab({ devices }: { devices: DeviceSnapshot | null }) {
         </div>
         {msg && <p className="muted">{msg}</p>}
       </div>
+      <PaperCard paper={devices?.paper ?? null} />
       <div className="card">
         <h3>Digital delivery</h3>
         <p className="muted">
@@ -197,6 +198,36 @@ function DevicesTab({ devices }: { devices: DeviceSnapshot | null }) {
       <PinCard />
       <AppInfo />
     </section>
+  )
+}
+
+/** DS-RX1HS rolls: 700 × 4×6 (strip pairs print as one 4×6 sheet), or 350 × 6×8. */
+const ROLL_SIZES = [700, 350]
+
+function PaperCard({ paper }: { paper: DeviceSnapshot['paper'] }) {
+  const [custom, setCustom] = useState('')
+  const load = (n: number) => confirm(`Start counting a new roll of ${n} prints?`) && void window.booth.newPaperRoll(n)
+  const pct = paper ? Math.round((paper.remaining / paper.capacity) * 100) : 0
+  return (
+    <div className="card">
+      <h3>Paper</h3>
+      {paper ? (
+        <>
+          <p className={paper.remaining <= 50 ? 'warn' : ''}>
+            <strong>{paper.remaining}</strong> of {paper.capacity} prints left
+          </p>
+          <div className="meter"><span style={{ width: `${pct}%` }} className={paper.remaining <= 50 ? 'low' : ''} /></div>
+          <p className="muted small">Counted from prints sent since you loaded the roll on {new Date(paper.loadedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}. Test prints aren't counted.</p>
+        </>
+      ) : (
+        <p className="muted">Press the button when you load a roll, and the booth counts down the prints left and warns you before it runs out.</p>
+      )}
+      <div className="row">
+        {ROLL_SIZES.map((n) => <button key={n} className="btn" onClick={() => load(n)}>New roll: {n} prints</button>)}
+        <input value={custom} onChange={(e) => setCustom(e.target.value.replace(/\D/g, ''))} placeholder="Other" style={{ width: 90 }} inputMode="numeric" />
+        <button className="btn ghost" disabled={!Number(custom)} onClick={() => load(Number(custom))}>Set</button>
+      </div>
+    </div>
   )
 }
 
