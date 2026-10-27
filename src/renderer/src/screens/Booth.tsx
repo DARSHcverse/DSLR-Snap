@@ -29,6 +29,9 @@ export default function Booth({ onNeedSetup }: Props) {
   const [active, setActive] = useState<Active | null | undefined>(undefined)
   const [devices, setDevices] = useState<DeviceSnapshot | null>(null)
   const [paused, setPaused] = useState(false)
+  // Green screen: the guest's background pick (ids) and loaded images (data URLs).
+  const [bgId, setBgId] = useState<string | undefined>(undefined)
+  const [bgImages, setBgImages] = useState<Record<string, string>>({})
   useEffect(() => window.booth.onPaused(setPaused), [])
   const cfg = configFor(active)
   const cfgRef = useRef(cfg)
@@ -49,6 +52,19 @@ export default function Booth({ onNeedSetup }: Props) {
     window.booth.getDevices().then(setDevices)
     return window.booth.onDevices(setDevices)
   }, [])
+
+  // Green screen: load the event's backgrounds (live view uses a large one; the picker shows them small).
+  useEffect(() => {
+    const bgs = active && active.event.backdrop !== 'none' ? active.event.backgrounds : []
+    setBgId((cur) => (bgs.some((b) => b.id === cur) ? cur : bgs[0]?.id))
+    let stop = false
+    Promise.all(bgs.map(async (b) => [b.id, await window.booth.backgroundImage(b.id, 1280)] as const))
+      .then((list) => !stop && setBgImages(Object.fromEntries(list)))
+      .catch(() => undefined)
+    return () => {
+      stop = true
+    }
+  }, [active?.event.id, active?.event.backdrop, active?.event.backgrounds.map((b) => b.id).join()]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Refresh the gallery corner whenever the booth is back on the welcome screen.
   useEffect(() => {
@@ -95,7 +111,7 @@ export default function Booth({ onNeedSetup }: Props) {
   useEffect(() => {
     if (state.name !== 'finishing' || !sessionId.current) return
     window.booth
-      .finish(sessionId.current, state.photos, crypto.randomUUID())
+      .finish(sessionId.current, state.photos, crypto.randomUUID(), { backgroundId: bgId })
       .then((r) => {
         setResult(r)
         dispatch({ type: 'FINISHED' })
@@ -172,7 +188,12 @@ export default function Booth({ onNeedSetup }: Props) {
         </div>
       )}
       {flash && <div className="flash" />}
-      <LiveView active={liveOn} hint={showLive ? 'Look at the camera ↑' : undefined} filter={lookInfo(active.event.look).liveView} />
+      <LiveView
+        active={liveOn}
+        hint={showLive ? 'Look at the camera ↑' : undefined}
+        filter={lookInfo(active.event.look).liveView}
+        chroma={active.event.backdrop !== 'none' && bgId && bgImages[bgId] ? { key: active.event.backdrop, background: bgImages[bgId] } : undefined}
+      />
 
       {state.name === 'welcome' && (
         <div className={`welcome${liveOn ? ' over-live' : ''}`} onClick={cameraReady ? start : undefined}>
@@ -187,6 +208,18 @@ export default function Booth({ onNeedSetup }: Props) {
           {!cameraReady && devices && <p className="warn">{devices.camera.message ?? 'Waiting for camera…'}</p>}
           <button className="operator-btn" aria-label="Operator menu" onClick={(e) => (e.stopPropagation(), onNeedSetup())}>⚙</button>
           <GalleryCorner items={gallery} onOpen={() => setGalleryOpen(true)} />
+          {active.event.backdrop !== 'none' && active.event.backgrounds.length > 1 && (
+            <div className="bg-picker" onClick={(e) => e.stopPropagation()}>
+              <span className="muted small">Choose your background</span>
+              <div className="bg-picker-row">
+                {active.event.backgrounds.map((b) => (
+                  <button key={b.id} className={b.id === bgId ? 'on' : ''} onClick={() => setBgId(b.id)} aria-label={b.name}>
+                    {bgImages[b.id] && <img src={bgImages[b.id]} alt="" />}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
       {boomerangLive && (

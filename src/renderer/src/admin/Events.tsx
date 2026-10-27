@@ -12,7 +12,7 @@ type Draft = Omit<BoothEvent, 'id' | 'createdAt'> & { id?: string }
 const blankEvent = (templateId: string): Draft => ({
   name: '', date: todayIso(), templateId, photosPerSession: 3, countdownSeconds: 5, shotIntervalSeconds: 3, photoReviewSeconds: 3, doneScreenSeconds: 20,
   retakesAllowed: 2, printCopies: 1, autoPrint: true, galleryEnabled: false, showGallery: true,
-  look: 'colour', skinSmoothing: 50, colourCopy: false, boomerang: false
+  look: 'colour', skinSmoothing: 50, colourCopy: false, boomerang: false, backdrop: 'none', backgrounds: []
 })
 
 /** Big − / + control; easier on a touch screen than a number box. */
@@ -309,6 +309,68 @@ function PrintStep({ draft, set, template, devices }: {
   )
 }
 
+const previewLook = (d: Draft) => ({ look: d.look, skinSmoothing: d.skinSmoothing, backdrop: d.backdrop, backgroundId: d.backgrounds[0]?.id })
+
+/** Green/blue screen: the client's background images for this event. */
+function BackgroundsSection({ draft, set }: { draft: Draft; set: <K extends keyof Draft>(k: K, v: Draft[K]) => void }) {
+  const [thumbs, setThumbs] = useState<Record<string, string>>({})
+  const [error, setError] = useState<string | null>(null)
+  useEffect(() => {
+    for (const b of draft.backgrounds) {
+      if (thumbs[b.id]) continue
+      window.booth.backgroundImage(b.id, 360).then((src) => setThumbs((t) => ({ ...t, [b.id]: src }))).catch(() => undefined)
+    }
+  }, [draft.backgrounds]) // eslint-disable-line react-hooks/exhaustive-deps
+  const add = async (paths?: string[]) => {
+    setError(null)
+    try {
+      const added = await window.booth.importBackgrounds(paths)
+      if (added.length) set('backgrounds', [...draft.backgrounds, ...added])
+    } catch (e) {
+      setError(message(e))
+    }
+  }
+  return (
+    <>
+      <h3 className="section-title">Background</h3>
+      <div className="seg">
+        {(['none', 'green', 'blue'] as const).map((b) => (
+          <button key={b} className={draft.backdrop === b ? 'on' : ''} onClick={() => set('backdrop', b)}>
+            {{ none: 'Off', green: 'Green screen', blue: 'Blue screen' }[b]}
+          </button>
+        ))}
+      </div>
+      {draft.backdrop !== 'none' && (
+        <>
+          <div
+            className="bg-grid"
+            onDragOver={(e) => e.preventDefault()}
+            onDrop={(e) => {
+              e.preventDefault()
+              void add([...e.dataTransfer.files].map((f) => window.booth.pathForFile(f)))
+            }}
+          >
+            {draft.backgrounds.map((b, i) => (
+              <figure key={b.id} className="bg-tile">
+                {thumbs[b.id] ? <img src={thumbs[b.id]} alt={b.name} /> : <div className="spinner" />}
+                <figcaption className="small">{i === 0 ? `${b.name} (default)` : b.name}</figcaption>
+                <button className="close-x" aria-label={`Remove ${b.name}`} onClick={() => set('backgrounds', draft.backgrounds.filter((x) => x.id !== b.id))}>✕</button>
+              </figure>
+            ))}
+            <button className="bg-tile add" onClick={() => add()}>+ Add backgrounds<span className="muted small">or drop images here</span></button>
+          </div>
+          {!draft.backgrounds.length && <p className="warn small">Add at least one background: the client's artwork, logo wall or scene.</p>}
+          <p className="muted small">
+            Best at the camera's shape (landscape 3:2, e.g. 3600×2400). It fills the camera frame exactly as guests see it live; layouts with narrower photo windows trim the sides, so keep logos away from the edges (check the preview). With more than one, guests choose on the start screen.
+            Light the backdrop evenly and keep guests a step away from it.
+          </p>
+          {error && <p className="warn small">{error}</p>}
+        </>
+      )}
+    </>
+  )
+}
+
 function LookStep({ draft, set, template }: {
   draft: Draft
   set: <K extends keyof Draft>(k: K, v: Draft[K]) => void
@@ -318,10 +380,10 @@ function LookStep({ draft, set, template }: {
   useEffect(() => {
     setPreview(null)
     const t = setTimeout(() => {
-      window.booth.previewTemplate(template.id, draft.name, { look: draft.look, skinSmoothing: draft.skinSmoothing }).then(setPreview).catch(() => undefined)
+      window.booth.previewTemplate(template.id, draft.name, previewLook(draft)).then(setPreview).catch(() => undefined)
     }, 250) // the smoothing stepper can be pressed quickly
     return () => clearTimeout(t)
-  }, [template.id, draft.name, draft.look, draft.skinSmoothing])
+  }, [template.id, draft.name, draft.look, draft.skinSmoothing, draft.backdrop, draft.backgrounds[0]?.id])
 
   return (
     <div className="launch">
@@ -346,6 +408,7 @@ function LookStep({ draft, set, template }: {
             Also keep a colour version, so guests can have both (prints stay {lookInfo(draft.look).label})
           </label>
         )}
+        <BackgroundsSection draft={draft} set={set} />
         <p className="muted small">The live camera view on the booth screen shows the look too, so guests pose for it. Your original photos are always kept in full colour.</p>
       </div>
       <div className="preview-pane">{preview ? <img src={preview} alt={`${lookInfo(draft.look).label} preview`} /> : <div className="spinner" />}</div>
@@ -361,8 +424,8 @@ function LaunchStep({ draft, template, devices, onLaunch }: {
 }) {
   const [preview, setPreview] = useState<string | null>(null)
   useEffect(() => {
-    window.booth.previewTemplate(template.id, draft.name, { look: draft.look, skinSmoothing: draft.skinSmoothing }).then(setPreview).catch(() => undefined)
-  }, [template.id, draft.name, draft.look, draft.skinSmoothing])
+    window.booth.previewTemplate(template.id, draft.name, previewLook(draft)).then(setPreview).catch(() => undefined)
+  }, [template.id, draft.name, draft.look, draft.skinSmoothing, draft.backdrop, draft.backgrounds[0]?.id])
 
   const cam = devices?.camera
   const printer = devices?.printer

@@ -68,6 +68,8 @@ export class BoothService {
       log?: (level: 'warn' | 'error', message: string) => void
       /** Trial watermark text, or undefined when the booth is licensed. */
       watermark?: () => string | undefined
+      /** File of an imported background (green screen). */
+      backgroundPath?: (id: string) => string
     }
   ) {}
 
@@ -129,7 +131,7 @@ export class BoothService {
    * @param photoPaths the guest's final selection, in order (after any retakes)
    * @param requestKey unique per "finish" press; repeats return the existing print job
    */
-  async finish(sessionId: string, photoPaths: string[], requestKey: string): Promise<FinishResult> {
+  async finish(sessionId: string, photoPaths: string[], requestKey: string, opts: { backgroundId?: string } = {}): Promise<FinishResult> {
     const { db, printQueue, uploadQueue, gallery } = this.deps
     const session = db.getSession(sessionId)
     if (!session) throw new Error('Session not found')
@@ -143,13 +145,13 @@ export class BoothService {
     const dir = this.sessionDir(ev, sessionId)
     await mkdir(dir, { recursive: true })
     const watermark = this.deps.watermark?.()
-    const look = { look: ev.look, skinSmoothing: ev.skinSmoothing }
+    const look = { look: ev.look, skinSmoothing: ev.skinSmoothing, background: this.backgroundFor(ev, opts.backgroundId) }
     const { composite, printSheet } = await compose({ template, photoPaths, eventName: ev.name, watermark, ...look })
     const compositePath = join(dir, 'final.jpg')
     // Glam/filter events can also give guests the colour version (shown on screen; saved next to the final).
     let colourPreview: string | undefined
     if (ev.colourCopy && ev.look !== 'colour') {
-      const colour = await compose({ template, photoPaths, eventName: ev.name, watermark })
+      const colour = await compose({ template, photoPaths, eventName: ev.name, watermark, background: look.background })
       await writeFile(colourPathFor(compositePath), colour.composite)
       colourPreview = await previewDataUrl(colour.composite, 700)
     }
@@ -233,6 +235,14 @@ export class BoothService {
     const boomerangPath = boomerangPathFor(s.compositePath)
     const boomerang = existsSync(boomerangPath) ? `data:image/gif;base64,${(await readFile(boomerangPath)).toString('base64')}` : undefined
     return { image: await previewDataUrl(s.compositePath, 1000), gif, colour, boomerang }
+  }
+
+  /** The guest's chosen background, or the event's first; none unless the event uses a green/blue screen. */
+  private backgroundFor(ev: BoothEvent, chosenId?: string): { path: string; key: 'green' | 'blue' } | undefined {
+    if (ev.backdrop === 'none' || !ev.backgrounds.length || !this.deps.backgroundPath) return undefined
+    const bg = ev.backgrounds.find((b) => b.id === chosenId) ?? ev.backgrounds[0]
+    const path = this.deps.backgroundPath(bg.id)
+    return existsSync(path) ? { path, key: ev.backdrop } : undefined
   }
 
   private activeEventOrNull(): BoothEvent | undefined {

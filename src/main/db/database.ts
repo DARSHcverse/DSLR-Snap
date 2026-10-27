@@ -50,7 +50,9 @@ const MIGRATIONS: string[] = [
   `ALTER TABLE events ADD COLUMN look TEXT NOT NULL DEFAULT 'colour';
    ALTER TABLE events ADD COLUMN skin_smoothing INTEGER NOT NULL DEFAULT 50;
    ALTER TABLE events ADD COLUMN colour_copy INTEGER NOT NULL DEFAULT 0;`,
-  `ALTER TABLE events ADD COLUMN boomerang INTEGER NOT NULL DEFAULT 0;`
+  `ALTER TABLE events ADD COLUMN boomerang INTEGER NOT NULL DEFAULT 0;`,
+  `ALTER TABLE events ADD COLUMN backdrop TEXT NOT NULL DEFAULT 'none';
+   ALTER TABLE events ADD COLUMN backgrounds TEXT NOT NULL DEFAULT '[]';`
 ]
 
 const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(min, Math.round(v)))
@@ -66,6 +68,8 @@ export const DEFAULT_DEVICE_SETTINGS: DeviceSettings = {
 
 const now = () => new Date().toISOString()
 const LOOK_IDS = new Set<string>(LOOKS.map((l) => l.id))
+/** Imported background files are named by these ids, so ids from the renderer can't point elsewhere. */
+export const BACKGROUND_ID = /^bg-[0-9a-f]{12}$/
 
 export class BoothDatabase {
   readonly db: Database.Database
@@ -176,6 +180,7 @@ export class BoothDatabase {
       shotIntervalSeconds: r.shot_interval_seconds, photoReviewSeconds: r.photo_review_seconds,
       doneScreenSeconds: r.done_screen_seconds, showGallery: !!r.show_gallery,
       look: LOOK_IDS.has(r.look) ? r.look : 'colour', skinSmoothing: r.skin_smoothing, colourCopy: !!r.colour_copy, boomerang: !!r.boomerang,
+      backdrop: r.backdrop === 'green' || r.backdrop === 'blue' ? r.backdrop : 'none', backgrounds: JSON.parse(r.backgrounds || '[]'),
       exposure: r.exposure ? JSON.parse(r.exposure) : undefined, createdAt: r.created_at
     }
   }
@@ -207,19 +212,21 @@ export class BoothDatabase {
       skinSmoothing: clamp(e.skinSmoothing ?? 50, 0, 100),
       colourCopy: e.colourCopy ?? false,
       boomerang: e.boomerang ?? false,
+      backdrop: e.backdrop === 'green' || e.backdrop === 'blue' ? e.backdrop : 'none',
+      backgrounds: (e.backgrounds ?? []).filter((b) => BACKGROUND_ID.test(b.id)).slice(0, 24),
       retakesAllowed: clamp(e.retakesAllowed, 0, 10),
       printCopies: clamp(e.printCopies, 0, 10)
     }
     this.db
       .prepare(
         `INSERT INTO events (id, name, date, template_id, photos_per_session, countdown_seconds, retakes_allowed, print_copies, auto_print, gallery_enabled,
-           shot_interval_seconds, photo_review_seconds, done_screen_seconds, show_gallery, look, skin_smoothing, colour_copy, boomerang, exposure, created_at)
+           shot_interval_seconds, photo_review_seconds, done_screen_seconds, show_gallery, look, skin_smoothing, colour_copy, boomerang, backdrop, backgrounds, exposure, created_at)
          VALUES (@id, @name, @date, @templateId, @photosPerSession, @countdownSeconds, @retakesAllowed, @printCopies, @autoPrint, @galleryEnabled,
-           @shotIntervalSeconds, @photoReviewSeconds, @doneScreenSeconds, @showGallery, @look, @skinSmoothing, @colourCopy, @boomerang, @exposure, @createdAt)
+           @shotIntervalSeconds, @photoReviewSeconds, @doneScreenSeconds, @showGallery, @look, @skinSmoothing, @colourCopy, @boomerang, @backdrop, @backgrounds, @exposure, @createdAt)
          ON CONFLICT(id) DO UPDATE SET name=@name, date=@date, template_id=@templateId, photos_per_session=@photosPerSession,
            countdown_seconds=@countdownSeconds, retakes_allowed=@retakesAllowed, print_copies=@printCopies, auto_print=@autoPrint, gallery_enabled=@galleryEnabled,
            shot_interval_seconds=@shotIntervalSeconds, photo_review_seconds=@photoReviewSeconds, done_screen_seconds=@doneScreenSeconds, show_gallery=@showGallery,
-           look=@look, skin_smoothing=@skinSmoothing, colour_copy=@colourCopy, boomerang=@boomerang`
+           look=@look, skin_smoothing=@skinSmoothing, colour_copy=@colourCopy, boomerang=@boomerang, backdrop=@backdrop, backgrounds=@backgrounds`
       )
       .run({
         ...ev,
@@ -228,6 +235,7 @@ export class BoothDatabase {
         showGallery: ev.showGallery ? 1 : 0,
         colourCopy: ev.colourCopy ? 1 : 0,
         boomerang: ev.boomerang ? 1 : 0,
+        backgrounds: JSON.stringify(ev.backgrounds),
         exposure: ev.exposure ? JSON.stringify(ev.exposure) : null
       })
     // Exposure is only written on insert; afterwards saveEventExposure owns it.

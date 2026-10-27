@@ -6,10 +6,10 @@ import { hostname, networkInterfaces } from 'node:os'
 import { basename, extname, join, resolve } from 'node:path'
 import QRCode from 'qrcode'
 import sharp from 'sharp'
-import type { DeviceSnapshot } from '../shared/api'
+import type { DeviceSnapshot, PreviewLook } from '../shared/api'
 import { flashSafe } from '../shared/exposure'
 import { canvasSize, SHEET, validateTemplate } from '../shared/layout'
-import type { DeviceSettings, ExposureKey, ExposureSettings, Look, PrintFormat, Template, TemplateImportDraft, TemplateImportOptions, TestShot } from '../shared/types'
+import type { DeviceSettings, ExposureKey, ExposureSettings, PrintFormat, Template, TemplateImportDraft, TemplateImportOptions, TestShot } from '../shared/types'
 import { BoothService } from './BoothService'
 import { exportEventPhotos } from './exportEvent'
 import { isBlockedWhileLocked, shouldLock } from './kiosk'
@@ -27,7 +27,7 @@ import { HostedGallery } from './cloud/HostedGallery'
 import { compose, previewDataUrl } from './compose/composer'
 import { createSampleShots } from './compose/sampleShots'
 import { defaultSlots, detectSlots, guessLayout, type Layout, normalizeArtwork, suggestFit } from './compose/templateImport'
-import { BoothDatabase } from './db/database'
+import { BACKGROUND_ID, BoothDatabase } from './db/database'
 import { AccountService } from './licence/AccountService'
 import { machineHash } from './licence/machineId'
 import { MockPrinter } from './printer/MockPrinter'
@@ -184,6 +184,24 @@ function handle(name: string, fn: (...args: any[]) => unknown): void {
 }
 
 const sampleShots = createSampleShots(join(userData, 'template-previews'))
+const sampleShotsBackdrop = {
+  green: createSampleShots(join(userData, 'template-previews-green'), 'green'),
+  blue: createSampleShots(join(userData, 'template-previews-blue'), 'blue')
+}
+
+// ---------- green-screen backgrounds ----------
+const backgroundsDir = join(userData, 'backgrounds')
+function backgroundPath(id: string): string {
+  if (!BACKGROUND_ID.test(id)) throw new Error('Unknown background')
+  return join(backgroundsDir, `${id}.jpg`)
+}
+
+/** The mock camera follows the active event's backdrop, so green-screen events can be tried without a studio. */
+function syncMockBackdrop(): void {
+  if (!(camera instanceof MockCamera)) return
+  const id = db.getActiveEventId()
+  camera.backdrop = (id && db.getEvent(id)?.backdrop) || 'none'
+}
 
 const IMPORTED_ID = /^imported-[0-9a-f]{8}$/
 
@@ -269,7 +287,28 @@ function registerIpc(): void {
   handle('startSession', () => service.startSession())
   handle('capture', (sessionId: string) => service.capture(sessionId))
   handle('recordBoomerang', (sessionId: string) => service.recordBoomerang(sessionId))
-  handle('finish', (sessionId: string, paths: string[], key: string) => service.finish(sessionId, paths, key))
+  handle('finish', (sessionId: string, paths: string[], key: string, opts?: { backgroundId?: string }) => service.finish(sessionId, paths, key, opts ?? {}))
+  handle('importBackgrounds', async (paths?: string[]) => {
+    let files = paths ?? []
+    if (!files.length) {
+      const res = await dialog.showOpenDialog(win!, {
+        title: "Add the client's background images",
+        properties: ['openFile', 'multiSelections'],
+        filters: [{ name: 'Images (PNG, JPG)', extensions: ['png', 'jpg', 'jpeg', 'webp'] }]
+      })
+      files = res.canceled ? [] : res.filePaths
+    }
+    await mkdir(backgroundsDir, { recursive: true })
+    const refs = []
+    for (const f of files.slice(0, 24)) {
+      const id = `bg-${randomBytes(6).toString('hex')}`
+      // Flatten (transparent PNGs onto white), fix rotation, cap the size: print quality without huge files.
+      await sharp(f).rotate().flatten({ background: '#ffffff' }).resize(3600, 3600, { fit: 'inside', withoutEnlargement: true }).jpeg({ quality: 92 }).toFile(backgroundPath(id))
+      refs.push({ id, name: basename(f, extname(f)).slice(0, 60) })
+    }
+    return refs
+  })
+  handle('backgroundImage', (id: string, width = 480) => previewDataUrl(backgroundPath(id), Math.min(1600, Number(width) || 480)))
   handle('reprint', (sessionId: string, key: string, copies: number) => service.reprint(sessionId, key, copies))
   handle('galleryList', () => service.galleryList())
   handle('galleryItem', (sessionId: string) => service.galleryItem(sessionId))
@@ -293,18 +332,26 @@ function registerIpc(): void {
   handle('hasPin', () => pinLock.hasPin())
   handle('verifyPin', (pin: string) => pinLock.verify(String(pin)))
   handle('setPin', (current: string | null, next: string | null) => pinLock.setPin(current, next))
-  handle('saveEvent', (e) => db.saveEvent(e))
+  handle('saveEvent', (e) => {
+    const saved = db.saveEvent(e)
+    syncMockBackdrop()
+    return saved
+  })
   handle('deleteEvent', (id: string) => db.deleteEvent(id))
   handle('setActiveEvent', (id: string) => {
     if (!db.getEvent(id)) throw new Error('Unknown event')
     db.setActiveEventId(id)
+    syncMockBackdrop()
     void applyEventExposure()
   })
   handle('listTemplates', () => db.listTemplates())
-  handle('previewTemplate', async (templateId: string, eventName: string, look?: { look: Look; skinSmoothing: number }) => {
+  handle('previewTemplate', async (templateId: string, eventName: string, look?: PreviewLook) => {
     const t = db.getTemplate(templateId)
     if (!t) throw new Error('Unknown template')
-    const { composite } = await compose({ template: t, photoPaths: await sampleShots(t.slots.length), eventName: eventName || 'Your Event', ...look })
+    const keyed = look?.backdrop && look.backdrop !== 'none' && look.backgroundId ? look.backdrop : undefined
+    const shots = keyed ? await sampleShotsBackdrop[keyed](t.slots.length) : await sampleShots(t.slots.length)
+    const background = keyed ? { path: backgroundPath(look!.backgroundId!), key: keyed } : undefined
+    const { composite } = await compose({ template: t, photoPaths: shots, eventName: eventName || 'Your Event', look: look?.look, skinSmoothing: look?.skinSmoothing, background })
     return previewDataUrl(composite, 520)
   })
   handle('chooseTemplateFile', async () => {
@@ -364,6 +411,7 @@ function registerIpc(): void {
     if (prev.cameraDriver !== s.cameraDriver) {
       await camera.disconnect().catch(() => undefined)
       camera = makeCamera(s)
+      syncMockBackdrop()
       void connectCamera()
     }
     if (prev.printerDriver !== s.printerDriver) printer = makePrinter(s)
@@ -645,7 +693,8 @@ app.whenReady().then(async () => {
     uploadQueue,
     gallery,
     log: (level, m) => void log(level, m),
-    watermark: () => account.watermark()
+    watermark: () => account.watermark(),
+    backgroundPath
   })
 
   registerIpc()
@@ -653,6 +702,7 @@ app.whenReady().then(async () => {
 
   // Event hardware must not sleep mid-party.
   powerSaveBlocker.start('prevent-display-sleep')
+  syncMockBackdrop()
   void connectCamera()
   void printQueue.drain()
   uploadQueue.start()

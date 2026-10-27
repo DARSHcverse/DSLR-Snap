@@ -31,6 +31,9 @@ export class MockCamera extends EventEmitter implements CameraAdapter {
   mode = 'M'
   readonly lensMaxAperture = MOCK_OPTIONS.aperture[0]
 
+  /** Shoot against a flat green or blue backdrop, to try green-screen events without a studio. */
+  backdrop: 'none' | 'green' | 'blue' = 'none'
+
   /** Defaults to R100-sized frames; previews pass something small for speed. */
   constructor(private size = { w: 6000, h: 4000 }) {
     super()
@@ -56,9 +59,9 @@ export class MockCamera extends EventEmitter implements CameraAdapter {
   private svg(w: number, h: number, label: string, hue: string): Buffer {
     return Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}">
       <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${hue}"/><stop offset="1" stop-color="#1b1b2f"/></linearGradient></defs>
-      <rect width="100%" height="100%" fill="url(#g)"/>
-      <circle cx="${w / 2}" cy="${h * 0.4}" r="${h * 0.16}" fill="#fff" fill-opacity="0.85"/>
-      <rect x="${w / 2 - h * 0.22}" y="${h * 0.58}" width="${h * 0.44}" height="${h * 0.5}" rx="${h * 0.15}" fill="#fff" fill-opacity="0.85"/>
+      <rect width="100%" height="100%" fill="${this.backdrop === 'green' ? '#2fae4f' : this.backdrop === 'blue' ? '#2456c8' : 'url(#g)'}"/>
+      <circle cx="${w / 2}" cy="${h * 0.4}" r="${h * 0.16}" fill="${this.backdrop === 'none' ? '#fff' : '#efc7a4'}" fill-opacity="${this.backdrop === 'none' ? 0.85 : 1}"/>
+      <rect x="${w / 2 - h * 0.22}" y="${h * 0.58}" width="${h * 0.44}" height="${h * 0.5}" rx="${h * 0.15}" fill="${this.backdrop === 'none' ? '#fff' : '#3b3f58'}" fill-opacity="${this.backdrop === 'none' ? 0.85 : 1}"/>
       <text x="${w * 0.04}" y="${h * 0.12}" font-size="${h * 0.07}" font-family="Helvetica, Arial" fill="#fff" font-weight="bold">${label}</text>
     </svg>`)
   }

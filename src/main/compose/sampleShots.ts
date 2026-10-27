@@ -9,12 +9,13 @@ const SAMPLE_COUNT = 4
  * these files while composing, so writing them per call let one preview overwrite a file another
  * was still reading (corrupt JPEGs and libvips SIGBUS crashes).
  */
-export function createSampleShots(dir: string): (n: number) => Promise<string[]> {
+export function createSampleShots(dir: string, backdrop: 'none' | 'green' | 'blue' = 'none'): (n: number) => Promise<string[]> {
   let made: Promise<string[]> | undefined
 
   const make = async (): Promise<string[]> => {
     await rm(dir, { recursive: true, force: true })
     const cam = new MockCamera({ w: 900, h: 600 })
+    cam.backdrop = backdrop
     await cam.connect()
     const shots: string[] = []
     for (let i = 0; i < SAMPLE_COUNT; i++) shots.push(await cam.capture(dir))

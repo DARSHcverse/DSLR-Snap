@@ -91,7 +91,16 @@ export interface BoothEvent {
   colourCopy: boolean
   /** After the photos, record a short back-and-forth clip from the live view. */
   boomerang: boolean
+  /** Green/blue screen: the backdrop is replaced by one of `backgrounds` (e.g. a client's branded artwork). */
+  backdrop: 'none' | 'green' | 'blue'
+  backgrounds: BackgroundRef[]
   createdAt: string
+}
+
+/** An imported background image (stored by the app; `id` names the file). */
+export interface BackgroundRef {
+  id: string
+  name: string
 }
 
 export type Look = 'colour' | 'glam' | 'bw' | 'warm' | 'vintage'
@@ -105,7 +114,7 @@ export interface EventStats {
 }
 
 /** Fields added after the first release; optional when saving so older callers keep working. */
-type NewerEventFields = 'shotIntervalSeconds' | 'photoReviewSeconds' | 'doneScreenSeconds' | 'showGallery' | 'look' | 'skinSmoothing' | 'colourCopy' | 'boomerang'
+type NewerEventFields = 'shotIntervalSeconds' | 'photoReviewSeconds' | 'doneScreenSeconds' | 'showGallery' | 'look' | 'skinSmoothing' | 'colourCopy' | 'boomerang' | 'backdrop' | 'backgrounds'
 export type EventInput = Omit<BoothEvent, 'id' | 'createdAt' | NewerEventFields> & Partial<Pick<BoothEvent, NewerEventFields>> & { id?: string }
 
 export type ExposureKey = 'iso' | 'aperture' | 'shutter' | 'whiteBalance'

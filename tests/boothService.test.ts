@@ -21,8 +21,8 @@ async function setup(gallery: CloudGallery = new DisabledGallery(), templateId =
   const printer = new MockPrinter(join(dataDir, 'prints'), 10)
   const printQueue = new PrintQueue(db, () => printer)
   const uploadQueue = new UploadQueue(db, gallery)
-  const service = new BoothService({ db, dataDir, camera: () => camera, printQueue, uploadQueue, gallery, qrWaitMs })
-  return { db, ev, service, printQueue, uploadQueue, dataDir }
+  const service = new BoothService({ db, dataDir, camera: () => camera, printQueue, uploadQueue, gallery, qrWaitMs, backgroundPath: (id) => join(dataDir, `${id}.jpg`) })
+  return { db, ev, service, printQueue, uploadQueue, dataDir, camera }
 }
 
 describe('BoothService end to end (mock hardware)', () => {
@@ -86,6 +86,32 @@ describe('BoothService end to end (mock hardware)', () => {
     expect(clip.width).toBe(540)
     expect(res.boomerang).toMatch(/^data:image\/gif/)
     expect((await service.galleryItem(sessionId)).boomerang).toMatch(/^data:image\/gif/)
+  })
+
+  it("green screen: swaps the backdrop for the guest's chosen client background", async () => {
+    const { db, ev, service, dataDir, camera } = await setup()
+    camera.backdrop = 'green'
+    const brand = { id: 'bg-aaaaaaaaaaaa', name: 'Acme wall' }
+    const other = { id: 'bg-bbbbbbbbbbbb', name: 'Party' }
+    await sharp({ create: { width: 1200, height: 800, channels: 3, background: '#c0102e' } }).jpeg().toFile(join(dataDir, `${brand.id}.jpg`))
+    await sharp({ create: { width: 1200, height: 800, channels: 3, background: '#1040c0' } }).jpeg().toFile(join(dataDir, `${other.id}.jpg`))
+    db.saveEvent({ ...ev, backdrop: 'green', backgrounds: [brand, other] })
+    expect(db.getEvent(ev.id)?.backgrounds).toEqual([brand, other])
+
+    const corner = async (backgroundId?: string) => {
+      const { sessionId } = service.startSession()
+      const shots = []
+      for (let i = 0; i < 3; i++) shots.push((await service.capture(sessionId)).path)
+      const res = await service.finish(sessionId, shots, `k-${backgroundId}`, { backgroundId })
+      const crop = await sharp(res.session.compositePath!).extract({ left: 60, top: 60, width: 30, height: 30 }).toBuffer()
+      return (await sharp(crop).stats()).channels.map((c) => Math.round(c.mean))
+    }
+    const [r, , b] = await corner() // default: the first (brand) background
+    expect(r).toBeGreaterThan(150)
+    expect(b).toBeLessThan(90)
+    const [r2, , b2] = await corner(other.id)
+    expect(b2).toBeGreaterThan(150)
+    expect(r2).toBeLessThan(60)
   })
 
   it('makes a looping GIF of the session photos and lists the session in the guest gallery', async () => {

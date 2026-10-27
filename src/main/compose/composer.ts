@@ -2,6 +2,7 @@ import sharp, { type OverlayOptions } from 'sharp'
 import { canvasSize, fillTokens, SHEET } from '../../shared/layout'
 import type { Look, Template, TextItem } from '../../shared/types'
 import { applyLook } from './looks'
+import { type KeyColour, keyOntoBackground } from './chromaKey'
 
 export interface ComposeInput {
   template: Template
@@ -10,6 +11,8 @@ export interface ComposeInput {
   date?: Date
   /** Stamped across the bottom of the design while the booth is unlicensed (trial). */
   watermark?: string
+  /** Green/blue screen: replace the backdrop in each photo with this image. */
+  background?: { path: string; key: KeyColour }
   /** Filter for the photos (not the template artwork). */
   look?: Look
   skinSmoothing?: number
@@ -68,7 +71,18 @@ export async function compose(input: ComposeInput): Promise<ComposeOutput> {
   }
   for (let i = 0; i < template.slots.length; i++) {
     const s = template.slots[i]
-    let photo: Buffer = await sharp(photoPaths[i]).rotate().resize(Math.round(s.w), Math.round(s.h), { fit: 'cover', position: 'centre' }).toBuffer()
+    const sw = Math.round(s.w)
+    const sh = Math.round(s.h)
+    let photo: Buffer
+    if (input.background) {
+      // Swap the backdrop on the whole frame first (as the live view shows it), then crop to the slot
+      // like any photo, so the client's logo sits where guests saw it.
+      const frame = await sharp(photoPaths[i]).rotate().resize(sw, sh, { fit: 'outside' }).toBuffer()
+      const keyed = await keyOntoBackground(frame, input.background.path, input.background.key)
+      photo = await sharp(keyed).resize(sw, sh, { fit: 'cover', position: 'centre' }).toBuffer()
+    } else {
+      photo = await sharp(photoPaths[i]).rotate().resize(sw, sh, { fit: 'cover', position: 'centre' }).toBuffer()
+    }
     if (input.look && input.look !== 'colour') photo = await applyLook(photo, input.look, { skinSmoothing: input.skinSmoothing })
     layers.push({ input: photo, left: Math.round(s.x), top: Math.round(s.y) })
   }

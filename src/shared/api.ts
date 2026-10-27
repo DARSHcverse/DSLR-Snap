@@ -1,5 +1,6 @@
 import type {
   AccountState,
+  BackgroundRef,
   BoothEvent,
   CameraStatus,
   CaptureResult,
@@ -21,6 +22,14 @@ import type {
   TemplateImportOptions,
   TestShot
 } from './types'
+
+/** What the event editor previews: filter, and green-screen background. */
+export interface PreviewLook {
+  look: Look
+  skinSmoothing: number
+  backdrop?: 'none' | 'green' | 'blue'
+  backgroundId?: string
+}
 
 export interface RemoteInfo {
   enabled: boolean
@@ -45,7 +54,8 @@ export interface BoothApi {
   capture(sessionId: string): Promise<CaptureResult>
   /** ~1.5 s from the live view, saved as the session's boomerang. false = skipped (no live view). */
   recordBoomerang(sessionId: string): Promise<boolean>
-  finish(sessionId: string, photoPaths: string[], requestKey: string): Promise<FinishResult>
+  /** backgroundId: the guest's pick on a green-screen event (default: the event's first background). */
+  finish(sessionId: string, photoPaths: string[], requestKey: string, opts?: { backgroundId?: string }): Promise<FinishResult>
   reprint(sessionId: string, requestKey: string, copies: number): Promise<string>
   liveViewStart(): Promise<boolean>
   liveViewFrame(): Promise<string | null>
@@ -69,7 +79,10 @@ export interface BoothApi {
   setActiveEvent(id: string): Promise<void>
   listTemplates(): Promise<Template[]>
   /** look: preview the event's filter on the sample photos. */
-  previewTemplate(templateId: string, eventName: string, look?: { look: Look; skinSmoothing: number }): Promise<string>
+  previewTemplate(templateId: string, eventName: string, look?: PreviewLook): Promise<string>
+  /** Copies the client's background images into the app (file dialog when no paths). */
+  importBackgrounds(paths?: string[]): Promise<BackgroundRef[]>
+  backgroundImage(id: string, width?: number): Promise<string>
   chooseTemplateFile(): Promise<string | null>
   prepareTemplateImport(filePath: string, opts?: TemplateImportOptions): Promise<TemplateImportDraft>
   getTemplateArtwork(templateId: string): Promise<string | null>
