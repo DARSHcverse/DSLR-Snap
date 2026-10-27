@@ -278,9 +278,13 @@ function AppInfo() {
   return (
     <div className="card">
       <h3>App</h3>
-      {info && <p className="muted small">Version {info.version}<br />Photos: {info.dataDir}<br />Log: {info.logFile}</p>}
+      {info && <p className="muted small">Version {info.version}<br />Photos folder: {info.dataDir}<br />Log: {info.logFile}</p>}
       <div className="row">
-        <button className="btn" onClick={() => window.booth.openEventFolder('')}>Open photos folder</button>
+        <button className="btn" onClick={() => window.booth.openEventFolder()}>Open photos folder</button>
+        <button className="btn" onClick={async () => {
+          await window.booth.setPhotosFolder(true)
+          setInfo(await window.booth.appInfo())
+        }}>Change folder…</button>
         <button className="btn ghost danger" onClick={() => confirm('Quit the booth app?') && window.booth.quit()}>Quit app</button>
       </div>
     </div>
@@ -374,7 +378,7 @@ function SessionsTab() {
         <label className="check"><input type="checkbox" checked={originals} onChange={(e) => setOriginals(e.target.checked)} /> Include the original camera photos</label>
         <div className="row">
           <button className="btn primary" disabled={!done.length} onClick={exportPhotos}>Export photos…</button>
-          <button className="btn ghost" onClick={() => window.booth.openEventFolder(eventId)}>Open data folder</button>
+          <button className="btn ghost" onClick={() => window.booth.openEventFolder(eventId)}>Open event folder</button>
         </div>
         {status && <p className="muted small">{status}</p>}
       </div>

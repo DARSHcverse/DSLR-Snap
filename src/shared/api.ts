@@ -94,7 +94,10 @@ export interface BoothApi {
   /** Local path of a file dropped onto the window (Electron no longer exposes File.path). */
   pathForFile(file: File): string
   listSessions(eventId: string): Promise<SessionRecord[]>
-  openEventFolder(eventId: string): Promise<void>
+  openEventFolder(eventId?: string): Promise<void>
+  /** The photos folder every event folder goes in; `chosen` is false until the operator confirms it once. */
+  photosFolder(): Promise<{ path: string; chosen: boolean }>
+  setPhotosFolder(pick: boolean): Promise<{ path: string; chosen: boolean }>
 
   getDeviceSettings(): Promise<DeviceSettings>
   saveDeviceSettings(s: DeviceSettings): Promise<void>

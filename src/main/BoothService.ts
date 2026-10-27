@@ -1,13 +1,14 @@
 import { existsSync } from 'node:fs'
-import { mkdir, readFile, writeFile } from 'node:fs/promises'
-import { join } from 'node:path'
+import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
+import { dirname, join } from 'node:path'
 import QRCode from 'qrcode'
 import sharp from 'sharp'
 import type { BoothEvent, CaptureResult, FinishResult } from '../shared/types'
 import type { CameraAdapter } from './camera/CameraAdapter'
 import type { CloudGallery } from './cloud/CloudGallery'
 import { compose, previewDataUrl } from './compose/composer'
-import { boomerangPathFor, colourPathFor, gifPathFor, thumbPathFor } from './sessionFiles'
+import { eventFolderName, hideOnWindows, type SessionLayout, sessionLayout, sessionStamp } from './eventFolders'
+import { boomerangPathFor, colourPathFor, thumbPathFor } from './sessionFiles'
 import type { BoothDatabase } from './db/database'
 import type { PrintQueue } from './queue/PrintQueue'
 import type { UploadQueue } from './queue/UploadQueue'
@@ -58,7 +59,8 @@ export class BoothService {
   constructor(
     private deps: {
       db: BoothDatabase
-      dataDir: string
+      /** The operator's photos folder (chosen at first setup); each event gets a folder inside it. */
+      photosRoot: () => string
       camera: () => CameraAdapter
       printQueue: PrintQueue
       uploadQueue: UploadQueue
@@ -81,13 +83,30 @@ export class BoothService {
     return ev
   }
 
-  private sessionDir(ev: BoothEvent, sessionId: string): string {
-    return join(this.deps.dataDir, 'events', `${ev.date}-${safeName(ev.name)}-${ev.id.slice(0, 8)}`, sessionId)
+  /** The event's folder, created and fixed at its first session. */
+  private eventFolder(ev: BoothEvent): string {
+    if (ev.folder) return ev.folder
+    const root = this.deps.photosRoot()
+    const folder = join(root, eventFolderName(ev, (name) => existsSync(join(root, name))))
+    this.deps.db.setEventFolder(ev.id, folder)
+    return folder
+  }
+
+  private layout(sessionId: string): { ev: BoothEvent; files: SessionLayout } {
+    const session = this.deps.db.getSession(sessionId)
+    if (!session) throw new Error('Session not found')
+    const ev = this.deps.db.getEvent(session.eventId)!
+    return { ev, files: sessionLayout(this.eventFolder(ev), session.stamp ?? sessionStamp(session.createdAt)) }
   }
 
   startSession(): { sessionId: string; event: BoothEvent } {
     const ev = this.activeEvent()
     const s = this.deps.db.createSession(ev.id)
+    // Two sessions in the same second (rare) get "20.14.05 b", "… c".
+    const base = sessionStamp(s.createdAt)
+    let stamp = base
+    for (let n = 1; this.deps.db.sessionStampTaken(ev.id, stamp); n++) stamp = `${base} ${String.fromCharCode(97 + n)}`
+    this.deps.db.updateSession(s.id, { stamp })
     return { sessionId: s.id, event: ev }
   }
 
@@ -95,8 +114,13 @@ export class BoothService {
     const { db } = this.deps
     const session = db.getSession(sessionId)
     if (!session) throw new Error('Session not found')
-    const ev = db.getEvent(session.eventId)!
-    const path = await this.deps.camera().capture(join(this.sessionDir(ev, sessionId), 'originals'))
+    const { files } = this.layout(sessionId)
+    const shot = await this.deps.camera().capture(files.photosDir)
+    // Name it after the session ("20.14.05 2.jpg"); retakes take the next number, nothing is overwritten.
+    let n = session.photoPaths.length + 1
+    while (existsSync(files.original(n)) && files.original(n) !== shot) n++
+    const path = files.original(n)
+    if (shot !== path) await rename(shot, path)
     db.updateSession(sessionId, { photoPaths: [...session.photoPaths, path] })
     return { path, preview: await previewDataUrl(path, 640) }
   }
@@ -108,7 +132,7 @@ export class BoothService {
   async recordBoomerang(sessionId: string, durationMs = 1500): Promise<boolean> {
     const session = this.deps.db.getSession(sessionId)
     if (!session) throw new Error('Session not found')
-    const ev = this.deps.db.getEvent(session.eventId)!
+    const { files } = this.layout(sessionId)
     const cam = this.deps.camera()
     if (!(await cam.startLiveView().catch(() => false))) return false
     const frames: Buffer[] = []
@@ -121,9 +145,8 @@ export class BoothService {
       await new Promise((r) => setTimeout(r, 50))
     }
     if (frames.length < 4) return false
-    const dir = this.sessionDir(ev, sessionId)
-    await mkdir(dir, { recursive: true })
-    await makeBoomerang(frames, boomerangPathFor(join(dir, 'final.jpg')))
+    await mkdir(dirname(files.boomerang), { recursive: true })
+    await makeBoomerang(frames, files.boomerang)
     return true
   }
 
@@ -142,12 +165,13 @@ export class BoothService {
     const template = db.getTemplate(ev.templateId)
     if (!template) throw new Error('Event template is missing')
 
-    const dir = this.sessionDir(ev, sessionId)
-    await mkdir(dir, { recursive: true })
+    const { files } = this.layout(sessionId)
+    for (const f of [files.final, files.gif, files.printSheet]) await mkdir(dirname(f), { recursive: true })
+    hideOnWindows(dirname(files.printSheet))
     const watermark = this.deps.watermark?.()
     const look = { look: ev.look, skinSmoothing: ev.skinSmoothing, background: this.backgroundFor(ev, opts.backgroundId) }
     const { composite, printSheet } = await compose({ template, photoPaths, eventName: ev.name, watermark, ...look })
-    const compositePath = join(dir, 'final.jpg')
+    const compositePath = files.final
     // Glam/filter events can also give guests the colour version (shown on screen; saved next to the final).
     let colourPreview: string | undefined
     if (ev.colourCopy && ev.look !== 'colour') {
@@ -155,8 +179,8 @@ export class BoothService {
       await writeFile(colourPathFor(compositePath), colour.composite)
       colourPreview = await previewDataUrl(colour.composite, 700)
     }
-    const printPath = join(dir, 'print-sheet.jpg')
-    const gifPath = gifPathFor(compositePath)
+    const printPath = files.printSheet
+    const gifPath = files.gif
     await writeFile(compositePath, composite)
     await writeFile(printPath, printSheet)
     // GIF and gallery thumbnail are extras: a failure here must never stop the print.

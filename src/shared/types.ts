@@ -94,6 +94,8 @@ export interface BoothEvent {
   /** Green/blue screen: the backdrop is replaced by one of `backgrounds` (e.g. a client's branded artwork). */
   backdrop: 'none' | 'green' | 'blue'
   backgrounds: BackgroundRef[]
+  /** The event's folder on disk, fixed at its first session (see main/eventFolders). */
+  folder?: string
   createdAt: string
 }
 
@@ -114,7 +116,7 @@ export interface EventStats {
 }
 
 /** Fields added after the first release; optional when saving so older callers keep working. */
-type NewerEventFields = 'shotIntervalSeconds' | 'photoReviewSeconds' | 'doneScreenSeconds' | 'showGallery' | 'look' | 'skinSmoothing' | 'colourCopy' | 'boomerang' | 'backdrop' | 'backgrounds'
+type NewerEventFields = 'shotIntervalSeconds' | 'photoReviewSeconds' | 'doneScreenSeconds' | 'showGallery' | 'look' | 'skinSmoothing' | 'colourCopy' | 'boomerang' | 'backdrop' | 'backgrounds' | 'folder'
 export type EventInput = Omit<BoothEvent, 'id' | 'createdAt' | NewerEventFields> & Partial<Pick<BoothEvent, NewerEventFields>> & { id?: string }
 
 export type ExposureKey = 'iso' | 'aperture' | 'shutter' | 'whiteBalance'
@@ -156,6 +158,8 @@ export interface SessionRecord {
   printPath?: string
   gifPath?: string
   galleryUrl?: string
+  /** File name stem in the event folder, e.g. "20.14.05" (absent for sessions saved before event folders). */
+  stamp?: string
   createdAt: string
 }
 

@@ -18,6 +18,8 @@ export default function Home({ devices, account, onStart, onNavigate }: {
   const [stats, setStats] = useState<EventStats | null>(null)
   const [disk, setDisk] = useState<number | undefined>(undefined)
   const [note, setNote] = useState<string | null>(null)
+  const [folder, setFolder] = useState<{ path: string; chosen: boolean } | null>(null)
+  useEffect(() => void window.booth.photosFolder().then(setFolder).catch(() => undefined), [])
 
   useEffect(() => {
     let eventId: string | undefined
@@ -56,6 +58,19 @@ export default function Home({ devices, account, onStart, onNavigate }: {
 
   return (
     <section className="home">
+      {folder && !folder.chosen && (
+        <div className="card first-run">
+          <h3>Where should photos be saved?</h3>
+          <p className="muted small">
+            Each event gets its own folder here, with Photos, Prints, GIFs and Boomerangs inside, ready to hand to the client.
+          </p>
+          <code className="small">{folder.path}</code>
+          <div className="row">
+            <button className="btn primary" onClick={() => window.booth.setPhotosFolder(false).then(setFolder)}>Use this folder</button>
+            <button className="btn" onClick={() => window.booth.setPhotosFolder(true).then(setFolder)}>Choose another…</button>
+          </div>
+        </div>
+      )}
       <div className={`home-hero is-${ready ? (problems ? 'warn' : 'ok') : 'bad'}`}>
         <div>
           <p className="eyebrow">{active ? active.event.name : 'No event selected'}</p>

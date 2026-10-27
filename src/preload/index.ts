@@ -6,7 +6,7 @@ const invoke = (channel: string) => (...args: unknown[]) => ipcRenderer.invoke(c
 
 const methods = [
   'getActiveEvent', 'startSession', 'capture', 'recordBoomerang', 'finish', 'reprint', 'liveViewStart', 'liveViewFrame', 'liveViewStop', 'galleryList', 'galleryItem',
-  'listEvents', 'saveEvent', 'deleteEvent', 'setActiveEvent', 'listTemplates', 'previewTemplate', 'importBackgrounds', 'backgroundImage', 'listSessions', 'openEventFolder',
+  'listEvents', 'saveEvent', 'deleteEvent', 'setActiveEvent', 'listTemplates', 'previewTemplate', 'importBackgrounds', 'backgroundImage', 'listSessions', 'openEventFolder', 'photosFolder', 'setPhotosFolder',
   'chooseTemplateFile', 'prepareTemplateImport', 'getTemplateArtwork', 'saveTemplate', 'deleteTemplate', 'discardTemplateDraft',
   'previewTemplateDraft', 'testPrintTemplate',
   'getDeviceSettings', 'saveDeviceSettings', 'detectPrinters', 'reconnectCamera', 'getDevices',

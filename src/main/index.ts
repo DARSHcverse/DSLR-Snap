@@ -53,6 +53,8 @@ sharp.cache({ files: 0 })
 
 const userData = app.getPath('userData')
 const dataDir = join(app.getPath('documents'), 'DSLR Snap')
+/** The operator's photos folder: chosen at first setup (Home), default Documents/DSLR Snap. */
+const photosRoot = () => db.getSetting('photosRoot') || dataDir
 const logFile = join(userData, 'logs', 'booth.log')
 
 async function log(level: 'info' | 'warn' | 'error', msg: string): Promise<void> {
@@ -399,9 +401,24 @@ function registerIpc(): void {
     return file
   })
   handle('listSessions', (eventId: string) => db.listSessions(eventId))
-  handle('openEventFolder', async () => {
-    await mkdir(join(dataDir, 'events'), { recursive: true })
-    await shell.openPath(join(dataDir, 'events'))
+  /** Opens the event's folder (Photos, Prints, GIFs…), or the photos folder when it has none yet. */
+  handle('openEventFolder', async (eventId?: string) => {
+    const folder = (eventId && db.getEvent(eventId)?.folder) || photosRoot()
+    await mkdir(folder, { recursive: true })
+    await shell.openPath(folder)
+  })
+  handle('photosFolder', () => ({ path: photosRoot(), chosen: !!db.getSetting('photosRoot') }))
+  /** pick: show a folder dialog; otherwise confirm the current (default) folder. New events use it; existing ones stay put. */
+  handle('setPhotosFolder', async (pick: boolean) => {
+    let folder = photosRoot()
+    if (pick) {
+      const res = await dialog.showOpenDialog(win!, { title: 'Where should DSLR Snap save photos?', defaultPath: folder, properties: ['openDirectory', 'createDirectory'] })
+      if (res.canceled || !res.filePaths[0]) return { path: photosRoot(), chosen: !!db.getSetting('photosRoot') }
+      folder = basename(res.filePaths[0]) === 'DSLR Snap' ? res.filePaths[0] : join(res.filePaths[0], 'DSLR Snap')
+    }
+    await mkdir(folder, { recursive: true })
+    db.setSetting('photosRoot', folder)
+    return { path: folder, chosen: true }
   })
 
   handle('getDeviceSettings', () => db.getDeviceSettings())
@@ -476,11 +493,11 @@ function registerIpc(): void {
     return { url, qr: await QRCode.toDataURL(url, { margin: 1, width: 360 }) }
   })
   handle('diskFree', async () => {
-    await mkdir(dataDir, { recursive: true })
-    const s = await statfs(dataDir)
+    await mkdir(photosRoot(), { recursive: true })
+    const s = await statfs(photosRoot())
     return s.bavail * s.bsize
   })
-  handle('appInfo', () => ({ version: app.getVersion(), dataDir, logFile }))
+  handle('appInfo', () => ({ version: app.getVersion(), dataDir: photosRoot(), logFile }))
   handle('remoteInfo', () => remoteInfo())
   handle('remoteSetEnabled', async (on: boolean) => {
     db.setSetting('remote', JSON.stringify({ ...remoteSettings(), enabled: !!on }))
@@ -687,7 +704,7 @@ app.whenReady().then(async () => {
   uploadQueue.on('changed', () => void broadcastDevices())
   service = new BoothService({
     db,
-    dataDir,
+    photosRoot,
     camera: () => camera,
     printQueue,
     uploadQueue,

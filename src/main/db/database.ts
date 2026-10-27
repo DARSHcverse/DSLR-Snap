@@ -52,7 +52,9 @@ const MIGRATIONS: string[] = [
    ALTER TABLE events ADD COLUMN colour_copy INTEGER NOT NULL DEFAULT 0;`,
   `ALTER TABLE events ADD COLUMN boomerang INTEGER NOT NULL DEFAULT 0;`,
   `ALTER TABLE events ADD COLUMN backdrop TEXT NOT NULL DEFAULT 'none';
-   ALTER TABLE events ADD COLUMN backgrounds TEXT NOT NULL DEFAULT '[]';`
+   ALTER TABLE events ADD COLUMN backgrounds TEXT NOT NULL DEFAULT '[]';`,
+  `ALTER TABLE events ADD COLUMN folder TEXT;
+   ALTER TABLE sessions ADD COLUMN stamp TEXT;`
 ]
 
 const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(min, Math.round(v)))
@@ -180,7 +182,7 @@ export class BoothDatabase {
       shotIntervalSeconds: r.shot_interval_seconds, photoReviewSeconds: r.photo_review_seconds,
       doneScreenSeconds: r.done_screen_seconds, showGallery: !!r.show_gallery,
       look: LOOK_IDS.has(r.look) ? r.look : 'colour', skinSmoothing: r.skin_smoothing, colourCopy: !!r.colour_copy, boomerang: !!r.boomerang,
-      backdrop: r.backdrop === 'green' || r.backdrop === 'blue' ? r.backdrop : 'none', backgrounds: JSON.parse(r.backgrounds || '[]'),
+      backdrop: r.backdrop === 'green' || r.backdrop === 'blue' ? r.backdrop : 'none', backgrounds: JSON.parse(r.backgrounds || '[]'), folder: r.folder ?? undefined,
       exposure: r.exposure ? JSON.parse(r.exposure) : undefined, createdAt: r.created_at
     }
   }
@@ -291,7 +293,7 @@ export class BoothDatabase {
     return {
       id: r.id, eventId: r.event_id, status: r.status, photoPaths: JSON.parse(r.photo_paths),
       compositePath: r.composite_path ?? undefined, printPath: r.print_path ?? undefined, gifPath: r.gif_path ?? undefined,
-      galleryUrl: r.gallery_url ?? undefined, createdAt: r.created_at
+      galleryUrl: r.gallery_url ?? undefined, stamp: r.stamp ?? undefined, createdAt: r.created_at
     }
   }
 
@@ -310,13 +312,22 @@ export class BoothDatabase {
     return this.db.prepare('SELECT * FROM sessions WHERE event_id = ? ORDER BY created_at DESC LIMIT ?').all(eventId, limit).map((r) => this.mapSession(r))
   }
 
-  updateSession(id: string, patch: Partial<{ status: SessionStatus; photoPaths: string[]; compositePath: string; printPath: string; gifPath: string; galleryUrl: string }>): void {
+  /** Fixes the event's folder at its first session; later renames don't move or split it. */
+  setEventFolder(id: string, folder: string): void {
+    this.db.prepare('UPDATE events SET folder = ? WHERE id = ? AND folder IS NULL').run(folder, id)
+  }
+
+  sessionStampTaken(eventId: string, stamp: string): boolean {
+    return !!this.db.prepare('SELECT 1 FROM sessions WHERE event_id = ? AND stamp = ?').get(eventId, stamp)
+  }
+
+  updateSession(id: string, patch: Partial<{ status: SessionStatus; photoPaths: string[]; compositePath: string; printPath: string; gifPath: string; galleryUrl: string; stamp: string }>): void {
     const cur = this.getSession(id)
     if (!cur) throw new Error('Session not found')
     const next = { ...cur, ...patch }
     this.db
-      .prepare('UPDATE sessions SET status=?, photo_paths=?, composite_path=?, print_path=?, gif_path=?, gallery_url=? WHERE id=?')
-      .run(next.status, JSON.stringify(next.photoPaths), next.compositePath ?? null, next.printPath ?? null, next.gifPath ?? null, next.galleryUrl ?? null, id)
+      .prepare('UPDATE sessions SET status=?, photo_paths=?, composite_path=?, print_path=?, gif_path=?, gallery_url=?, stamp=? WHERE id=?')
+      .run(next.status, JSON.stringify(next.photoPaths), next.compositePath ?? null, next.printPath ?? null, next.gifPath ?? null, next.galleryUrl ?? null, next.stamp ?? null, id)
   }
 
   // ---------- print jobs ----------

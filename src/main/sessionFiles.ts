@@ -1,8 +1,8 @@
-import { dirname, join } from 'node:path'
+import { layoutFromFinal } from './eventFolders'
 
-// Files a finished session leaves next to its final design (final.jpg).
-export const thumbPathFor = (compositePath: string) => join(dirname(compositePath), 'thumb.jpg')
+// A finished session's other files, found from its final design (works for old and new layouts).
+export const thumbPathFor = (compositePath: string) => layoutFromFinal(compositePath).thumb
 /** The design in colour, when the event's look is a filter and "keep a colour version" is on. */
-export const colourPathFor = (compositePath: string) => join(dirname(compositePath), 'final-colour.jpg')
-export const gifPathFor = (compositePath: string) => join(dirname(compositePath), 'animation.gif')
-export const boomerangPathFor = (compositePath: string) => join(dirname(compositePath), 'boomerang.gif')
+export const colourPathFor = (compositePath: string) => layoutFromFinal(compositePath).colour
+export const gifPathFor = (compositePath: string) => layoutFromFinal(compositePath).gif
+export const boomerangPathFor = (compositePath: string) => layoutFromFinal(compositePath).boomerang

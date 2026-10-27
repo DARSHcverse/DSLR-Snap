@@ -4,6 +4,7 @@ import { join } from 'node:path'
 import sharp from 'sharp'
 import { describe, expect, it } from 'vitest'
 import { BoothService } from '../src/main/BoothService'
+import { boomerangPathFor, colourPathFor } from '../src/main/sessionFiles'
 import { MockCamera } from '../src/main/camera/MockCamera'
 import { DisabledGallery, type CloudGallery } from '../src/main/cloud/CloudGallery'
 import { BoothDatabase } from '../src/main/db/database'
@@ -21,7 +22,7 @@ async function setup(gallery: CloudGallery = new DisabledGallery(), templateId =
   const printer = new MockPrinter(join(dataDir, 'prints'), 10)
   const printQueue = new PrintQueue(db, () => printer)
   const uploadQueue = new UploadQueue(db, gallery)
-  const service = new BoothService({ db, dataDir, camera: () => camera, printQueue, uploadQueue, gallery, qrWaitMs, backgroundPath: (id) => join(dataDir, `${id}.jpg`) })
+  const service = new BoothService({ db, photosRoot: () => dataDir, camera: () => camera, printQueue, uploadQueue, gallery, qrWaitMs, backgroundPath: (id) => join(dataDir, `${id}.jpg`) })
   return { db, ev, service, printQueue, uploadQueue, dataDir, camera }
 }
 
@@ -65,8 +66,7 @@ describe('BoothService end to end (mock hardware)', () => {
       return Math.max(Math.abs(r.mean - g.mean), Math.abs(r.mean - b.mean))
     }
     expect(await slotStats(res.session.compositePath!)).toBeLessThan(1.5)
-    expect(await slotStats(res.session.printPath!.replace('print-sheet', 'final'))).toBeLessThan(1.5)
-    const colourFile = join(res.session.compositePath!, '..', 'final-colour.jpg')
+        const colourFile = colourPathFor(res.session.compositePath!)
     expect(await slotStats(colourFile)).toBeGreaterThan(3)
     expect(res.colourPreview).toMatch(/^data:image\/jpeg/)
     expect((await service.galleryItem(sessionId)).colour).toMatch(/^data:image\/jpeg/)
@@ -80,7 +80,7 @@ describe('BoothService end to end (mock hardware)', () => {
     for (let i = 0; i < 3; i++) shots.push((await service.capture(sessionId)).path)
     expect(await service.recordBoomerang(sessionId, 600)).toBe(true)
     const res = await service.finish(sessionId, shots, 'k')
-    const clip = await sharp(join(res.session.compositePath!, '..', 'boomerang.gif'), { animated: true }).metadata()
+    const clip = await sharp(boomerangPathFor(res.session.compositePath!), { animated: true }).metadata()
     expect(clip.pages).toBeGreaterThanOrEqual(6) // n frames forward + n-2 back
     expect(clip.loop).toBe(0)
     expect(clip.width).toBe(540)
@@ -112,6 +112,32 @@ describe('BoothService end to end (mock hardware)', () => {
     const [r2, , b2] = await corner(other.id)
     expect(b2).toBeGreaterThan(150)
     expect(r2).toBeLessThan(60)
+  })
+
+  it('saves everything in an operator-friendly event folder: Photos, Prints, GIFs, Boomerangs', async () => {
+    const { db, ev, service, dataDir } = await setup()
+    db.saveEvent({ ...ev, look: 'bw', colourCopy: true, boomerang: true })
+    const { sessionId } = service.startSession()
+    const shots = []
+    for (let i = 0; i < 3; i++) shots.push((await service.capture(sessionId)).path)
+    await service.recordBoomerang(sessionId, 600)
+    await service.finish(sessionId, shots, 'k')
+
+    const folder = join(dataDir, 'Priya & Tom 2026-10-24')
+    expect(db.getEvent(ev.id)?.folder).toBe(folder)
+    const stamp = db.getSession(sessionId)!.stamp!
+    expect(stamp).toMatch(/^\d\d\.\d\d\.\d\d$/)
+    expect(readdirSync(join(folder, 'Photos')).sort()).toEqual([`${stamp} 1.jpg`, `${stamp} 2.jpg`, `${stamp} 3.jpg`])
+    expect(readdirSync(join(folder, 'Prints')).sort()).toEqual([`${stamp} colour.jpg`, `${stamp}.jpg`])
+    expect(readdirSync(join(folder, 'GIFs'))).toEqual([`${stamp}.gif`])
+    expect(readdirSync(join(folder, 'Boomerangs'))).toEqual([`${stamp}.gif`])
+    expect(readdirSync(join(folder, '.booth')).sort()).toEqual([`${stamp} print-sheet.jpg`, `${stamp} thumb.jpg`])
+
+    // Renaming the event later doesn't move or split its folder.
+    db.saveEvent({ ...db.getEvent(ev.id)!, name: 'Priya & Tom Wedding' })
+    const next = service.startSession()
+    await service.capture(next.sessionId)
+    expect(readdirSync(dataDir).filter((f) => f !== 'prints')).toEqual(['Priya & Tom 2026-10-24']) // 'prints' = this test's mock printer
   })
 
   it('makes a looping GIF of the session photos and lists the session in the guest gallery', async () => {
