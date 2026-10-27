@@ -91,6 +91,54 @@ export class Ffmpeg {
     )
   }
 
+  /** Length of a media file in seconds (from ffmpeg's own report; no ffprobe needed). */
+  async duration(file: string): Promise<number> {
+    const log = await new Promise<string>((resolve) => {
+      const p = spawn(this.path, ['-hide_banner', '-i', file], { windowsHide: true })
+      let s = ''
+      p.stderr.on('data', (d) => (s += d))
+      p.on('close', () => resolve(s))
+      p.on('error', () => resolve(''))
+    })
+    const m = /Duration: (\d+):(\d+):(\d+(?:\.\d+)?)/.exec(log)
+    if (!m) throw new Error('Could not read the clip. Is it a video?')
+    return Number(m[1]) * 3600 + Number(m[2]) * 60 + Number(m[3])
+  }
+
+  /**
+   * The 360 booth edit: a speed ramp (normal → slow motion → normal), portrait 1080×1920 for phones,
+   * the operator's overlay frame and the trial band on top, and music that fades out at the end.
+   * `slow` = how many times slower the middle plays (4 suits 120 fps clips).
+   */
+  async make360(input: string, out: string, opts: { slow?: number; overlays?: string[]; music?: string; landscape?: boolean } = {}): Promise<{ seconds: number }> {
+    const encoder = await this.h264()
+    const d = await this.duration(input)
+    const plan = rampPlan(d, opts.slow ?? 4)
+    const [w, h] = opts.landscape ? [1920, 1080] : [1080, 1920]
+    const overlays = opts.overlays ?? []
+    const inputs = ['-i', input, ...overlays.flatMap((o) => ['-loop', '1', '-i', o]), ...(opts.music ? ['-i', opts.music] : [])]
+    const seg = (i: number, from: number, to: number | null, k: number) =>
+      `[0:v]trim=start=${from.toFixed(3)}${to === null ? '' : `:end=${to.toFixed(3)}`},setpts=(PTS-STARTPTS)*${k},fps=30[s${i}]`
+    let graph = [
+      seg(0, 0, plan.slowFrom, 1),
+      seg(1, plan.slowFrom, plan.slowTo, plan.slow),
+      seg(2, plan.slowTo, null, 1),
+      `[s0][s1][s2]concat=n=3:v=1:a=0,scale=${w}:${h}:force_original_aspect_ratio=increase,crop=${w}:${h},setsar=1[v0]`
+    ].join(';')
+    overlays.forEach((_, i) => {
+      graph += `;[${i + 1}:v]scale=${w}:${h}[o${i}];[v${i}][o${i}]overlay=0:0:shortest=1[v${i + 1}]`
+    })
+    graph += `;[v${overlays.length}]format=yuv420p[vout]`
+    const audio = opts.music
+      ? ['-map', `${overlays.length + 1}:a:0`, '-af', `afade=t=in:d=0.5,afade=t=out:st=${Math.max(0, plan.outSeconds - 1.5).toFixed(2)}:d=1.5`, '-c:a', 'aac', '-b:a', '160k']
+      : ['-an']
+    await this.run(
+      [...inputs, '-filter_complex', graph, '-map', '[vout]', ...audio, '-t', plan.outSeconds.toFixed(3), ...encoderArgs(encoder), '-r', '30', '-movflags', '+faststart', out],
+      Math.max(180_000, d * 30_000)
+    )
+    return { seconds: plan.outSeconds }
+  }
+
   /** A still from `atSeconds` in, for galleries and the QR page. */
   async posterFrame(video: string, out: string, atSeconds = 1): Promise<void> {
     await this.run(['-ss', String(atSeconds), '-i', video, '-frames:v', '1', '-q:v', '3', out])
@@ -111,4 +159,11 @@ export class Ffmpeg {
       out
     ])
   }
+}
+
+/** Where the slow motion starts and ends in a clip of `d` seconds, and how long the edit runs. */
+export function rampPlan(d: number, slow: number): { slowFrom: number; slowTo: number; slow: number; outSeconds: number } {
+  const slowFrom = d * 0.3
+  const slowTo = d * 0.75
+  return { slowFrom, slowTo, slow, outSeconds: slowFrom + (slowTo - slowFrom) * slow + (d - slowTo) }
 }
