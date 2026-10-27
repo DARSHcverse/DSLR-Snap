@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { DeviceSnapshot } from '@shared/api'
 import type { BoothEvent, VideoResult } from '@shared/types'
+import { useStartTrigger } from '../components/useStartTrigger'
 
 type State =
   | { name: 'welcome' }
@@ -36,6 +37,13 @@ export default function Booth360({ event, devices, paused, onNeedSetup }: {
     if (!ready || paused) return
     setState({ name: 'countdown', remaining: COUNTDOWN })
   }
+
+  // Pedal / phone remote: start a spin from the start screen, or finish the final screen. Presses
+  // during a countdown, spin or edit are ignored, so a double press can't cut a spin short.
+  useStartTrigger(() => {
+    if (state.name === 'welcome') void start()
+    else if (state.name === 'done' || state.name === 'error') reset()
+  })
 
   // 3-2-1, then record (the app drives the GoPro) and edit.
   useEffect(() => {

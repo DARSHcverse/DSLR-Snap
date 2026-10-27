@@ -53,4 +53,10 @@ api.onPaused = (cb: (paused: boolean) => void) => {
   return () => ipcRenderer.removeListener('booth:paused', listener)
 }
 
+api.onRemoteStart = (cb: () => void) => {
+  const listener = () => cb()
+  ipcRenderer.on('booth:remoteStart', listener)
+  return () => ipcRenderer.removeListener('booth:remoteStart', listener)
+}
+
 contextBridge.exposeInMainWorld('booth', api)

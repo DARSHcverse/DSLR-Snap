@@ -631,8 +631,13 @@ async function remoteStatus(): Promise<RemoteStatus> {
   const stats = event ? db.eventStats(event.id) : undefined
   return {
     eventName: event?.name ?? null,
+    eventMode: event?.mode ?? null,
     paused: boothPaused,
-    camera: { state: d.camera.state, detail: d.camera.state === 'ready' ? d.camera.model : d.camera.message },
+    // The camera that matters for this booth type: the GoPro for 360, the DSLR otherwise.
+    camera:
+      event?.mode === '360'
+        ? { state: d.gopro.state === 'recording' ? 'busy' : d.gopro.state, detail: d.gopro.state === 'ready' ? 'GoPro (USB)' : d.gopro.message }
+        : { state: d.camera.state, detail: d.camera.state === 'ready' ? d.camera.model : d.camera.message },
     printer: { state: d.printer.state, detail: d.printer.message ?? d.printer.printerName, waiting: d.printer.queueLength },
     paper: d.paper ? { remaining: d.paper.remaining, capacity: d.paper.capacity } : null,
     guests: stats?.sessions ?? 0,
@@ -643,7 +648,9 @@ async function remoteStatus(): Promise<RemoteStatus> {
 }
 
 async function remoteAct(a: RemoteAction): Promise<void> {
-  if (a.action === 'pause' || a.action === 'resume') setPaused(a.action === 'pause')
+  // The booth screen decides: it only starts from its start screen, so a second press can't cut a spin short.
+  if (a.action === 'start') win?.webContents.send('booth:remoteStart')
+  else if (a.action === 'pause' || a.action === 'resume') setPaused(a.action === 'pause')
   else if (a.action === 'retry') await printQueue.retry(a.jobId)
   else service.reprint(a.sessionId, randomUUID(), 1)
 }

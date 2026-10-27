@@ -25,6 +25,8 @@ export function remotePage(): string {
   button { font: inherit; font-weight: 600; border: 1px solid var(--line); background: var(--surface2); color: var(--text); border-radius: 999px; padding: 10px 16px; min-height: 44px; }
   button.primary { background: var(--accent); color: var(--ink); border-color: transparent; width: 100%; font-size: 18px; padding: 14px; }
   button.paused { background: var(--busy); color: #1c1203; }
+  button.start { font-size: 24px; padding: 22px; margin-bottom: 10px; }
+  #pause:not(.paused) { background: var(--surface2); color: var(--text); border-color: var(--line); }
   .row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--line); }
   .row:last-child { border-bottom: 0; }
   .thumbs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
@@ -38,6 +40,7 @@ export function remotePage(): string {
   <div id="offline">Can't reach the booth. Is this phone on the same Wi-Fi?</div>
   <h1>DSLR Snap remote</h1>
   <h2 id="event">…</h2>
+  <button id="start" class="primary start">Start</button>
   <button id="pause" class="primary">Pause booth</button>
   <div class="grid" style="margin-top:12px">
     <div class="card"><div class="muted">Guests</div><div class="big" id="guests">–</div></div>
@@ -64,12 +67,15 @@ export function remotePage(): string {
       toast(done); refresh();
     } catch (e) { toast(e.message); }
   }
+  $('start').onclick = () => act({ action: 'start' }, 'Starting…');
   $('pause').onclick = () => act({ action: state.paused ? 'resume' : 'pause' }, state.paused ? 'Booth resumed' : 'Booth paused');
   async function refresh() {
     try {
       const s = await (await fetch(base + '/status', { cache: 'no-store' })).json();
       $('offline').style.display = 'none';
       $('event').textContent = s.eventName || 'No event selected';
+      $('start').textContent = s.eventMode === '360' ? 'Start spin' : s.eventMode === 'video' ? 'Start recording' : 'Start photos';
+      $('start').disabled = !s.eventName || s.paused;
       state.paused = s.paused;
       $('pause').textContent = s.paused ? 'Resume booth' : 'Pause booth';
       $('pause').className = 'primary' + (s.paused ? ' paused' : '');

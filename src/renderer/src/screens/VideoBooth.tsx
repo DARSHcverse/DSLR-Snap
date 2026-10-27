@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { BoothEvent, VideoResult } from '@shared/types'
+import { useStartTrigger } from '../components/useStartTrigger'
 
 type State =
   | { name: 'welcome' }
@@ -74,6 +75,13 @@ export default function VideoBooth({ event, paused, onNeedSetup }: { event: Boot
   }
 
   const stopRecording = () => recorder.current?.state === 'recording' && recorder.current.stop()
+
+  // Pedal / phone remote: start, stop a recording early, or finish the final screen.
+  useStartTrigger(() => {
+    if (state.name === 'welcome') void start()
+    else if (state.name === 'recording') stopRecording()
+    else if (state.name === 'done' || state.name === 'error') reset()
+  })
 
   // Countdown, then record.
   useEffect(() => {

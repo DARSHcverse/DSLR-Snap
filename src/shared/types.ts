@@ -256,6 +256,8 @@ export interface DeviceSettings {
    * Leaving it goes through the operator menu (and its PIN). Installed app only.
    */
   kioskLock: boolean
+  /** Foot pedal / clicker key that starts a session: 'auto' (common pedal keys), a learned KeyboardEvent.code, or 'off'. */
+  pedalKey: string
   /** Video guestbook: webcam and microphone (browser device ids; empty = system default). */
   videoInputId: string
   audioInputId: string

@@ -5,6 +5,7 @@ import type { BoothEvent, FinishResult, Template } from '@shared/types'
 import Gallery, { GalleryCorner } from '../components/Gallery'
 import { lookInfo } from '@shared/looks'
 import LiveView from '../components/LiveView'
+import { useStartTrigger } from '../components/useStartTrigger'
 import Booth360 from './Booth360'
 import VideoBooth from './VideoBooth'
 
@@ -35,6 +36,9 @@ export default function Booth({ onNeedSetup }: Props) {
   const [bgId, setBgId] = useState<string | undefined>(undefined)
   const [bgImages, setBgImages] = useState<Record<string, string>>({})
   useEffect(() => window.booth.onPaused(setPaused), [])
+  // Pedal / phone remote, photo booth: start from the start screen, or finish the final screen.
+  const triggerRef = useRef<() => void>(() => undefined)
+  useStartTrigger(() => triggerRef.current())
   const cfg = configFor(active)
   const cfgRef = useRef(cfg)
   cfgRef.current = cfg
@@ -171,6 +175,12 @@ export default function Booth({ onNeedSetup }: Props) {
         <button className="btn primary" onClick={reset}>Back to start</button>
       </div>
     )
+  }
+
+  triggerRef.current = () => {
+    if (active.event.mode !== 'photo' || paused) return // the video and 360 screens handle their own
+    if (state.name === 'welcome' && (devices?.camera.state === 'ready' || devices?.camera.state === 'busy')) void start()
+    else if (state.name === 'done') reset()
   }
 
   // Video guestbook events use the webcam screen instead of the DSLR photo flow.

@@ -4,7 +4,7 @@ import { parseAction, type RemoteAction, RemoteServer, type RemoteStatus } from 
 const KEY = 'k'.repeat(32)
 const SESSION = '6f1c2a4e-8a0b-4c7e-9d3f-1b2c3d4e5f60'
 const status: RemoteStatus = {
-  eventName: 'Priya & Tom', paused: false,
+  eventName: 'Priya & Tom', eventMode: '360', paused: false,
   camera: { state: 'ready', detail: 'Canon EOS R100' }, printer: { state: 'ready', detail: 'DS-RX1', waiting: 0 },
   paper: { remaining: 412, capacity: 700 }, guests: 12, prints: 20, failedJobs: [], recent: [{ id: SESSION, at: '2026-10-31T20:00:00Z' }]
 }
@@ -39,15 +39,17 @@ describe('phone remote server', () => {
   it('runs valid actions and rejects anything else', async () => {
     const { url, acted } = await start()
     const post = (body: unknown) => fetch(url(`/r/${KEY}/action`), { method: 'POST', body: JSON.stringify(body) })
+    expect((await post({ action: 'start' })).status).toBe(200)
     expect((await post({ action: 'pause' })).status).toBe(200)
     expect((await post({ action: 'reprint', sessionId: SESSION })).status).toBe(200)
     expect((await post({ action: 'quit' })).status).toBe(400)
     expect((await post({ action: 'reprint', sessionId: '../../x' })).status).toBe(400)
-    expect(acted).toEqual([{ action: 'pause' }, { action: 'reprint', sessionId: SESSION }])
+    expect(acted).toEqual([{ action: 'start' }, { action: 'pause' }, { action: 'reprint', sessionId: SESSION }])
   })
 
   it('parses actions strictly', () => {
     expect(parseAction({ action: 'resume' })).toEqual({ action: 'resume' })
+    expect(parseAction({ action: 'start' })).toEqual({ action: 'start' })
     expect(parseAction({ action: 'retry', jobId: 'nope' })).toBeNull()
     expect(parseAction(null)).toBeNull()
   })

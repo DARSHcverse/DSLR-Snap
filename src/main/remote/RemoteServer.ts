@@ -5,6 +5,8 @@ import { remotePage } from './remotePage'
 
 export interface RemoteStatus {
   eventName: string | null
+  /** Labels the Start button ("Start spin" for 360). */
+  eventMode: 'photo' | 'video' | '360' | null
   paused: boolean
   camera: { state: string; detail?: string }
   printer: { state: string; detail?: string; waiting: number }
@@ -16,6 +18,7 @@ export interface RemoteStatus {
 }
 
 export type RemoteAction =
+  | { action: 'start' }
   | { action: 'pause' }
   | { action: 'resume' }
   | { action: 'retry'; jobId: string }
@@ -110,7 +113,7 @@ async function readBody(req: IncomingMessage): Promise<unknown> {
 
 export function parseAction(b: unknown): RemoteAction | null {
   const o = (b ?? {}) as Record<string, unknown>
-  if (o.action === 'pause' || o.action === 'resume') return { action: o.action }
+  if (o.action === 'start' || o.action === 'pause' || o.action === 'resume') return { action: o.action }
   if (o.action === 'retry' && typeof o.jobId === 'string' && ID.test(o.jobId)) return { action: 'retry', jobId: o.jobId }
   if (o.action === 'reprint' && typeof o.sessionId === 'string' && ID.test(o.sessionId)) return { action: 'reprint', sessionId: o.sessionId }
   return null

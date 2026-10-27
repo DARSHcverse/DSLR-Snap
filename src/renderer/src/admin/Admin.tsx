@@ -6,6 +6,7 @@ import CameraSetup from './CameraSetup'
 import EventsTab from './Events'
 import Home from './Home'
 import TemplatesTab, { message } from './Templates'
+import { isPedalKey, keyLabel } from '@shared/trigger'
 
 type Tab = 'home' | 'events' | 'templates' | 'prints' | 'sessions' | 'camera' | 'devices' | 'account'
 
@@ -197,6 +198,7 @@ function DevicesTab({ devices }: { devices: DeviceSnapshot | null }) {
         <p className="muted small">GoPro HERO9–12. Plug it in by USB and switch it on; it's found automatically within a few seconds, no GoPro app needed. Use a memory card with space and keep it charging.</p>
       </div>
       <PhoneRemoteCard />
+      <PedalCard settings={s} save={save} />
       <div className="card">
         <h3>Booth lock</h3>
         <label className="check">
@@ -219,6 +221,44 @@ function DevicesTab({ devices }: { devices: DeviceSnapshot | null }) {
       <PinCard />
       <AppInfo />
     </section>
+  )
+}
+
+/** Foot pedal or Bluetooth clicker: they type a key; the booth starts on it (from any booth type). */
+function PedalCard({ settings, save }: { settings: DeviceSettings; save: (s: DeviceSettings) => Promise<void> }) {
+  const [learning, setLearning] = useState(false)
+  const [lastPress, setLastPress] = useState<string | null>(null)
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.ctrlKey || e.altKey || e.metaKey) return
+      if (learning) {
+        e.preventDefault()
+        setLearning(false)
+        void save({ ...settings, pedalKey: e.code })
+      } else if (settings.pedalKey !== 'off' && isPedalKey(e, settings.pedalKey)) {
+        setLastPress(keyLabel(e.code))
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [learning, settings, save])
+  return (
+    <div className="card">
+      <h3>Foot pedal / clicker</h3>
+      <p>
+        Starts with: <strong>{keyLabel(settings.pedalKey)}</strong>
+        {settings.pedalKey === 'auto' && <span className="muted small"> (Space, Enter, Page Up/Down, arrows)</span>}
+      </p>
+      <div className="row">
+        <button className={`btn ${learning ? 'primary' : ''}`} onClick={() => setLearning(!learning)}>{learning ? 'Press the pedal now…' : 'Learn key'}</button>
+        {settings.pedalKey !== 'auto' && <button className="btn ghost" onClick={() => save({ ...settings, pedalKey: 'auto' })}>Use common keys</button>}
+        {settings.pedalKey !== 'off' && <button className="btn ghost" onClick={() => save({ ...settings, pedalKey: 'off' })}>Turn off</button>}
+      </div>
+      {lastPress && <p className="muted small" style={{ color: 'var(--ok)' }}>✓ Pedal works ({lastPress}). On the booth screen it starts a session.</p>}
+      <p className="muted small">
+        Any USB foot pedal or Bluetooth presentation clicker works: they act like a key. One press starts a photo session, a video message or a 360 spin from the start screen; on the final screen it goes back to the start. Presses during a countdown or spin are ignored. The phone remote has a Start button too.
+      </p>
+    </div>
   )
 }
 

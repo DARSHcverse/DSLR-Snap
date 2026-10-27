@@ -163,6 +163,8 @@ export interface BoothApi {
   /** Pause / resume the guest screen (also from the phone remote). */
   setPaused(paused: boolean): Promise<void>
   onPaused(cb: (paused: boolean) => void): () => void
+  /** Start pressed on the phone remote. */
+  onRemoteStart(cb: () => void): () => void
   /** Booth screen shown/hidden: applies the kiosk lock if it's on. */
   setBoothShowing(showing: boolean): Promise<void>
   appInfo(): Promise<{ version: string; dataDir: string; logFile: string }>

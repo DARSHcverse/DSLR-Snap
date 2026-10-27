@@ -68,6 +68,7 @@ const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(mi
 
 export const DEFAULT_DEVICE_SETTINGS: DeviceSettings = {
   kioskLock: true,
+  pedalKey: 'auto',
   videoInputId: '',
   audioInputId: '',
   cameraDriver: 'auto',
