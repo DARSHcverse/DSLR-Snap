@@ -17,7 +17,7 @@ It prints two lines:
 ## 2. Supabase (accounts + database)
 
 1. Create a project at supabase.com. Pick a region near you (London for the UK).
-2. **SQL editor** → run `website/supabase/migrations/0001_accounts.sql`, then `0002_extra_computers.sql`.
+2. **SQL editor** → run the three files in `website/supabase/migrations/` in order: `0001_accounts.sql`, `0002_extra_computers.sql`, `0003_gallery.sql`. The last one also creates the private `galleries` storage bucket.
 3. **Authentication → URL configuration**:
    - Site URL: `https://dslrsnap.com`
    - Redirect URLs: add `https://dslrsnap.com/auth/callback`, `http://localhost:3000/auth/callback` and your Vercel preview URL pattern (`https://*-<your-team>.vercel.app/auth/callback`)
@@ -61,7 +61,7 @@ No code is needed for this. Checkout already accepts promotion codes.
 
 ## 4. Vercel
 
-1. **Project → Settings → Environment Variables**: add every name in `website/.env.example`, with values from steps 1 to 3. Use Production and Preview.
+1. **Project → Settings → Environment Variables**: add every name in `website/.env.example`, with values from steps 1 to 3. Use Production and Preview. For `CRON_SECRET`, any long random string works: Vercel sends it to the nightly clean-up that deletes gallery photos older than a year.
 2. **Domains**: add `dslrsnap.com` and follow the DNS instructions at your registrar.
 3. Redeploy. "Sign in" and "Start free" now appear on the site.
 
@@ -74,7 +74,7 @@ No code is needed for this. Checkout already accepts promotion codes.
    - If the browser can't open the app, type the 8-letter code shown on the page.
 4. Take a session: no watermark. Sign out: the next session has the "DSLR Snap · trial" band.
 5. Sign in on a third computer: it should be refused with "already in use on 2 computers". On the website, Account → Remove one → sign in again works.
-6. Cancel in the billing portal: the plan shows "ends on …". After that date, the booth goes back to trial.
+8. Cancel in the billing portal: the plan shows "ends on …". After that date, the booth goes back to trial.
 
 ## 6. Going live
 
@@ -91,4 +91,5 @@ No code is needed for this. Checkout already accepts promotion codes.
 | App sign-in | `/app/sign-in` → `dslrsnap://auth` → `/api/app/token` | One-time code, locked to the app that asked for it (PKCE) |
 | Computer limit | `claim_device()` in the database | 2 per account plus any paid extras, atomic. Signing in again on the same PC replaces its old token |
 | Licence | Signed by the website, checked by the app offline | Tied to one computer; 14 days offline; trial watermark without a plan |
+| Cloud gallery | `/api/app/uploads` → signed upload links → `/s/<session>` and `/e/<link>` | Only signed-in booths with an active plan can upload; the booth holds no storage key. Photos stay private (short-lived signed links) and are deleted after a year |
 | Tamper protection | Electron fuses in `electron-builder.yml` | The installed app refuses to start if its code was edited |

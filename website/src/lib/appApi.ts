@@ -1,6 +1,6 @@
 import "server-only";
 import { entitlementFor } from "./account";
-import { signLicence } from "./appAuth";
+import { hashSecret, isMachineHash, signLicence } from "./appAuth";
 import { appSignInEnabled, licencePrivateKey } from "./config";
 import { supabaseAdmin } from "./supabase/server";
 
@@ -27,3 +27,18 @@ export async function licenceFor(userId: string, machineHash: string): Promise<s
     licencePrivateKey,
   );
 }
+
+/** The signed-in booth computer behind a request, or null (unknown token, removed, or copied to another PC). */
+export async function deviceFromRequest(body: Record<string, unknown> | null): Promise<{ id: string; userId: string } | null> {
+  const { refreshToken, machine } = body ?? {};
+  if (typeof refreshToken !== "string" || refreshToken.length < 20 || !isMachineHash(machine)) return null;
+  const { data } = await supabaseAdmin()
+    .from("devices")
+    .select("id, user_id, machine_hash")
+    .eq("refresh_token_hash", hashSecret(refreshToken))
+    .is("revoked_at", null)
+    .maybeSingle();
+  return data && data.machine_hash === machine ? { id: data.id, userId: data.user_id } : null;
+}
+
+export const signedOut = () => fail(401, "signed_out", "This computer was signed out. Sign in again under Account.");
