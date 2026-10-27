@@ -27,6 +27,8 @@ function configFor(a: Active | null | undefined): BoothConfig {
 export default function Booth({ onNeedSetup }: Props) {
   const [active, setActive] = useState<Active | null | undefined>(undefined)
   const [devices, setDevices] = useState<DeviceSnapshot | null>(null)
+  const [paused, setPaused] = useState(false)
+  useEffect(() => window.booth.onPaused(setPaused), [])
   const cfg = configFor(active)
   const cfgRef = useRef(cfg)
   cfgRef.current = cfg
@@ -151,6 +153,13 @@ export default function Booth({ onNeedSetup }: Props) {
 
   return (
     <div className="screen booth">
+      {paused && state.name === 'welcome' && (
+        <div className="paused-overlay">
+          <p className="eyebrow">{active.event.name}</p>
+          <h1 className="display small">Back in a moment</h1>
+          <p className="muted">The photo booth is taking a short break.</p>
+        </div>
+      )}
       {flash && <div className="flash" />}
       <LiveView active={liveOn} hint={showLive ? 'Look at the camera ↑' : undefined} filter={lookInfo(active.event.look).liveView} />
 

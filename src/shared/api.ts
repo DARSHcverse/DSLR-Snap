@@ -22,6 +22,13 @@ import type {
   TestShot
 } from './types'
 
+export interface RemoteInfo {
+  enabled: boolean
+  url?: string
+  qr?: string
+  problem?: string
+}
+
 export interface DeviceSnapshot {
   camera: CameraStatus
   printer: PrinterStatus
@@ -116,6 +123,14 @@ export interface BoothApi {
   eventGalleryLink(eventId: string): Promise<{ url: string; qr: string }>
   /** Free bytes on the drive that holds the photos. */
   diskFree(): Promise<number>
+  /** Phone remote on the local network: link + QR while on. */
+  remoteInfo(): Promise<RemoteInfo>
+  remoteSetEnabled(on: boolean): Promise<RemoteInfo>
+  /** Replaces the secret link; phones holding the old one lose access. */
+  remoteNewLink(): Promise<RemoteInfo>
+  /** Pause / resume the guest screen (also from the phone remote). */
+  setPaused(paused: boolean): Promise<void>
+  onPaused(cb: (paused: boolean) => void): () => void
   /** Booth screen shown/hidden: applies the kiosk lock if it's on. */
   setBoothShowing(showing: boolean): Promise<void>
   appInfo(): Promise<{ version: string; dataDir: string; logFile: string }>

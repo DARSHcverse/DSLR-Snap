@@ -12,7 +12,7 @@ const methods = [
   'getDeviceSettings', 'saveDeviceSettings', 'detectPrinters', 'reconnectCamera', 'getDevices',
   'getExposure', 'setExposure', 'applyExposure', 'testShot',
   'duplicateEvent', 'eventStats', 'exportEventPhotos', 'hasPin', 'verifyPin', 'setPin',
-  'listPrintJobs', 'retryPrintJob', 'cancelPrintJob', 'markPrintJobPrinted', 'testPrint', 'newPaperRoll', 'eventGalleryLink', 'diskFree', 'setBoothShowing', 'appInfo', 'quit',
+  'listPrintJobs', 'retryPrintJob', 'cancelPrintJob', 'markPrintJobPrinted', 'testPrint', 'newPaperRoll', 'eventGalleryLink', 'diskFree', 'remoteInfo', 'remoteSetEnabled', 'remoteNewLink', 'setPaused', 'setBoothShowing', 'appInfo', 'quit',
   'accountState', 'accountSignIn', 'accountRedeemCode', 'accountRefresh', 'accountSignOut', 'openAccountWebsite'
 ] as const
 
@@ -45,6 +45,12 @@ api.onAccountError = (cb: (message: string) => void) => {
   const listener = (_: unknown, m: string) => cb(m)
   ipcRenderer.on('booth:accountError', listener)
   return () => ipcRenderer.removeListener('booth:accountError', listener)
+}
+
+api.onPaused = (cb: (paused: boolean) => void) => {
+  const listener = (_: unknown, p: boolean) => cb(p)
+  ipcRenderer.on('booth:paused', listener)
+  return () => ipcRenderer.removeListener('booth:paused', listener)
 }
 
 contextBridge.exposeInMainWorld('booth', api)

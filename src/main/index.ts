@@ -1,8 +1,8 @@
 import { app, BrowserWindow, dialog, ipcMain, powerSaveBlocker, safeStorage, shell } from 'electron'
-import { randomUUID } from 'node:crypto'
+import { randomBytes, randomUUID } from 'node:crypto'
 import { existsSync, readFileSync } from 'node:fs'
 import { appendFile, mkdir, readdir, rm, statfs, writeFile } from 'node:fs/promises'
-import { hostname } from 'node:os'
+import { hostname, networkInterfaces } from 'node:os'
 import { basename, extname, join, resolve } from 'node:path'
 import QRCode from 'qrcode'
 import sharp from 'sharp'
@@ -15,6 +15,8 @@ import { exportEventPhotos } from './exportEvent'
 import { isBlockedWhileLocked, shouldLock } from './kiosk'
 import { resolveCameraDriver, resolvePrinterDriver } from './detectDevices'
 import { PinLock } from './security/PinLock'
+import { type RemoteAction, RemoteServer, type RemoteStatus } from './remote/RemoteServer'
+import { thumbPathFor } from './sessionFiles'
 import { analyzeShot } from './camera/analyzeShot'
 import { applyExposure, readExposure, withFlashSafeShutters } from './camera/applyExposure'
 import type { CameraAdapter } from './camera/CameraAdapter'
@@ -430,11 +432,103 @@ function registerIpc(): void {
     return s.bavail * s.bsize
   })
   handle('appInfo', () => ({ version: app.getVersion(), dataDir, logFile }))
-  handle('setBoothShowing', (showing: boolean) => applyBoothLock(!!showing))
+  handle('remoteInfo', () => remoteInfo())
+  handle('remoteSetEnabled', async (on: boolean) => {
+    db.setSetting('remote', JSON.stringify({ ...remoteSettings(), enabled: !!on }))
+    await applyRemote()
+    return remoteInfo()
+  })
+  handle('remoteNewLink', async () => {
+    db.setSetting('remote', JSON.stringify({ ...remoteSettings(), key: randomBytes(16).toString('hex') }))
+    await applyRemote()
+    return remoteInfo()
+  })
+  handle('setPaused', (paused: boolean) => setPaused(!!paused))
+  handle('setBoothShowing', (showing: boolean) => {
+    applyBoothLock(!!showing)
+    if (showing) win?.webContents.send('booth:paused', boothPaused) // a fresh booth screen picks up the pause
+  })
   handle('quit', () => {
     allowQuit = true
     app.quit()
   })
+}
+
+// ---------- phone remote ----------
+const REMOTE_PORT = 8765
+let boothPaused = false
+let remote: RemoteServer | undefined
+
+function remoteSettings(): { enabled: boolean; key: string } {
+  const saved = db.getSetting('remote')
+  if (saved) return JSON.parse(saved)
+  const fresh = { enabled: false, key: randomBytes(16).toString('hex') }
+  db.setSetting('remote', JSON.stringify(fresh))
+  return fresh
+}
+
+/** The computer's address on the venue network (first non-internal IPv4). */
+function lanAddress(): string | undefined {
+  for (const list of Object.values(networkInterfaces())) {
+    for (const a of list ?? []) if (a.family === 'IPv4' && !a.internal) return a.address
+  }
+  return undefined
+}
+
+function setPaused(paused: boolean): void {
+  boothPaused = paused
+  win?.webContents.send('booth:paused', paused)
+}
+
+async function remoteStatus(): Promise<RemoteStatus> {
+  const d = await devices()
+  const eventId = db.getActiveEventId()
+  const event = eventId ? db.getEvent(eventId) : undefined
+  const stats = event ? db.eventStats(event.id) : undefined
+  return {
+    eventName: event?.name ?? null,
+    paused: boothPaused,
+    camera: { state: d.camera.state, detail: d.camera.state === 'ready' ? d.camera.model : d.camera.message },
+    printer: { state: d.printer.state, detail: d.printer.message ?? d.printer.printerName, waiting: d.printer.queueLength },
+    paper: d.paper ? { remaining: d.paper.remaining, capacity: d.paper.capacity } : null,
+    guests: stats?.sessions ?? 0,
+    prints: stats?.prints.sent ?? 0,
+    failedJobs: db.listPrintJobs().filter((j) => j.status === 'failed' || j.status === 'needs_check').slice(0, 10).map((j) => ({ id: j.id, at: j.createdAt, error: j.lastError })),
+    recent: event ? db.listSessions(event.id, 30).filter((x) => x.status === 'complete').slice(0, 6).map((x) => ({ id: x.id, at: x.createdAt })) : []
+  }
+}
+
+async function remoteAct(a: RemoteAction): Promise<void> {
+  if (a.action === 'pause' || a.action === 'resume') setPaused(a.action === 'pause')
+  else if (a.action === 'retry') await printQueue.retry(a.jobId)
+  else service.reprint(a.sessionId, randomUUID(), 1)
+}
+
+async function remoteThumb(sessionId: string): Promise<Buffer | null> {
+  const s = db.getSession(sessionId)
+  if (!s?.compositePath) return null
+  const thumb = thumbPathFor(s.compositePath)
+  return existsSync(thumb) ? readFileSync(thumb) : null
+}
+
+async function applyRemote(): Promise<void> {
+  const cfg = remoteSettings()
+  if (!cfg.enabled) {
+    await remote?.stop()
+    return
+  }
+  remote ??= new RemoteServer({ status: remoteStatus, act: remoteAct, thumb: remoteThumb }, cfg.key)
+  remote.setKey(cfg.key)
+  if (!remote.port) await remote.start(REMOTE_PORT).catch(() => remote!.start(0)) // port taken: any free one
+}
+
+async function remoteInfo(): Promise<{ enabled: boolean; url?: string; qr?: string; problem?: string }> {
+  const cfg = remoteSettings()
+  if (!cfg.enabled) return { enabled: false }
+  const ip = lanAddress()
+  if (!ip || !remote?.port) return { enabled: true, problem: 'This computer is not on a network. Connect it to the venue Wi-Fi or a phone hotspot.' }
+  const url = `http://${ip}:${remote.port}/r/${cfg.key}`
+  return { enabled: true, url, qr: await QRCode.toDataURL(url, { margin: 1, width: 360 }) }
 }
 
 // Kiosk lock: while guests are on the booth screen, the window covers the taskbar and ignores
@@ -563,6 +657,7 @@ app.whenReady().then(async () => {
   uploadQueue.start()
   devicesTimer = setInterval(() => void broadcastDevices(), 5000)
   account.start()
+  void applyRemote().catch((e) => log('warn', `phone remote: ${e}`))
   if (pendingDeepLink) void openDeepLink(pendingDeepLink)
   await log('info', `started v${app.getVersion()} · gallery ${gallery.enabled ? 'on' : 'off'}`)
 })
@@ -575,6 +670,7 @@ app.on('before-quit', () => {
   printQueue?.stop()
   uploadQueue?.stop()
   account?.stop()
+  void remote?.stop()
   void camera?.disconnect()
   db?.close()
 })

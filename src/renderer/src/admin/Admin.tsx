@@ -1,5 +1,5 @@
 import { type ReactNode, useEffect, useState } from 'react'
-import type { DeviceSnapshot } from '@shared/api'
+import type { DeviceSnapshot, RemoteInfo } from '@shared/api'
 import type { DeviceSettings, DeviceState, EventStats, PrinterDetection, PrintJob, SessionRecord } from '@shared/types'
 import AccountTab, { useAccount } from './Account'
 import CameraSetup from './CameraSetup'
@@ -187,6 +187,7 @@ function DevicesTab({ devices }: { devices: DeviceSnapshot | null }) {
         {msg && <p className="muted">{msg}</p>}
       </div>
       <PaperCard paper={devices?.paper ?? null} />
+      <PhoneRemoteCard />
       <div className="card">
         <h3>Booth lock</h3>
         <label className="check">
@@ -209,6 +210,35 @@ function DevicesTab({ devices }: { devices: DeviceSnapshot | null }) {
       <PinCard />
       <AppInfo />
     </section>
+  )
+}
+
+/** Status, pause, retries and reprints from the operator's phone, over the venue network. */
+function PhoneRemoteCard() {
+  const [info, setInfo] = useState<RemoteInfo | null>(null)
+  const [msg, setMsg] = useState<string | null>(null)
+  useEffect(() => void window.booth.remoteInfo().then(setInfo), [])
+  const run = (p: Promise<RemoteInfo>) => p.then(setInfo).catch((e) => setMsg(message(e)))
+  return (
+    <div className="card">
+      <h3>Phone remote</h3>
+      <label className="check">
+        <input type="checkbox" checked={!!info?.enabled} onChange={(e) => run(window.booth.remoteSetEnabled(e.target.checked))} />
+        Control the booth from my phone
+      </label>
+      {info?.enabled && info.url && (
+        <div className="row host-link">
+          <img src={info.qr} alt="QR code for the phone remote" />
+          <div className="field">
+            <span className="muted small">Scan with your phone's camera. The phone must be on the same Wi-Fi or hotspot as this computer.</span>
+            <button className="btn small" onClick={() => confirm('Make a new link? Phones using the old one stop working.') && run(window.booth.remoteNewLink())}>New link</button>
+          </div>
+        </div>
+      )}
+      {info?.problem && <p className="warn small">{info.problem}</p>}
+      <p className="muted small">See the camera, printer, paper and guest count, pause the booth, retry failed prints and reprint recent sessions. If Windows asks, allow DSLR Snap on private networks.</p>
+      {msg && <p className="warn small">{msg}</p>}
+    </div>
   )
 }
 
