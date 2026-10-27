@@ -3,31 +3,59 @@ import { execFile } from 'node:child_process'
 import { readFile } from 'node:fs/promises'
 import { promisify } from 'node:util'
 import { DPI, SHEET } from '../../shared/layout'
-import type { DeviceSettings } from '../../shared/types'
+import type { DeviceSettings, PrinterDetection } from '../../shared/types'
+import { choosePrinters, type InstalledPrinter, type PrinterChoice } from './choosePrinters'
 import type { PrinterAdapter, PrintRequest } from './PrinterAdapter'
 
 const run = promisify(execFile)
 const MICRONS_PER_INCH = 25400
+const LIST_TTL_MS = 4000
+
+type WinPrinter = InstalledPrinter & { status?: string; jobs?: number }
 
 /**
  * Prints through the installed Windows driver (DNP's official driver), using Chromium's
  * silent print path. No direct printer protocol work — the driver owns colour, cut and media.
- *
- * NOT YET PROVEN ON HARDWARE: verify scaling (must be 100%, no white border) and both
- * queues with a real DS-RX1HS before relying on this at an event.
+ * The DNP queue is detected by name/driver, so it works whatever Windows called the printer.
  */
 export class WindowsPrinter implements PrinterAdapter {
   readonly driver = 'windows-driver' as const
+  private cache?: { at: number; list: Promise<WinPrinter[]> }
 
   constructor(private getSettings: () => DeviceSettings) {}
 
-  private queueFor(format: PrintRequest['format']): string {
-    const s = this.getSettings()
-    return format === '2x6' ? s.printerName2x6 : s.printerName4x6
+  /** Installed printers with driver and status, from one PowerShell call shared by status polling and printing. */
+  private installed(): Promise<WinPrinter[]> {
+    if (this.cache && Date.now() - this.cache.at < LIST_TTL_MS) return this.cache.list
+    const list = this.queryPrinters().catch(() => this.chromiumPrinters())
+    this.cache = { at: Date.now(), list }
+    return list
+  }
+
+  private async queryPrinters(): Promise<WinPrinter[]> {
+    if (process.platform !== 'win32') return []
+    const script = 'Get-Printer | ForEach-Object { [pscustomobject]@{ name = $_.Name; driverName = $_.DriverName; status = "$($_.PrinterStatus)"; jobs = $_.JobCount } } | ConvertTo-Json -Compress'
+    const { stdout } = await run('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', script], { timeout: 8000, windowsHide: true })
+    const parsed = stdout.trim() ? JSON.parse(stdout) : []
+    return Array.isArray(parsed) ? parsed : [parsed] // a single printer comes back as an object
+  }
+
+  /** Fallback when PowerShell is unavailable: names only, no driver or status. */
+  private async chromiumPrinters(): Promise<WinPrinter[]> {
+    const win = BrowserWindow.getAllWindows()[0]
+    if (!win) return []
+    return (await win.webContents.getPrintersAsync()).map((p) => ({ name: p.name }))
+  }
+
+  private async choice(): Promise<PrinterChoice & { list: WinPrinter[] }> {
+    const list = await this.installed()
+    return { ...choosePrinters(list, this.getSettings()), list }
   }
 
   async print(req: PrintRequest): Promise<void> {
-    const deviceName = this.queueFor(req.format)
+    const c = await this.choice()
+    const deviceName = req.format === '2x6' ? c.queue2x6 : c.queue4x6
+    if (!deviceName) throw new Error('No DNP printer found. Connect the printer by USB and switch it on.')
     const jpeg = await readFile(req.filePath)
     const wMm = (SHEET.w / DPI) * 25.4
     const hMm = (SHEET.h / DPI) * 25.4
@@ -60,31 +88,29 @@ export class WindowsPrinter implements PrinterAdapter {
     }
   }
 
-  async listPrinters(): Promise<string[]> {
-    const win = BrowserWindow.getAllWindows()[0]
-    if (!win) return []
-    return (await win.webContents.getPrintersAsync()).map((p) => p.name)
+  async detect(): Promise<PrinterDetection> {
+    const { list, queue4x6, queue2x6, stripsUncut } = await this.choice()
+    return { installed: list.map((p) => p.name), queue4x6, queue2x6, stripsUncut }
   }
 
   async getStatus() {
-    const name = this.getSettings().printerName4x6
     if (process.platform !== 'win32') {
-      return { driver: this.driver, state: 'error' as const, printerName: name, message: 'Windows driver printing only works on Windows.' }
+      return { driver: this.driver, state: 'error' as const, message: 'Windows driver printing only works on Windows.' }
     }
-    try {
-      // Name is passed as an argument, never interpolated into the script, to avoid injection.
-      const script = `param($n) $p = Get-Printer -Name $n -ErrorAction Stop; [pscustomobject]@{ status = "$($p.PrinterStatus)"; jobs = $p.JobCount } | ConvertTo-Json -Compress`
-      const { stdout } = await run('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', `& {${script}} '${name.replace(/'/g, "''")}'`], { timeout: 8000, windowsHide: true })
-      const info = JSON.parse(stdout.trim()) as { status: string; jobs: number }
-      const ok = /normal|idle|printing|0/i.test(info.status)
-      return {
-        driver: this.driver,
-        state: ok ? (info.jobs > 0 ? ('busy' as const) : ('ready' as const)) : ('error' as const),
-        printerName: name,
-        message: ok ? (info.jobs ? `${info.jobs} job(s) in Windows queue` : undefined) : `Printer reports: ${info.status}`
-      }
-    } catch (e) {
-      return { driver: this.driver, state: 'disconnected' as const, printerName: name, message: `Printer "${name}" not found or offline` }
+    const { list, queue4x6: name, stripsUncut } = await this.choice()
+    if (!name) return { driver: this.driver, state: 'disconnected' as const, message: 'No DNP printer found. Connect it by USB and switch it on.' }
+    const info = list.find((p) => p.name === name)
+    if (!info?.status) return { driver: this.driver, state: 'ready' as const, printerName: name }
+    const ok = /normal|idle|printing|^0$/i.test(info.status)
+    const notes = [
+      info.jobs ? `${info.jobs} job(s) in Windows queue` : '',
+      stripsUncut ? '2×6 strips print uncut (no "2x6 cut" printer set up)' : ''
+    ].filter(Boolean)
+    return {
+      driver: this.driver,
+      state: ok ? (info.jobs ? ('busy' as const) : ('ready' as const)) : ('error' as const),
+      printerName: name,
+      message: ok ? notes.join(' · ') || undefined : `Printer reports: ${info.status}`
     }
   }
 }

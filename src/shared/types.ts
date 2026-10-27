@@ -187,16 +187,26 @@ export interface PrinterStatus {
 }
 
 export interface DeviceSettings {
-  cameraDriver: 'mock' | 'canon-edsdk'
-  printerDriver: 'mock' | 'windows-driver'
-  /** Windows printer queue whose default preferences are 4x6 (no cut). */
+  /** 'auto' = Canon over USB on Windows, mock camera elsewhere. */
+  cameraDriver: 'auto' | 'mock' | 'canon-edsdk'
+  /** 'auto' = Windows driver on Windows, mock printer elsewhere. */
+  printerDriver: 'auto' | 'mock' | 'windows-driver'
+  /** Windows printer queue whose default preferences are 4x6 (no cut). Empty = detect the DNP printer. */
   printerName4x6: string
   /**
    * A second Windows queue for the same DNP printer whose default preferences are
    * 4x6 with the "2 inch cut" option. Chromium printing can't pick DNP cut modes itself,
-   * so each format gets its own queue. See docs/HARDWARE_SETUP.md.
+   * so each format gets its own queue. Empty = detect it (falls back to the 4x6 queue, uncut).
    */
   printerName2x6: string
+}
+
+/** Which printer queues the app will actually use, for the Devices screen. */
+export interface PrinterDetection {
+  installed: string[]
+  queue4x6?: string
+  queue2x6?: string
+  stripsUncut: boolean
 }
 
 export interface CaptureResult {

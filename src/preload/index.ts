@@ -8,7 +8,7 @@ const methods = [
   'listEvents', 'saveEvent', 'deleteEvent', 'setActiveEvent', 'listTemplates', 'previewTemplate', 'listSessions', 'openEventFolder',
   'chooseTemplateFile', 'prepareTemplateImport', 'getTemplateArtwork', 'saveTemplate', 'deleteTemplate', 'discardTemplateDraft',
   'previewTemplateDraft', 'testPrintTemplate',
-  'getDeviceSettings', 'saveDeviceSettings', 'listPrinters', 'reconnectCamera', 'getDevices',
+  'getDeviceSettings', 'saveDeviceSettings', 'detectPrinters', 'reconnectCamera', 'getDevices',
   'getExposure', 'setExposure', 'applyExposure', 'testShot',
   'duplicateEvent', 'eventStats', 'exportEventPhotos', 'hasPin', 'verifyPin', 'setPin',
   'listPrintJobs', 'retryPrintJob', 'cancelPrintJob', 'markPrintJobPrinted', 'testPrint', 'appInfo', 'quit'

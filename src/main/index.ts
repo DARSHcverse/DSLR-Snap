@@ -10,6 +10,7 @@ import { canvasSize, SHEET, validateTemplate } from '../shared/layout'
 import type { DeviceSettings, ExposureKey, ExposureSettings, PrintFormat, Template, TemplateImportDraft, TemplateImportOptions, TestShot } from '../shared/types'
 import { BoothService } from './BoothService'
 import { exportEventPhotos } from './exportEvent'
+import { resolveCameraDriver, resolvePrinterDriver } from './detectDevices'
 import { PinLock } from './security/PinLock'
 import { analyzeShot } from './camera/analyzeShot'
 import { applyExposure, readExposure, withFlashSafeShutters } from './camera/applyExposure'
@@ -76,7 +77,8 @@ function bridgePath(): string {
 }
 
 function makeCamera(s: DeviceSettings): CameraAdapter {
-  const cam: CameraAdapter = s.cameraDriver === 'canon-edsdk' ? new CanonBridgeCamera(bridgePath()) : new MockCamera()
+  const driver = resolveCameraDriver(s.cameraDriver, { platform: process.platform, bridgeInstalled: existsSync(bridgePath()) })
+  const cam: CameraAdapter = driver === 'canon-edsdk' ? new CanonBridgeCamera(bridgePath()) : new MockCamera()
   cam.on('status', () => void broadcastDevices())
   cam.on('log', (m: string) => void log('info', `camera: ${m.trim()}`))
   cam.on('exposure', () => win?.webContents.send('booth:exposure'))
@@ -84,7 +86,7 @@ function makeCamera(s: DeviceSettings): CameraAdapter {
 }
 
 function makePrinter(s: DeviceSettings): PrinterAdapter {
-  return s.printerDriver === 'windows-driver' ? new WindowsPrinter(() => db.getDeviceSettings()) : new MockPrinter(join(dataDir, 'mock-prints'))
+  return resolvePrinterDriver(s.printerDriver, process.platform) === 'windows-driver' ? new WindowsPrinter(() => db.getDeviceSettings()) : new MockPrinter(join(dataDir, 'mock-prints'))
 }
 
 async function connectCamera(): Promise<void> {
@@ -349,7 +351,7 @@ function registerIpc(): void {
     if (prev.printerDriver !== s.printerDriver) printer = makePrinter(s)
     await broadcastDevices()
   })
-  handle('listPrinters', () => printer.listPrinters())
+  handle('detectPrinters', () => printer.detect())
   handle('reconnectCamera', async () => {
     await camera.disconnect().catch(() => undefined)
     await connectCamera()

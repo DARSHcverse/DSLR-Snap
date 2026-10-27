@@ -50,10 +50,11 @@ const MIGRATIONS: string[] = [
 const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(min, Math.round(v)))
 
 export const DEFAULT_DEVICE_SETTINGS: DeviceSettings = {
-  cameraDriver: 'mock',
-  printerDriver: 'mock',
-  printerName4x6: 'DP-DS-RX1HS',
-  printerName2x6: 'DP-DS-RX1HS (2x6 cut)'
+  cameraDriver: 'auto',
+  printerDriver: 'auto',
+  // Empty = detect the DNP printer, whatever Windows named it.
+  printerName4x6: '',
+  printerName2x6: ''
 }
 
 const now = () => new Date().toISOString()

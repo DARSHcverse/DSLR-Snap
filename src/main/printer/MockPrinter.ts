@@ -25,7 +25,8 @@ export class MockPrinter implements PrinterAdapter {
     return { driver: this.driver, state: 'ready' as const, printerName: `Folder: ${this.outDir}` }
   }
 
-  async listPrinters() {
-    return ['Mock printer (saves to folder)']
+  async detect() {
+    const name = 'Mock printer (saves to folder)'
+    return { installed: [name], queue4x6: name, queue2x6: name, stripsUncut: false }
   }
 }

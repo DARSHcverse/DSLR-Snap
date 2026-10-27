@@ -29,8 +29,8 @@ class FakePrinter implements PrinterAdapter {
   async getStatus() {
     return { driver: this.driver, state: 'ready' as const }
   }
-  async listPrinters() {
-    return []
+  async detect() {
+    return { installed: [], stripsUncut: false }
   }
 }
 

@@ -142,13 +142,17 @@ export default function Booth({ onNeedSetup }: Props) {
 
   const cameraReady = devices?.camera.state === 'ready' || devices?.camera.state === 'busy'
   const showLive = state.name === 'countdown' || state.name === 'capturing'
+  // The feed runs from "Tap to start" through every photo (also behind the photo review),
+  // so guests see themselves the whole time and the camera never restarts mid-session.
+  const liveOn = cameraReady && (state.name === 'welcome' || showLive || state.name === 'preview')
 
   return (
     <div className="screen booth">
       {flash && <div className="flash" />}
+      <LiveView active={liveOn} hint={showLive ? 'Look at the camera ↑' : undefined} />
 
       {state.name === 'welcome' && (
-        <div className="welcome" onClick={cameraReady ? start : undefined}>
+        <div className={`welcome${liveOn ? ' over-live' : ''}`} onClick={cameraReady ? start : undefined}>
           <p className="eyebrow">{active.event.name}</p>
           <h1 className="display">Tap to start</h1>
           <p className="muted">
@@ -166,7 +170,6 @@ export default function Booth({ onNeedSetup }: Props) {
 
       {showLive && (
         <div className="capture-stage">
-          <LiveView active={showLive} />
           <div className="shot-counter">
             Photo {state.shot + 1} of {cfg.photosPerSession}
           </div>

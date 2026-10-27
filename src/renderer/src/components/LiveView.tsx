@@ -1,20 +1,20 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 
 /**
- * Polls the camera for live-view frames (~12 fps). If the camera has no live view,
- * shows a "look at the camera" prompt instead so the flow still works.
+ * Polls the camera for live-view frames (~12 fps) while `active`. Keep it mounted across
+ * booth screens so the feed doesn't restart (and go black) between photos.
+ * If the camera has no live view, shows `hint` (if given) so the flow still works.
  */
-export default function LiveView({ active }: { active: boolean }) {
+export default function LiveView({ active, hint }: { active: boolean; hint?: string }) {
   const [frame, setFrame] = useState<string | null>(null)
   const [supported, setSupported] = useState<boolean | null>(null)
-  const running = useRef(false)
 
   useEffect(() => {
     if (!active) return
     let stop = false
-    running.current = true
     ;(async () => {
       const ok = await window.booth.liveViewStart().catch(() => false)
+      if (stop) return
       setSupported(ok)
       while (ok && !stop) {
         const started = performance.now()
@@ -25,17 +25,15 @@ export default function LiveView({ active }: { active: boolean }) {
     })()
     return () => {
       stop = true
-      running.current = false
+      setFrame(null)
+      setSupported(null)
       void window.booth.liveViewStop()
     }
   }, [active])
 
+  if (!active) return null
   if (supported === false) {
-    return (
-      <div className="liveview placeholder">
-        <p>Look at the camera ↑</p>
-      </div>
-    )
+    return <div className="liveview placeholder">{hint && <p>{hint}</p>}</div>
   }
   return <div className="liveview">{frame && <img src={frame} alt="" className="mirror" />}</div>
 }

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { DeviceSnapshot } from '@shared/api'
-import type { DeviceSettings, EventStats, PrintJob, SessionRecord } from '@shared/types'
+import type { DeviceSettings, EventStats, PrinterDetection, PrintJob, SessionRecord } from '@shared/types'
 import CameraSetup from './CameraSetup'
 import EventsTab from './Events'
 import TemplatesTab, { message } from './Templates'
@@ -60,25 +60,37 @@ function StatusPills({ d }: { d: DeviceSnapshot }) {
 
 function DevicesTab({ devices }: { devices: DeviceSnapshot | null }) {
   const [s, setS] = useState<DeviceSettings | null>(null)
-  const [printers, setPrinters] = useState<string[]>([])
+  const [found, setFound] = useState<PrinterDetection | null>(null)
   const [msg, setMsg] = useState<string | null>(null)
 
+  const detect = () => window.booth.detectPrinters().then(setFound).catch(() => setFound(null))
   useEffect(() => {
     window.booth.getDeviceSettings().then(setS)
-    window.booth.listPrinters().then(setPrinters).catch(() => setPrinters([]))
+    void detect()
+    // Pick up a printer plugged in while this screen is open.
+    const t = setInterval(() => void detect(), 5000)
+    return () => clearInterval(t)
   }, [])
   if (!s) return <div className="spinner" />
 
   const save = async (next: DeviceSettings) => {
     setS(next)
     await window.booth.saveDeviceSettings(next)
-    window.booth.listPrinters().then(setPrinters).catch(() => undefined)
+    void detect()
   }
-  const printerField = (key: 'printerName4x6' | 'printerName2x6', label: string) => (
-    <label>{label}
-      <input list="printers" value={s[key]} onChange={(e) => setS({ ...s, [key]: e.target.value })} onBlur={() => save(s)} />
-    </label>
-  )
+  const printerField = (key: 'printerName4x6' | 'printerName2x6', label: string) => {
+    const detected = key === 'printerName4x6' ? found?.queue4x6 : found?.queue2x6
+    const installed = found?.installed ?? []
+    return (
+      <label>{label}
+        <select value={s[key]} onChange={(e) => save({ ...s, [key]: e.target.value })}>
+          <option value="">Automatic — {detected ?? 'no DNP printer found'}</option>
+          {installed.map((p) => <option key={p} value={p}>{p}</option>)}
+          {s[key] && !installed.includes(s[key]) && <option value={s[key]}>{s[key]} (not connected)</option>}
+        </select>
+      </label>
+    )
+  }
   const test = async (format: '4x6' | '2x6') => {
     setMsg(`Sending ${format} test print…`)
     try {
@@ -96,8 +108,9 @@ function DevicesTab({ devices }: { devices: DeviceSnapshot | null }) {
         <p className="muted">{devices?.camera.model ?? '—'} · {devices?.camera.state}{devices?.camera.message ? ` · ${devices.camera.message}` : ''}</p>
         <label>Driver
           <select value={s.cameraDriver} onChange={(e) => save({ ...s, cameraDriver: e.target.value as DeviceSettings['cameraDriver'] })}>
-            <option value="mock">Mock camera (testing)</option>
+            <option value="auto">Automatic (Canon over USB)</option>
             <option value="canon-edsdk">Canon EOS via USB (EDSDK)</option>
+            <option value="mock">Mock camera (testing)</option>
           </select>
         </label>
         <button className="btn" onClick={() => window.booth.reconnectCamera()}>Reconnect camera</button>
@@ -107,15 +120,18 @@ function DevicesTab({ devices }: { devices: DeviceSnapshot | null }) {
         <p className="muted">{devices?.printer.printerName ?? '—'} · {devices?.printer.state}{devices?.printer.message ? ` · ${devices.printer.message}` : ''}</p>
         <label>Driver
           <select value={s.printerDriver} onChange={(e) => save({ ...s, printerDriver: e.target.value as DeviceSettings['printerDriver'] })}>
-            <option value="mock">Mock printer (saves to folder)</option>
+            <option value="auto">Automatic (DNP via Windows)</option>
             <option value="windows-driver">Windows printer driver (DNP)</option>
+            <option value="mock">Mock printer (saves to folder)</option>
           </select>
         </label>
-        {s.printerDriver === 'windows-driver' && (
+        {devices?.printer.driver === 'windows-driver' && (
           <>
-            <datalist id="printers">{printers.map((p) => <option key={p} value={p} />)}</datalist>
-            {printerField('printerName4x6', 'Printer queue for 4×6')}
-            {printerField('printerName2x6', 'Printer queue for 2×6 (set to 2" cut)')}
+            {printerField('printerName4x6', 'Printer for 4×6')}
+            {printerField('printerName2x6', 'Printer for 2×6 strips')}
+            {found?.stripsUncut && !s.printerName2x6 && (
+              <p className="muted small">Strips will print as one uncut 4×6. To cut them automatically, add the DNP printer a second time with "2 inch cut" turned on.</p>
+            )}
           </>
         )}
         <div className="row">

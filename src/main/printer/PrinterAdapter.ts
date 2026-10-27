@@ -1,4 +1,4 @@
-import type { PrintFormat, PrinterStatus } from '../../shared/types'
+import type { PrintFormat, PrinterDetection, PrinterStatus } from '../../shared/types'
 
 export interface PrintRequest {
   filePath: string
@@ -15,5 +15,6 @@ export interface PrinterAdapter {
   readonly driver: PrinterStatus['driver']
   print(req: PrintRequest): Promise<void>
   getStatus(): Promise<Omit<PrinterStatus, 'queueLength'>>
-  listPrinters(): Promise<string[]>
+  /** Installed printers and the queues this adapter will print to. */
+  detect(): Promise<PrinterDetection>
 }

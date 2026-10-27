@@ -46,10 +46,10 @@ If the selftest crashes or errors on struct/stack issues: compare `Edsdk.cs` sig
 ## 2. Printer — DNP DS-RX1HS over USB
 
 1. Install DNP's official Windows driver for the DS-RX1HS.
-2. In Windows **Printers & scanners** you need **two queues** for the same printer:
-   - `DP-DS-RX1HS` → Printing preferences: paper **(6x4)**, no cut, borderless/overcoat as you like
-   - Add the printer again (same port) and rename it `DP-DS-RX1HS (2x6 cut)` → Printing preferences: paper **(6x4)** with **2-inch cut** enabled
-3. In the app: Admin → Devices → Printer driver = **Windows printer driver**, enter both queue names (they autocomplete).
+2. Plug it in. The app finds the DNP printer by itself (Admin → Devices shows "Automatic — <name>"), whatever Windows named it. No renaming needed.
+3. For **2×6 strips cut automatically**, Windows needs a second entry for the same printer with the cut turned on (until the app sets this up itself):
+   - Add the printer again (same port), give it a name containing `2x6` or `cut` (e.g. `DS-RX1 (2x6 cut)`) → Printing preferences: paper **(6x4)** with **2-inch cut** enabled
+   - Without it, strips still print, as one uncut 4×6, and Devices says so.
 4. Press **Test print 4×6** and **Test print 2×6**.
 
 Gate checks:

@@ -10,6 +10,7 @@ import type {
   ExposureState,
   FinishResult,
   PrintJob,
+  PrinterDetection,
   PrinterStatus,
   SessionRecord,
   Template,
@@ -69,7 +70,7 @@ export interface BoothApi {
 
   getDeviceSettings(): Promise<DeviceSettings>
   saveDeviceSettings(s: DeviceSettings): Promise<void>
-  listPrinters(): Promise<string[]>
+  detectPrinters(): Promise<PrinterDetection>
   reconnectCamera(): Promise<void>
   getDevices(): Promise<DeviceSnapshot>
   onDevices(cb: (d: DeviceSnapshot) => void): () => void
