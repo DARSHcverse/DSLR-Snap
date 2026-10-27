@@ -12,6 +12,7 @@ import { canvasSize, SHEET, validateTemplate } from '../shared/layout'
 import type { DeviceSettings, ExposureKey, ExposureSettings, Look, PrintFormat, Template, TemplateImportDraft, TemplateImportOptions, TestShot } from '../shared/types'
 import { BoothService } from './BoothService'
 import { exportEventPhotos } from './exportEvent'
+import { isBlockedWhileLocked, shouldLock } from './kiosk'
 import { resolveCameraDriver, resolvePrinterDriver } from './detectDevices'
 import { PinLock } from './security/PinLock'
 import { analyzeShot } from './camera/analyzeShot'
@@ -429,7 +430,22 @@ function registerIpc(): void {
     return s.bavail * s.bsize
   })
   handle('appInfo', () => ({ version: app.getVersion(), dataDir, logFile }))
-  handle('quit', () => app.quit())
+  handle('setBoothShowing', (showing: boolean) => applyBoothLock(!!showing))
+  handle('quit', () => {
+    allowQuit = true
+    app.quit()
+  })
+}
+
+// Kiosk lock: while guests are on the booth screen, the window covers the taskbar and ignores
+// close/quit/reload shortcuts. Only the installed app locks, so development stays usable.
+let boothLocked = false
+let allowQuit = false
+function applyBoothLock(boothShowing: boolean): void {
+  const lock = shouldLock({ packaged: app.isPackaged, boothShowing, kioskLock: db.getDeviceSettings().kioskLock })
+  if (lock === boothLocked) return
+  boothLocked = lock
+  win?.setKiosk(lock)
 }
 
 function createWindow(): void {
@@ -444,6 +460,13 @@ function createWindow(): void {
   // Block navigation away from the app and pop-ups.
   win.webContents.on('will-navigate', (e) => e.preventDefault())
   win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
+  win.webContents.on('before-input-event', (e, input) => {
+    if (boothLocked && isBlockedWhileLocked(input)) e.preventDefault()
+  })
+  win.on('close', (e) => {
+    if (boothLocked && !allowQuit) e.preventDefault()
+  })
+  win.on('session-end', () => (allowQuit = true)) // Windows shutting down
   win.webContents.on('render-process-gone', (_e, d) => void log('error', `renderer gone: ${d.reason}`))
 
   if (process.env.ELECTRON_RENDERER_URL) void win.loadURL(process.env.ELECTRON_RENDERER_URL)
@@ -546,6 +569,7 @@ app.whenReady().then(async () => {
 
 app.on('window-all-closed', () => app.quit())
 app.on('before-quit', () => {
+  allowQuit = true
   shuttingDown = true
   clearInterval(devicesTimer)
   printQueue?.stop()

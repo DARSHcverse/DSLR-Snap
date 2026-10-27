@@ -12,7 +12,7 @@ const methods = [
   'getDeviceSettings', 'saveDeviceSettings', 'detectPrinters', 'reconnectCamera', 'getDevices',
   'getExposure', 'setExposure', 'applyExposure', 'testShot',
   'duplicateEvent', 'eventStats', 'exportEventPhotos', 'hasPin', 'verifyPin', 'setPin',
-  'listPrintJobs', 'retryPrintJob', 'cancelPrintJob', 'markPrintJobPrinted', 'testPrint', 'newPaperRoll', 'eventGalleryLink', 'diskFree', 'appInfo', 'quit',
+  'listPrintJobs', 'retryPrintJob', 'cancelPrintJob', 'markPrintJobPrinted', 'testPrint', 'newPaperRoll', 'eventGalleryLink', 'diskFree', 'setBoothShowing', 'appInfo', 'quit',
   'accountState', 'accountSignIn', 'accountRedeemCode', 'accountRefresh', 'accountSignOut', 'openAccountWebsite'
 ] as const
 

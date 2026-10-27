@@ -55,6 +55,7 @@ const MIGRATIONS: string[] = [
 const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(min, Math.round(v)))
 
 export const DEFAULT_DEVICE_SETTINGS: DeviceSettings = {
+  kioskLock: true,
   cameraDriver: 'auto',
   printerDriver: 'auto',
   // Empty = detect the DNP printer, whatever Windows named it.

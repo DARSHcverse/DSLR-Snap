@@ -188,6 +188,17 @@ function DevicesTab({ devices }: { devices: DeviceSnapshot | null }) {
       </div>
       <PaperCard paper={devices?.paper ?? null} />
       <div className="card">
+        <h3>Booth lock</h3>
+        <label className="check">
+          <input type="checkbox" checked={s.kioskLock} onChange={(e) => save({ ...s, kioskLock: e.target.checked })} />
+          Lock the screen while guests use the booth
+        </label>
+        <p className="muted small">
+          Full screen over the Windows taskbar, and close or quit shortcuts are ignored. To leave, open the operator menu (five taps in the top-left corner, or Ctrl+Shift+A), so set an operator PIN too.
+          Works in the installed app. The Windows key can't be blocked by any app, so for public venues also turn on Windows' own kiosk mode (Assigned Access).
+        </p>
+      </div>
+      <div className="card">
         <h3>Digital delivery</h3>
         <p className="muted">
           {devices?.uploads.enabled

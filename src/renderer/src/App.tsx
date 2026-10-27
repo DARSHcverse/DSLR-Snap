@@ -14,6 +14,9 @@ export default function App() {
   modeRef.current = mode
   const taps = useRef<number[]>([])
 
+  // The kiosk lock follows the guest screen; the PIN keypad still counts as the booth.
+  useEffect(() => void window.booth.setBoothShowing(mode !== 'admin').catch(() => undefined), [mode])
+
   const openAdmin = async () => setMode((await window.booth.hasPin().catch(() => false)) ? 'pin' : 'admin')
 
   useEffect(() => {

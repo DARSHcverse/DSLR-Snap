@@ -207,6 +207,11 @@ export interface DeviceSettings {
    * so each format gets its own queue. Empty = detect it (falls back to the 4x6 queue, uncut).
    */
   printerName2x6: string
+  /**
+   * While the booth screen shows: full screen over the taskbar, close/quit shortcuts ignored.
+   * Leaving it goes through the operator menu (and its PIN). Installed app only.
+   */
+  kioskLock: boolean
 }
 
 /** Which printer queues the app will actually use, for the Devices screen. */

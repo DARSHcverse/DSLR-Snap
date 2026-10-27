@@ -116,6 +116,8 @@ export interface BoothApi {
   eventGalleryLink(eventId: string): Promise<{ url: string; qr: string }>
   /** Free bytes on the drive that holds the photos. */
   diskFree(): Promise<number>
+  /** Booth screen shown/hidden: applies the kiosk lock if it's on. */
+  setBoothShowing(showing: boolean): Promise<void>
   appInfo(): Promise<{ version: string; dataDir: string; logFile: string }>
   quit(): Promise<void>
 }
