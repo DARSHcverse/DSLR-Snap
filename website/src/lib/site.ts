@@ -2,10 +2,33 @@ export const site = {
   name: "DSLR Snap",
   title: "DSLR Snap – Photo Booth Software for Windows",
   description:
-    "Photo booth software for Windows. Connect a Canon DSLR and a dye-sub printer, design your print in minutes, and run events that keep working even when the venue Wi-Fi doesn't.",
-  // TODO: replace with the inbox that should receive early-access requests before going live.
+    "Photo booth software for Windows: DSLR photo booth, glam B&W, green screen and AI backgrounds, 360 booth with GoPro, video guestbook, boomerangs and QR sharing. Works offline at events.",
+  /** Where early-access requests and support mail go. TODO(business): confirm the inbox exists. */
   contactEmail: "hello@dslrsnap.com",
+  supportEmail: "support@dslrsnap.com",
+  /**
+   * Shown in the footer, legal pages and structured data. TODO(business): fill these in before
+   * taking payments; Stripe and UK law require the trading entity and a contact address.
+   */
+  business: {
+    legalName: "", // e.g. "DSLR Snap Ltd"
+    companyNumber: "", // Companies House number, if a company
+    vatNumber: "", // once VAT-registered
+    address: "", // registered / trading address
+    country: "United Kingdom", // TODO(business): confirm
+    jurisdiction: "England and Wales", // TODO(business): confirm governing law
+  },
+  /** TODO(marketing): add profile URLs as they're created; empty ones are hidden. */
+  social: {
+    instagram: "",
+    facebook: "",
+    youtube: "",
+    tiktok: "",
+  },
 };
+
+/** The trading name for legal text: the company name once set, otherwise the product name. */
+export const tradingName = site.business.legalName || site.name;
 
 // Vercel sets VERCEL_PROJECT_PRODUCTION_URL on every deployment; localhost covers `next dev`.
 export const siteUrl = process.env.VERCEL_PROJECT_PRODUCTION_URL

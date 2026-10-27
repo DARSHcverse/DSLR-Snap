@@ -1,10 +1,12 @@
 import type { Metadata, Viewport } from "next";
 import { site, siteUrl } from "@/lib/site";
+import { Analytics } from "@vercel/analytics/next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import "./globals.css";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
-  title: site.title,
+  title: { default: site.title, template: `%s · ${site.name}` },
   description: site.description,
   applicationName: site.name,
   keywords: [
@@ -14,8 +16,15 @@ export const metadata: Metadata = {
     "Canon photo booth software",
     "DNP printer photo booth",
     "photo booth templates",
+    "360 photo booth software",
+    "glam booth software",
+    "green screen photo booth software",
+    "video guestbook software",
+    "dslrBooth alternative",
   ],
   alternates: { canonical: "/" },
+  // Google Search Console: set NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION (the "HTML tag" method's content value).
+  verification: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION ? { google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION } : undefined,
   openGraph: {
     type: "website",
     url: "/",
@@ -38,7 +47,12 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en" className="h-full">
-      <body className="min-h-full">{children}</body>
+      <body className="min-h-full">
+        {children}
+        {/* Cookieless and anonymous, so no consent banner is needed. Active once deployed on Vercel. */}
+        <Analytics />
+        <SpeedInsights />
+      </body>
     </html>
   );
 }

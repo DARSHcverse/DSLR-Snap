@@ -3,42 +3,11 @@ import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
 import { Icon, type IconName } from "@/components/Icon";
 import { PrintMock } from "@/components/PrintMock";
-import { accountsEnabled } from "@/lib/config";
-import { PLAN_INCLUDES, PLANS } from "@/lib/plans";
-import { earlyAccessHref, site, siteUrl } from "@/lib/site";
-
-const FEATURES: { icon: IconName; title: string; body: string }[] = [
-  {
-    icon: "camera",
-    title: "Real DSLR quality",
-    body: "Live view on screen, a countdown, then a proper shot from your Canon. Set ISO, aperture, shutter and white balance, take test shots, and save it all per event.",
-  },
-  {
-    icon: "printer",
-    title: "Prints in seconds",
-    body: "2×6 strips and 4×6 prints on dye-sub printers. Strips print two-up and get cut by the printer, so you never waste paper.",
-  },
-  {
-    icon: "offline",
-    title: "Works without Wi-Fi",
-    body: "Capture, design and printing all happen on the laptop. Bad venue internet can't stop the booth. Cloud uploads wait and send when you're back online.",
-  },
-  {
-    icon: "layout",
-    title: "Templates in minutes",
-    body: "Start from built-in strip and 4×6 layouts, or import a design from Canva. DSLR Snap finds the photo windows for you.",
-  },
-  {
-    icon: "qr",
-    title: "QR downloads",
-    body: "Guests scan a QR code to get their photos on their phone. It's optional and you can switch it on per event.",
-  },
-  {
-    icon: "images",
-    title: "Live guest gallery",
-    body: "The welcome screen shows the night's photos and GIFs on a loop, which brings more people over to the booth.",
-  },
-];
+import { PLANS } from "@/lib/plans";
+import { earlyAccessHref, site, siteUrl, tradingName } from "@/lib/site";
+import { FAQ, FEATURES } from "@/lib/marketing";
+import { PricingCards } from "@/components/Pricing";
+import { JsonLd } from "@/components/ContentPage";
 
 const STEPS = [
   { title: "Event", body: "Name, date and the text that goes on the print." },
@@ -71,46 +40,38 @@ const RELIABILITY: { icon: IconName; title: string; body: string }[] = [
   },
 ];
 
-const FAQ = [
+const jsonLd = [
   {
-    q: "What happens if my subscription lapses at an event?",
-    a: "Nothing at the event. DSLR Snap checks your licence when it's online and keeps working offline for 14 days, so a venue without Wi-Fi never stops the booth. Renew within that time and nothing changes.",
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    name: site.name,
+    description: site.description,
+    applicationCategory: "MultimediaApplication",
+    operatingSystem: "Windows 10, Windows 11",
+    url: siteUrl,
+    offers: PLANS.map((p) => ({
+      "@type": "Offer",
+      name: `${p.name} plan`,
+      price: p.id === "yearly" ? "168" : "30",
+      priceCurrency: "USD",
+      category: "subscription",
+    })),
   },
   {
-    q: "Which cameras does DSLR Snap support?",
-    a: "DSLR Snap is built around the Canon EOS R100 using Canon's official SDK. Support for more Canon bodies is next, with Nikon and Sony planned after that.",
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: FAQ.map((f) => ({ "@type": "Question", name: f.q, acceptedAnswer: { "@type": "Answer", text: f.a } })),
   },
   {
-    q: "Which printers work?",
-    a: "DSLR Snap is built for the DNP DS-RX1HS dye-sub printer, for both 4×6 prints and 2×6 strips. Mitsubishi and Citizen printers are on the roadmap.",
-  },
-  {
-    q: "Do I need internet at the event?",
-    a: "No. Taking photos, designing prints and printing all work offline. Internet is only needed if you want guests to download photos by QR code. Uploads queue up and send when a connection is available.",
-  },
-  {
-    q: "What computer do I need?",
-    a: "A Windows 10 or 11 laptop or tablet with a touch screen works best. A Surface Pro makes a great booth screen.",
-  },
-  {
-    q: "Can I use my own designs?",
-    a: "Yes. Make your design in Canva or any design tool, export it as a PNG with see-through photo windows, and import it. DSLR Snap finds the windows, and you can drag them to adjust.",
-  },
-  {
-    q: "When can I get it?",
-    a: "DSLR Snap is in early access. Email us to join and we'll send you the installer when your spot is ready.",
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    name: tradingName,
+    url: siteUrl,
+    logo: `${siteUrl}/icon.svg`,
+    email: site.supportEmail,
+    sameAs: Object.values(site.social).filter(Boolean),
   },
 ];
-
-const jsonLd = {
-  "@context": "https://schema.org",
-  "@type": "SoftwareApplication",
-  name: site.name,
-  description: site.description,
-  applicationCategory: "MultimediaApplication",
-  operatingSystem: "Windows 10, Windows 11",
-  url: siteUrl,
-};
 
 function SectionHeading({ eyebrow, title, body }: { eyebrow: string; title: string; body?: string }) {
   return (
@@ -127,10 +88,7 @@ function SectionHeading({ eyebrow, title, body }: { eyebrow: string; title: stri
 export default function Home() {
   return (
     <>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }}
-      />
+      <JsonLd data={jsonLd} />
       <Header />
       <main id="top" className="overflow-x-clip">
         {/* Hero */}
@@ -145,9 +103,9 @@ export default function Home() {
                 Turn your DSLR into a <span className="text-accent">photo booth</span> guests line up for.
               </h1>
               <p className="mx-auto mt-6 max-w-xl text-lg text-pretty text-muted lg:mx-0">
-                Connect a Canon camera and a dye-sub printer to a Windows laptop. DSLR Snap handles the
-                countdown, the photo, the print and the QR download, and keeps going when the venue{" "}
-                <span className="whitespace-nowrap">Wi-Fi</span> drops.
+                DSLR photo booth, glam B&amp;W, green screen and AI backgrounds, 360 with GoPro and a video
+                guestbook, in one Windows app. Prints, GIFs and QR downloads, and it keeps going when the
+                venue <span className="whitespace-nowrap">Wi-Fi</span> drops.
               </p>
               <div className="mt-9 flex flex-col items-center gap-3 sm:flex-row sm:justify-center lg:justify-start">
                 <a
@@ -165,7 +123,7 @@ export default function Home() {
                 </a>
               </div>
               <ul className="mt-8 flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm text-muted lg:justify-start">
-                {["Canon DSLR", "DNP dye-sub printing", "Works offline"].map((item) => (
+                {["Canon DSLR", "GoPro 360", "DNP printing", "Works offline"].map((item) => (
                   <li key={item} className="flex items-center gap-1.5">
                     <Icon name="check" className="size-4 text-ok" />
                     {item}
@@ -336,48 +294,7 @@ export default function Home() {
             title="One plan, everything included"
             body="No feature tiers and no per-print fees. Pay monthly or save with a yearly plan."
           />
-          <div className="mx-auto mt-14 grid max-w-3xl gap-4 sm:grid-cols-2">
-            {PLANS.map((plan) => (
-              <div
-                key={plan.name}
-                className={`relative flex flex-col rounded-card border p-7 ${
-                  plan.featured ? "border-accent bg-surface-2" : "border-line bg-surface"
-                }`}
-              >
-                {plan.featured && (
-                  <span className="absolute -top-3 left-7 rounded-full bg-accent px-3 py-1 text-xs font-semibold text-accent-ink">
-                    Best value
-                  </span>
-                )}
-                <h3 className="text-lg font-semibold">{plan.name}</h3>
-                <p className="mt-4 flex items-baseline gap-1">
-                  <span className="font-display text-5xl font-bold tracking-[-0.02em]">{plan.price}</span>
-                  <span className="text-muted">USD{plan.period}</span>
-                </p>
-                <p className="mt-2 text-sm text-muted">{plan.note}</p>
-                <ul className="mt-6 mb-8 flex-1 space-y-2.5">
-                  {PLAN_INCLUDES.map((item) => (
-                    <li key={item} className="flex items-start gap-2.5">
-                      <Icon name="check" className="mt-0.5 size-5 shrink-0 text-ok" />
-                      {item}
-                    </li>
-                  ))}
-                </ul>
-                <a
-                  href={accountsEnabled ? `/signup?plan=${plan.id}` : earlyAccessHref}
-                  className={`rounded-full px-6 py-3 text-center font-semibold transition-transform active:scale-[0.97] ${
-                    plan.featured ? "bg-accent text-accent-ink" : "border border-line hover:bg-surface-2"
-                  }`}
-                >
-                  {accountsEnabled ? "Start free trial" : "Get early access"}
-                </a>
-              </div>
-            ))}
-          </div>
-          <p className="mt-6 text-center text-sm text-muted">
-            Extra booth computers $50 a year each. Prices in US dollars; local taxes may apply at checkout.
-            The free trial has no time limit: photos carry a small watermark until you choose a plan.
-          </p>
+          <PricingCards />
         </section>
 
         {/* FAQ */}
