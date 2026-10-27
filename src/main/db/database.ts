@@ -1,6 +1,7 @@
 import Database from 'better-sqlite3'
 import { randomUUID } from 'node:crypto'
 import { todayIso } from '../../shared/dates'
+import { LOOKS } from '../../shared/looks'
 import { BUILT_IN_TEMPLATES } from '../../shared/templates'
 import type {
   BoothEvent,
@@ -44,7 +45,10 @@ const MIGRATIONS: string[] = [
    ALTER TABLE events ADD COLUMN done_screen_seconds INTEGER NOT NULL DEFAULT 20;
    ALTER TABLE events ADD COLUMN show_gallery INTEGER NOT NULL DEFAULT 1;
    UPDATE events SET shot_interval_seconds = countdown_seconds;
-   ALTER TABLE sessions ADD COLUMN gif_path TEXT;`
+   ALTER TABLE sessions ADD COLUMN gif_path TEXT;`,
+  `ALTER TABLE events ADD COLUMN look TEXT NOT NULL DEFAULT 'colour';
+   ALTER TABLE events ADD COLUMN skin_smoothing INTEGER NOT NULL DEFAULT 50;
+   ALTER TABLE events ADD COLUMN colour_copy INTEGER NOT NULL DEFAULT 0;`
 ]
 
 const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(min, Math.round(v)))
@@ -58,6 +62,7 @@ export const DEFAULT_DEVICE_SETTINGS: DeviceSettings = {
 }
 
 const now = () => new Date().toISOString()
+const LOOK_IDS = new Set<string>(LOOKS.map((l) => l.id))
 
 export class BoothDatabase {
   readonly db: Database.Database
@@ -152,6 +157,7 @@ export class BoothDatabase {
       printCopies: r.print_copies, autoPrint: !!r.auto_print, galleryEnabled: !!r.gallery_enabled,
       shotIntervalSeconds: r.shot_interval_seconds, photoReviewSeconds: r.photo_review_seconds,
       doneScreenSeconds: r.done_screen_seconds, showGallery: !!r.show_gallery,
+      look: LOOK_IDS.has(r.look) ? r.look : 'colour', skinSmoothing: r.skin_smoothing, colourCopy: !!r.colour_copy,
       exposure: r.exposure ? JSON.parse(r.exposure) : undefined, createdAt: r.created_at
     }
   }
@@ -179,24 +185,29 @@ export class BoothDatabase {
       photoReviewSeconds: clamp(e.photoReviewSeconds ?? 3, 0, 10),
       doneScreenSeconds: clamp(e.doneScreenSeconds ?? 20, 5, 120),
       showGallery: e.showGallery ?? true,
+      look: e.look && LOOK_IDS.has(e.look) ? e.look : 'colour',
+      skinSmoothing: clamp(e.skinSmoothing ?? 50, 0, 100),
+      colourCopy: e.colourCopy ?? false,
       retakesAllowed: clamp(e.retakesAllowed, 0, 10),
       printCopies: clamp(e.printCopies, 0, 10)
     }
     this.db
       .prepare(
         `INSERT INTO events (id, name, date, template_id, photos_per_session, countdown_seconds, retakes_allowed, print_copies, auto_print, gallery_enabled,
-           shot_interval_seconds, photo_review_seconds, done_screen_seconds, show_gallery, exposure, created_at)
+           shot_interval_seconds, photo_review_seconds, done_screen_seconds, show_gallery, look, skin_smoothing, colour_copy, exposure, created_at)
          VALUES (@id, @name, @date, @templateId, @photosPerSession, @countdownSeconds, @retakesAllowed, @printCopies, @autoPrint, @galleryEnabled,
-           @shotIntervalSeconds, @photoReviewSeconds, @doneScreenSeconds, @showGallery, @exposure, @createdAt)
+           @shotIntervalSeconds, @photoReviewSeconds, @doneScreenSeconds, @showGallery, @look, @skinSmoothing, @colourCopy, @exposure, @createdAt)
          ON CONFLICT(id) DO UPDATE SET name=@name, date=@date, template_id=@templateId, photos_per_session=@photosPerSession,
            countdown_seconds=@countdownSeconds, retakes_allowed=@retakesAllowed, print_copies=@printCopies, auto_print=@autoPrint, gallery_enabled=@galleryEnabled,
-           shot_interval_seconds=@shotIntervalSeconds, photo_review_seconds=@photoReviewSeconds, done_screen_seconds=@doneScreenSeconds, show_gallery=@showGallery`
+           shot_interval_seconds=@shotIntervalSeconds, photo_review_seconds=@photoReviewSeconds, done_screen_seconds=@doneScreenSeconds, show_gallery=@showGallery,
+           look=@look, skin_smoothing=@skinSmoothing, colour_copy=@colourCopy`
       )
       .run({
         ...ev,
         autoPrint: ev.autoPrint ? 1 : 0,
         galleryEnabled: ev.galleryEnabled ? 1 : 0,
         showGallery: ev.showGallery ? 1 : 0,
+        colourCopy: ev.colourCopy ? 1 : 0,
         exposure: ev.exposure ? JSON.stringify(ev.exposure) : null
       })
     // Exposure is only written on insert; afterwards saveEventExposure owns it.

@@ -67,7 +67,7 @@ img { -webkit-user-drag: none; }
 
 .capture-stage { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
 .liveview { position: absolute; inset: 0; background: #000; display: flex; align-items: center; justify-content: center; }
-.liveview img { width: 100%; height: 100%; object-fit: contain; }
+.liveview img { width: 100%; height: 100%; object-fit: cover; } /* fill the screen; edges are cropped, the saved photo is not */
 .liveview .mirror { transform: scaleX(-1); } /* guests expect a mirror; the saved photo is not mirrored */
 .liveview.placeholder p { font-size: 48px; color: var(--muted); }
 .shot-counter { position: absolute; top: 24px; left: 50%; transform: translateX(-50%); background: rgba(0, 0, 0, 0.55); padding: 10px 22px; border-radius: 999px; font-weight: 600; font-size: 20px; }
@@ -297,3 +297,10 @@ input[type='checkbox'] { width: 22px; height: 22px; accent-color: var(--accent);
 .num-stepper button { font: inherit; font-size: 26px; color: var(--text); background: var(--surface-2); border: 1px solid var(--line); border-radius: 12px; height: 52px; cursor: pointer; }
 .num-stepper button:disabled { opacity: 0.35; cursor: not-allowed; }
 .num-stepper output { display: flex; align-items: center; justify-content: center; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; font-size: 18px; font-weight: 600; }
+
+/* Event look picker */
+.look-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 12px; }
+.look-card { display: flex; flex-direction: column; gap: 6px; text-align: left; padding: 12px; border-radius: var(--radius); border: 2px solid var(--line); background: var(--surface); color: var(--text); cursor: pointer; }
+.look-card.on { border-color: var(--accent); background: var(--surface-2); }
+.look-swatch { display: block; height: 64px; border-radius: 10px; background: linear-gradient(135deg, #e8b48f 0%, #c97a5a 35%, #5b7fa6 70%, #2d3a4f 100%); }
+.done-choice { display: flex; gap: 10px; justify-content: center; }

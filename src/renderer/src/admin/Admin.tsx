@@ -1,15 +1,17 @@
 import { useEffect, useState } from 'react'
 import type { DeviceSnapshot } from '@shared/api'
 import type { DeviceSettings, EventStats, PrinterDetection, PrintJob, SessionRecord } from '@shared/types'
+import AccountTab, { useAccount } from './Account'
 import CameraSetup from './CameraSetup'
 import EventsTab from './Events'
 import TemplatesTab, { message } from './Templates'
 
-type Tab = 'events' | 'templates' | 'camera' | 'devices' | 'prints' | 'sessions'
+type Tab = 'events' | 'templates' | 'camera' | 'devices' | 'prints' | 'sessions' | 'account'
 
 export default function Admin({ onExit }: { onExit: () => void }) {
   const [tab, setTab] = useState<Tab>('events')
   const [devices, setDevices] = useState<DeviceSnapshot | null>(null)
+  const account = useAccount()
 
   useEffect(() => {
     window.booth.getDevices().then(setDevices)
@@ -21,13 +23,16 @@ export default function Admin({ onExit }: { onExit: () => void }) {
       <header className="admin-bar">
         <strong>Operator</strong>
         <nav>
-          {(['events', 'templates', 'camera', 'devices', 'prints', 'sessions'] as Tab[]).map((t) => (
+          {(['events', 'templates', 'camera', 'devices', 'prints', 'sessions', 'account'] as Tab[]).map((t) => (
             <button key={t} className={tab === t ? 'tab active' : 'tab'} onClick={() => setTab(t)}>
-              {{ events: 'Events', templates: 'Templates', camera: 'Camera', devices: 'Devices', prints: 'Print queue', sessions: 'Stats & photos' }[t]}
+              {{ events: 'Events', templates: 'Templates', camera: 'Camera', devices: 'Devices', prints: 'Print queue', sessions: 'Stats & photos', account: 'Account' }[t]}
             </button>
           ))}
         </nav>
         {devices && <StatusPills d={devices} />}
+        {account?.mode === 'trial' && (
+          <button className="pill busy" title={account.message} onClick={() => setTab('account')}>Trial: watermark on</button>
+        )}
         <button className="btn primary" onClick={onExit}>Start booth</button>
       </header>
       <main className="admin-body">
@@ -37,6 +42,7 @@ export default function Admin({ onExit }: { onExit: () => void }) {
         {tab === 'devices' && <DevicesTab devices={devices} />}
         {tab === 'prints' && <PrintsTab />}
         {tab === 'sessions' && <SessionsTab />}
+        {tab === 'account' && <AccountTab />}
       </main>
     </div>
   )

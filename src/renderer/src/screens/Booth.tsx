@@ -3,6 +3,7 @@ import type { DeviceSnapshot } from '@shared/api'
 import { boothReducer, retakesLeft, type BoothAction, type BoothConfig, type BoothState } from '@shared/sessionMachine'
 import type { BoothEvent, FinishResult, Template } from '@shared/types'
 import Gallery, { GalleryCorner } from '../components/Gallery'
+import { lookInfo } from '@shared/looks'
 import LiveView from '../components/LiveView'
 
 interface Props {
@@ -33,6 +34,7 @@ export default function Booth({ onNeedSetup }: Props) {
   const [state, dispatch] = useReducer((s: BoothState, a: BoothAction) => boothReducer(s, a, cfgRef.current), { name: 'welcome' })
   const [previews, setPreviews] = useState<Record<string, string>>({})
   const [result, setResult] = useState<FinishResult | null>(null)
+  const [showColour, setShowColour] = useState(false)
   const [flash, setFlash] = useState(false)
   const [fatal, setFatal] = useState<string | null>(null)
   const [gallery, setGallery] = useState<Awaited<ReturnType<typeof window.booth.galleryList>>>([])
@@ -100,6 +102,7 @@ export default function Booth({ onNeedSetup }: Props) {
     sessionId.current = null
     setPreviews({})
     setResult(null)
+    setShowColour(false)
     setFatal(null)
     dispatch({ type: 'RESET' })
   }, [])
@@ -149,7 +152,7 @@ export default function Booth({ onNeedSetup }: Props) {
   return (
     <div className="screen booth">
       {flash && <div className="flash" />}
-      <LiveView active={liveOn} hint={showLive ? 'Look at the camera ↑' : undefined} />
+      <LiveView active={liveOn} hint={showLive ? 'Look at the camera ↑' : undefined} filter={lookInfo(active.event.look).liveView} />
 
       {state.name === 'welcome' && (
         <div className={`welcome${liveOn ? ' over-live' : ''}`} onClick={cameraReady ? start : undefined}>
@@ -180,7 +183,7 @@ export default function Booth({ onNeedSetup }: Props) {
 
       {state.name === 'preview' && (
         <div className="preview" onClick={() => dispatch({ type: 'NEXT' })}>
-          <img src={previews[state.photos[state.shot]]} alt={`Photo ${state.shot + 1}`} />
+          <img src={previews[state.photos[state.shot]]} alt={`Photo ${state.shot + 1}`} style={{ filter: lookInfo(active.event.look).liveView }} />
           <div className="shot-counter">Photo {state.shot + 1} of {cfg.photosPerSession}</div>
           {retakesLeft(state, cfg) > 0 && (
             <button className="close-x preview-x" aria-label="Retake this photo" onClick={(e) => (e.stopPropagation(), dispatch({ type: 'RETAKE' }))}>✕</button>
@@ -210,8 +213,14 @@ export default function Booth({ onNeedSetup }: Props) {
 
       {state.name === 'done' && result && (
         <div className="done">
-          <img className="final" src={result.printPreview} alt="Your print" />
+          <img className="final" src={showColour && result.colourPreview ? result.colourPreview : result.printPreview} alt="Your print" />
           <div className="done-side">
+            {result.colourPreview && (
+              <div className="seg done-choice">
+                <button className={!showColour ? 'on' : ''} onClick={() => setShowColour(false)}>{lookInfo(active.event.look).label}</button>
+                <button className={showColour ? 'on' : ''} onClick={() => setShowColour(true)}>Colour</button>
+              </div>
+            )}
             <h2 className="title">{result.printJobId ? 'Printing now!' : 'All done!'}</h2>
             {result.printJobId && <p className="muted">Your print will be ready in about 15 seconds.</p>}
             {result.qrDataUrl ? (

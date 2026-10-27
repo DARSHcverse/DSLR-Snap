@@ -3,6 +3,8 @@ import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
 import { Icon, type IconName } from "@/components/Icon";
 import { PrintMock } from "@/components/PrintMock";
+import { accountsEnabled } from "@/lib/config";
+import { PLAN_INCLUDES, PLANS } from "@/lib/plans";
 import { earlyAccessHref, site, siteUrl } from "@/lib/site";
 
 const FEATURES: { icon: IconName; title: string; body: string }[] = [
@@ -70,6 +72,10 @@ const RELIABILITY: { icon: IconName; title: string; body: string }[] = [
 ];
 
 const FAQ = [
+  {
+    q: "What happens if my subscription lapses at an event?",
+    a: "Nothing at the event. DSLR Snap checks your licence when it's online and keeps working offline for 14 days, so a venue without Wi-Fi never stops the booth. Renew within that time and nothing changes.",
+  },
   {
     q: "Which cameras does DSLR Snap support?",
     a: "DSLR Snap is built around the Canon EOS R100 using Canon's official SDK. Support for more Canon bodies is next, with Nikon and Sony planned after that.",
@@ -321,6 +327,57 @@ export default function Home() {
               </div>
             ))}
           </div>
+        </section>
+
+        {/* Pricing */}
+        <section id="pricing" className="mx-auto max-w-6xl px-4 py-24 sm:px-6">
+          <SectionHeading
+            eyebrow="Pricing"
+            title="One plan, everything included"
+            body="No feature tiers and no per-print fees. Pay monthly or save with a yearly plan."
+          />
+          <div className="mx-auto mt-14 grid max-w-3xl gap-4 sm:grid-cols-2">
+            {PLANS.map((plan) => (
+              <div
+                key={plan.name}
+                className={`relative flex flex-col rounded-card border p-7 ${
+                  plan.featured ? "border-accent bg-surface-2" : "border-line bg-surface"
+                }`}
+              >
+                {plan.featured && (
+                  <span className="absolute -top-3 left-7 rounded-full bg-accent px-3 py-1 text-xs font-semibold text-accent-ink">
+                    Best value
+                  </span>
+                )}
+                <h3 className="text-lg font-semibold">{plan.name}</h3>
+                <p className="mt-4 flex items-baseline gap-1">
+                  <span className="font-display text-5xl font-bold tracking-[-0.02em]">{plan.price}</span>
+                  <span className="text-muted">USD{plan.period}</span>
+                </p>
+                <p className="mt-2 text-sm text-muted">{plan.note}</p>
+                <ul className="mt-6 mb-8 flex-1 space-y-2.5">
+                  {PLAN_INCLUDES.map((item) => (
+                    <li key={item} className="flex items-start gap-2.5">
+                      <Icon name="check" className="mt-0.5 size-5 shrink-0 text-ok" />
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+                <a
+                  href={accountsEnabled ? `/signup?plan=${plan.id}` : earlyAccessHref}
+                  className={`rounded-full px-6 py-3 text-center font-semibold transition-transform active:scale-[0.97] ${
+                    plan.featured ? "bg-accent text-accent-ink" : "border border-line hover:bg-surface-2"
+                  }`}
+                >
+                  {accountsEnabled ? "Start free trial" : "Get early access"}
+                </a>
+              </div>
+            ))}
+          </div>
+          <p className="mt-6 text-center text-sm text-muted">
+            Extra booth computers $50 a year each. Prices in US dollars; local taxes may apply at checkout.
+            The free trial has no time limit: photos carry a small watermark until you choose a plan.
+          </p>
         </section>
 
         {/* FAQ */}

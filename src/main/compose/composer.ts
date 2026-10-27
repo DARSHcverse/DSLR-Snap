@@ -1,12 +1,18 @@
 import sharp, { type OverlayOptions } from 'sharp'
 import { canvasSize, fillTokens, SHEET } from '../../shared/layout'
-import type { Template, TextItem } from '../../shared/types'
+import type { Look, Template, TextItem } from '../../shared/types'
+import { applyLook } from './looks'
 
 export interface ComposeInput {
   template: Template
   photoPaths: string[]
   eventName: string
   date?: Date
+  /** Stamped across the bottom of the design while the booth is unlicensed (trial). */
+  watermark?: string
+  /** Filter for the photos (not the template artwork). */
+  look?: Look
+  skinSmoothing?: number
 }
 
 export interface ComposeOutput {
@@ -30,6 +36,19 @@ function textSvg(items: TextItem[], w: number, h: number, vars: { event: string;
   return Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}">${nodes}</svg>`)
 }
 
+/** A readable band near the bottom: visible on any background, small enough not to ruin the photo. */
+function watermarkSvg(text: string, w: number, h: number): Buffer {
+  const size = Math.round(w * 0.05)
+  const bandH = Math.round(size * 1.9)
+  const y = h - Math.round(h * 0.06) - bandH
+  return Buffer.from(
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}">` +
+      `<rect x="0" y="${y}" width="${w}" height="${bandH}" fill="#000" fill-opacity="0.45"/>` +
+      `<text x="${w / 2}" y="${y + bandH / 2}" dominant-baseline="central" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-weight="bold" font-size="${size}" fill="#fff" fill-opacity="0.9">${escapeXml(text)}</text>` +
+      `</svg>`
+  )
+}
+
 /**
  * Renders photos into a template. Photos are centre-cropped to fill each slot ("cover"),
  * which is what guests expect from a booth print. EXIF rotation is applied first.
@@ -49,7 +68,8 @@ export async function compose(input: ComposeInput): Promise<ComposeOutput> {
   }
   for (let i = 0; i < template.slots.length; i++) {
     const s = template.slots[i]
-    const photo = await sharp(photoPaths[i]).rotate().resize(Math.round(s.w), Math.round(s.h), { fit: 'cover', position: 'centre' }).toBuffer()
+    let photo: Buffer = await sharp(photoPaths[i]).rotate().resize(Math.round(s.w), Math.round(s.h), { fit: 'cover', position: 'centre' }).toBuffer()
+    if (input.look && input.look !== 'colour') photo = await applyLook(photo, input.look, { skinSmoothing: input.skinSmoothing })
     layers.push({ input: photo, left: Math.round(s.x), top: Math.round(s.y) })
   }
   if (template.overlayPath) {
@@ -62,6 +82,7 @@ export async function compose(input: ComposeInput): Promise<ComposeOutput> {
     layers.push({ input: logo, left: Math.round(l.x), top: Math.round(l.y) })
   }
   if (template.texts.length) layers.push({ input: textSvg(template.texts, size.w, size.h, vars), left: 0, top: 0 })
+  if (input.watermark) layers.push({ input: watermarkSvg(input.watermark, size.w, size.h), left: 0, top: 0 })
 
   const composite = await sharp({ create: { width: size.w, height: size.h, channels: 3, background: template.background } })
     .composite(layers)

@@ -83,8 +83,16 @@ export interface BoothEvent {
   showGallery: boolean
   /** Camera exposure for this venue; applied whenever the camera connects. */
   exposure?: ExposureSettings
+  /** Filter applied to every photo (print, screen and download). Originals are always kept untouched. */
+  look: Look
+  /** Glam only: 0 = off … 100 = strong. */
+  skinSmoothing: number
+  /** With a filter: also save the photo in colour, so guests can have both. */
+  colourCopy: boolean
   createdAt: string
 }
+
+export type Look = 'colour' | 'glam' | 'bw' | 'warm' | 'vintage'
 
 export interface EventStats {
   /** Completed guest sessions. */
@@ -95,7 +103,7 @@ export interface EventStats {
 }
 
 /** Fields added after the first release; optional when saving so older callers keep working. */
-type NewerEventFields = 'shotIntervalSeconds' | 'photoReviewSeconds' | 'doneScreenSeconds' | 'showGallery'
+type NewerEventFields = 'shotIntervalSeconds' | 'photoReviewSeconds' | 'doneScreenSeconds' | 'showGallery' | 'look' | 'skinSmoothing' | 'colourCopy'
 export type EventInput = Omit<BoothEvent, 'id' | 'createdAt' | NewerEventFields> & Partial<Pick<BoothEvent, NewerEventFields>> & { id?: string }
 
 export type ExposureKey = 'iso' | 'aperture' | 'shutter' | 'whiteBalance'
@@ -218,8 +226,26 @@ export interface CaptureResult {
 export interface FinishResult {
   session: SessionRecord
   printPreview: string
+  /** The same design in colour, when the event's look is a filter and colourCopy is on. */
+  colourPreview?: string
   /** Guest page for this session; may be live before the upload finishes. */
   galleryUrl?: string
   qrDataUrl?: string
   printJobId?: string
+}
+
+/** Licence status of this booth (see src/main/licence). */
+export type AccountMode = 'licensed' | 'trial' | 'dev'
+
+export interface AccountState {
+  mode: AccountMode
+  /** Shown to the operator: why the booth is in trial mode, or when it next needs to be online. */
+  message: string
+  email?: string
+  plan?: 'monthly' | 'yearly' | null
+  /** When the booth must next be online to stay licensed. */
+  offlineUntil?: number
+  signedIn: boolean
+  /** Sign-in is possible (this build knows the website and its public key). */
+  canSignIn: boolean
 }

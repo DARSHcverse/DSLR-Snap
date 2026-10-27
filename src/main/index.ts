@@ -1,13 +1,14 @@
-import { app, BrowserWindow, dialog, ipcMain, powerSaveBlocker, shell } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, powerSaveBlocker, safeStorage, shell } from 'electron'
 import { randomUUID } from 'node:crypto'
 import { existsSync, readFileSync } from 'node:fs'
 import { appendFile, mkdir, readdir, rm, writeFile } from 'node:fs/promises'
-import { basename, extname, join } from 'node:path'
+import { hostname } from 'node:os'
+import { basename, extname, join, resolve } from 'node:path'
 import sharp from 'sharp'
 import type { DeviceSnapshot } from '../shared/api'
 import { flashSafe } from '../shared/exposure'
 import { canvasSize, SHEET, validateTemplate } from '../shared/layout'
-import type { DeviceSettings, ExposureKey, ExposureSettings, PrintFormat, Template, TemplateImportDraft, TemplateImportOptions, TestShot } from '../shared/types'
+import type { DeviceSettings, ExposureKey, ExposureSettings, Look, PrintFormat, Template, TemplateImportDraft, TemplateImportOptions, TestShot } from '../shared/types'
 import { BoothService } from './BoothService'
 import { exportEventPhotos } from './exportEvent'
 import { resolveCameraDriver, resolvePrinterDriver } from './detectDevices'
@@ -22,6 +23,8 @@ import { compose, previewDataUrl } from './compose/composer'
 import { createSampleShots } from './compose/sampleShots'
 import { defaultSlots, detectSlots, guessLayout, type Layout, normalizeArtwork, suggestFit } from './compose/templateImport'
 import { BoothDatabase } from './db/database'
+import { AccountService } from './licence/AccountService'
+import { machineHash } from './licence/machineId'
 import { MockPrinter } from './printer/MockPrinter'
 import type { PrinterAdapter } from './printer/PrinterAdapter'
 import { WindowsPrinter } from './printer/WindowsPrinter'
@@ -29,6 +32,15 @@ import { PrintQueue } from './queue/PrintQueue'
 import { UploadQueue } from './queue/UploadQueue'
 
 if (!app.requestSingleInstanceLock()) app.quit()
+
+// dslrsnap:// links bring the browser sign-in back to the app. In development Electron runs our
+// script, so Windows has to be told to pass it along.
+const PROTOCOL = 'dslrsnap'
+if (process.defaultApp && process.argv[1]) app.setAsDefaultProtocolClient(PROTOCOL, process.execPath, [resolve(process.argv[1])])
+else app.setAsDefaultProtocolClient(PROTOCOL)
+const ACCOUNT_URL = (import.meta.env.MAIN_VITE_ACCOUNT_URL || 'https://dslrsnap.com').replace(/\/$/, '')
+const deepLinkIn = (argv: string[]) => argv.find((a) => a.startsWith(`${PROTOCOL}://`))
+let pendingDeepLink = deepLinkIn(process.argv) // Windows cold start: the link arrives as an argument
 
 // Don't let libvips keep input files open between operations: if a file is rewritten at the same path
 // (test print, re-imported artwork), a cached reader would hit the shorter file and crash with SIGBUS.
@@ -64,6 +76,7 @@ let printQueue: PrintQueue
 let uploadQueue: UploadQueue
 let service: BoothService
 let pinLock: PinLock
+let account: AccountService
 const gallery = (() => {
   loadEnv(join(userData, '.env'))
   loadEnv(join(process.cwd(), '.env')) // dev convenience
@@ -283,10 +296,10 @@ function registerIpc(): void {
     void applyEventExposure()
   })
   handle('listTemplates', () => db.listTemplates())
-  handle('previewTemplate', async (templateId: string, eventName: string) => {
+  handle('previewTemplate', async (templateId: string, eventName: string, look?: { look: Look; skinSmoothing: number }) => {
     const t = db.getTemplate(templateId)
     if (!t) throw new Error('Unknown template')
-    const { composite } = await compose({ template: t, photoPaths: await sampleShots(t.slots.length), eventName: eventName || 'Your Event' })
+    const { composite } = await compose({ template: t, photoPaths: await sampleShots(t.slots.length), eventName: eventName || 'Your Event', ...look })
     return previewDataUrl(composite, 520)
   })
   handle('chooseTemplateFile', async () => {
@@ -392,6 +405,12 @@ function registerIpc(): void {
     await printer.print({ filePath: file, format, copies: 1, jobName: `test-${format}` })
     return file
   })
+  handle('accountState', () => account.state())
+  handle('accountSignIn', () => account.startSignIn())
+  handle('accountRedeemCode', (code: string) => account.redeemCode(String(code)))
+  handle('accountRefresh', () => account.refresh())
+  handle('accountSignOut', () => account.signOut())
+  handle('openAccountWebsite', (page: 'account' | 'pricing') => shell.openExternal(page === 'pricing' ? `${ACCOUNT_URL}/#pricing` : `${ACCOUNT_URL}/account`))
   handle('appInfo', () => ({ version: app.getVersion(), dataDir, logFile }))
   handle('quit', () => app.quit())
 }
@@ -414,7 +433,28 @@ function createWindow(): void {
   else void win.loadFile(join(__dirname, '../renderer/index.html'))
 }
 
-app.on('second-instance', () => {
+async function openDeepLink(link: string): Promise<void> {
+  if (!account) {
+    pendingDeepLink = link
+    return
+  }
+  try {
+    await account.handleDeepLink(link)
+  } catch (e) {
+    await log('warn', `sign-in link: ${e instanceof Error ? e.message : e}`)
+    win?.webContents.send('booth:accountError', e instanceof Error ? e.message : String(e))
+  }
+}
+
+// macOS delivers links here (also on cold start, before ready).
+app.on('open-url', (e, link) => {
+  e.preventDefault()
+  void openDeepLink(link)
+})
+
+app.on('second-instance', (_e, argv) => {
+  const link = deepLinkIn(argv)
+  if (link) void openDeepLink(link)
   if (win) {
     if (win.isMinimized()) win.restore()
     win.focus()
@@ -436,7 +476,31 @@ app.whenReady().then(async () => {
   uploadQueue = new UploadQueue(db, gallery)
   uploadQueue.on('changed', () => void broadcastDevices())
   pinLock = new PinLock(db)
-  service = new BoothService({ db, dataDir, camera: () => camera, printQueue, uploadQueue, gallery, log: (level, m) => void log(level, m) })
+  account = new AccountService({
+    store: { get: (k) => db.getSetting(k), set: (k, v) => db.setSetting(k, v) },
+    secrets: {
+      encrypt: (s) => (safeStorage.isEncryptionAvailable() ? `v1:${safeStorage.encryptString(s).toString('base64')}` : `plain:${s}`),
+      decrypt: (s) => (s.startsWith('v1:') ? safeStorage.decryptString(Buffer.from(s.slice(3), 'base64')) : s.replace(/^plain:/, ''))
+    },
+    accountUrl: ACCOUNT_URL,
+    publicKey: import.meta.env.MAIN_VITE_LICENCE_PUBLIC_KEY ?? '',
+    packaged: app.isPackaged,
+    machineHash: await machineHash(),
+    deviceName: hostname(),
+    openExternal: (url) => shell.openExternal(url),
+    log: (level, m) => void log(level, `account: ${m}`)
+  })
+  account.on('changed', () => win?.webContents.send('booth:account', account.state()))
+  service = new BoothService({
+    db,
+    dataDir,
+    camera: () => camera,
+    printQueue,
+    uploadQueue,
+    gallery,
+    log: (level, m) => void log(level, m),
+    watermark: () => account.watermark()
+  })
 
   registerIpc()
   createWindow()
@@ -447,6 +511,8 @@ app.whenReady().then(async () => {
   void printQueue.drain()
   uploadQueue.start()
   devicesTimer = setInterval(() => void broadcastDevices(), 5000)
+  account.start()
+  if (pendingDeepLink) void openDeepLink(pendingDeepLink)
   await log('info', `started v${app.getVersion()} · gallery ${gallery.enabled ? 'on' : 'off'}`)
 })
 
@@ -456,6 +522,7 @@ app.on('before-quit', () => {
   clearInterval(devicesTimer)
   printQueue?.stop()
   uploadQueue?.stop()
+  account?.stop()
   void camera?.disconnect()
   db?.close()
 })

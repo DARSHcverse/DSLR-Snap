@@ -86,3 +86,19 @@ describe('compose', () => {
     await expect(compose({ template: BUILT_IN_TEMPLATES[0], photoPaths: [photos[0]], eventName: 'E' })).rejects.toThrow(/needs 3 photos/)
   })
 })
+
+describe('trial watermark', () => {
+  it('darkens a band near the bottom of the design and the print', async () => {
+    const t = BUILT_IN_TEMPLATES.find((x) => x.id === 'classic-strip-3')!
+    const bottom = async (img: Buffer) => {
+      const { width = 0, height = 0 } = await sharp(img).metadata()
+      const top = Math.round(height * 0.85)
+      const crop = await sharp(img).extract({ left: 0, top, width, height: height - top }).toBuffer()
+      return (await sharp(crop).stats()).channels[0].mean
+    }
+    const plain = await compose({ template: t, photoPaths: photos.slice(0, 3), eventName: 'E' })
+    const marked = await compose({ template: t, photoPaths: photos.slice(0, 3), eventName: 'E', watermark: 'DSLR Snap · trial' })
+    expect(await bottom(marked.composite)).toBeLessThan((await bottom(plain.composite)) - 10)
+    expect(Buffer.compare(marked.printSheet, plain.printSheet)).not.toBe(0)
+  })
+})

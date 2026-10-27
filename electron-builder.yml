@@ -15,6 +15,19 @@ extraResources:
   - from: native/CanonBridge/publish
     to: canon-bridge
     filter: ["**/*"]
+# Harden the packaged app: no running it as plain Node, no debugger flags, and only the signed-off
+# app.asar is loaded (edits to it are detected at start-up).
+electronFuses:
+  runAsNode: false
+  enableNodeOptionsEnvironmentVariable: false
+  enableNodeCliInspectArguments: false
+  enableEmbeddedAsarIntegrityValidation: true
+  onlyLoadAppFromAsar: true
+  enableCookieEncryption: true
+# Browser sign-in returns to the app through dslrsnap:// links.
+protocols:
+  - name: DSLR Snap
+    schemes: [dslrsnap]
 win:
   target: [{ target: nsis, arch: [x64] }]
   # Authenticode signing: set CSC_LINK / CSC_KEY_PASSWORD env vars in CI to avoid SmartScreen warnings.

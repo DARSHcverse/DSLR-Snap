@@ -23,6 +23,7 @@ async function makeGif(photoPaths: string[], out: string): Promise<void> {
 }
 
 const thumbPathFor = (compositePath: string) => join(dirname(compositePath), 'thumb.jpg')
+export const colourPathFor = (compositePath: string) => join(dirname(compositePath), 'final-colour.jpg')
 
 async function writeThumb(composite: Buffer | string, out: string): Promise<void> {
   await sharp(composite).resize({ height: 480, withoutEnlargement: true }).jpeg({ quality: 80 }).toFile(out)
@@ -56,6 +57,8 @@ export class BoothService {
       /** How long the done screen waits for an upload before giving up on showing a QR. */
       qrWaitMs?: number
       log?: (level: 'warn' | 'error', message: string) => void
+      /** Trial watermark text, or undefined when the booth is licensed. */
+      watermark?: () => string | undefined
     }
   ) {}
 
@@ -104,8 +107,17 @@ export class BoothService {
 
     const dir = this.sessionDir(ev, sessionId)
     await mkdir(dir, { recursive: true })
-    const { composite, printSheet } = await compose({ template, photoPaths, eventName: ev.name })
+    const watermark = this.deps.watermark?.()
+    const look = { look: ev.look, skinSmoothing: ev.skinSmoothing }
+    const { composite, printSheet } = await compose({ template, photoPaths, eventName: ev.name, watermark, ...look })
     const compositePath = join(dir, 'final.jpg')
+    // Glam/filter events can also give guests the colour version (shown on screen; saved next to the final).
+    let colourPreview: string | undefined
+    if (ev.colourCopy && ev.look !== 'colour') {
+      const colour = await compose({ template, photoPaths, eventName: ev.name, watermark })
+      await writeFile(colourPathFor(compositePath), colour.composite)
+      colourPreview = await previewDataUrl(colour.composite, 700)
+    }
     const printPath = join(dir, 'print-sheet.jpg')
     const gifPath = join(dir, 'animation.gif')
     await writeFile(compositePath, composite)
@@ -132,7 +144,7 @@ export class BoothService {
     }
 
     db.updateSession(sessionId, { status: 'complete' })
-    return { session: db.getSession(sessionId)!, printPreview: await previewDataUrl(composite, 700), galleryUrl, qrDataUrl, printJobId }
+    return { session: db.getSession(sessionId)!, printPreview: await previewDataUrl(composite, 700), colourPreview, galleryUrl, qrDataUrl, printJobId }
   }
 
   private async waitForGalleryUrl(sessionId: string): Promise<string | undefined> {
@@ -172,14 +184,16 @@ export class BoothService {
   }
 
   /** One gallery entry at viewing size. Only finished sessions of the active event are ever returned to guests. */
-  async galleryItem(sessionId: string): Promise<{ image: string; gif?: string }> {
+  async galleryItem(sessionId: string): Promise<{ image: string; gif?: string; colour?: string }> {
     const ev = this.activeEventOrNull()
     const s = this.deps.db.getSession(sessionId)
     if (!ev?.showGallery || !s || s.eventId !== ev.id || s.status !== 'complete' || !s.compositePath || !existsSync(s.compositePath)) {
       throw new Error('This photo is not available.')
     }
     const gif = s.gifPath && existsSync(s.gifPath) ? `data:image/gif;base64,${(await readFile(s.gifPath)).toString('base64')}` : undefined
-    return { image: await previewDataUrl(s.compositePath, 1000), gif }
+    const colourPath = colourPathFor(s.compositePath)
+    const colour = existsSync(colourPath) ? await previewDataUrl(colourPath, 1000) : undefined
+    return { image: await previewDataUrl(s.compositePath, 1000), gif, colour }
   }
 
   private activeEventOrNull(): BoothEvent | undefined {

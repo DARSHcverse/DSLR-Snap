@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import type { DeviceSnapshot } from '@shared/api'
 import { formatEventDate, todayIso } from '@shared/dates'
 import { describeExposure } from '@shared/exposure'
+import { LOOKS, lookInfo } from '@shared/looks'
 import type { BoothEvent, Template } from '@shared/types'
 import CameraSetup from './CameraSetup'
 import { describe, DropZone, type Editing, message, startImport, TemplateEditor, TemplateThumb } from './Templates'
@@ -10,7 +11,8 @@ type Draft = Omit<BoothEvent, 'id' | 'createdAt'> & { id?: string }
 
 const blankEvent = (templateId: string): Draft => ({
   name: '', date: todayIso(), templateId, photosPerSession: 3, countdownSeconds: 5, shotIntervalSeconds: 3, photoReviewSeconds: 3, doneScreenSeconds: 20,
-  retakesAllowed: 2, printCopies: 1, autoPrint: true, galleryEnabled: false, showGallery: true
+  retakesAllowed: 2, printCopies: 1, autoPrint: true, galleryEnabled: false, showGallery: true,
+  look: 'colour', skinSmoothing: 50, colourCopy: false
 })
 
 /** Big − / + control; easier on a touch screen than a number box. */
@@ -109,7 +111,8 @@ export default function EventsTab({ devices, onLaunch }: { devices: DeviceSnapsh
   )
 }
 
-const STEPS = ['Event', 'Template', 'Camera', 'Print & share', 'Test & launch'] as const
+const STEPS = ['Event', 'Template', 'Look', 'Camera', 'Print & share', 'Test & launch'] as const
+const CAMERA_STEP = 3
 
 function EventSetup({ initial, devices, onClose, onLaunch }: {
   initial: Draft
@@ -119,7 +122,7 @@ function EventSetup({ initial, devices, onClose, onLaunch }: {
 }) {
   const [draft, setDraft] = useState<Draft>(initial)
   const [step, setStep] = useState(0)
-  const [visited, setVisited] = useState<Set<number>>(new Set(initial.id ? [0, 1, 2, 3] : [0]))
+  const [visited, setVisited] = useState<Set<number>>(new Set(initial.id ? [0, 1, 2, 3, 4] : [0]))
   const [templates, setTemplates] = useState<Template[]>([])
   const [error, setError] = useState<string | null>(null)
   const set = <K extends keyof Draft>(k: K, v: Draft[K]) => setDraft({ ...draft, [k]: v })
@@ -149,7 +152,7 @@ function EventSetup({ initial, devices, onClose, onLaunch }: {
   const go = async (to: number) => {
     if (to === step) return
     // The camera step saved exposure directly; re-read it so the checklist is current.
-    if (step === 2 && draft.id) {
+    if (step === CAMERA_STEP && draft.id) {
       const fresh = (await window.booth.listEvents()).find((e) => e.id === draft.id)
       if (fresh) setDraft((d) => ({ ...d, exposure: fresh.exposure }))
     } else if (!(await persist())) return
@@ -157,12 +160,12 @@ function EventSetup({ initial, devices, onClose, onLaunch }: {
     setStep(to)
   }
 
-  const done = [!!draft.name.trim(), !!template, !!draft.exposure, visited.has(3) && step !== 3, false]
+  const done = [!!draft.name.trim(), !!template, visited.has(2) && step !== 2, !!draft.exposure, visited.has(4) && step !== 4, false]
 
   return (
     <section className="setup">
       <div className="row between">
-        <button className="btn ghost small" onClick={async () => ((step === 2 || (await persist()) || !draft.id) && onClose())}>← All events</button>
+        <button className="btn ghost small" onClick={async () => ((step === CAMERA_STEP || (await persist()) || !draft.id) && onClose())}>← All events</button>
         <strong className="setup-title">{draft.name || 'New event'}</strong>
         <span />
       </div>
@@ -199,14 +202,16 @@ function EventSetup({ initial, devices, onClose, onLaunch }: {
             onImported={async (t) => (await loadTemplates(), set('templateId', t.id))} />
         )}
 
-        {step === 2 && draft.id && <CameraSetup devices={devices} event={{ id: draft.id, name: draft.name, exposure: draft.exposure }} />}
+        {step === 2 && template && <LookStep draft={draft} set={set} template={template} />}
 
-        {step === 3 && <PrintStep draft={draft} set={set} template={template} devices={devices} />}
+        {step === CAMERA_STEP && draft.id && <CameraSetup devices={devices} event={{ id: draft.id, name: draft.name, exposure: draft.exposure }} />}
 
-        {step === 4 && draft.id && template && <LaunchStep draft={{ ...draft, id: draft.id }} template={template} devices={devices} onLaunch={onLaunch} />}
+        {step === 4 && <PrintStep draft={draft} set={set} template={template} devices={devices} />}
+
+        {step === 5 && draft.id && template && <LaunchStep draft={{ ...draft, id: draft.id }} template={template} devices={devices} onLaunch={onLaunch} />}
       </div>
 
-      {step < 4 && (
+      {step < STEPS.length - 1 && (
         <div className="row setup-nav">
           {step > 0 && <button className="btn ghost" onClick={() => go(step - 1)}>Back</button>}
           <button className="btn primary" onClick={() => go(step + 1)}>Next: {STEPS[step + 1]}</button>
@@ -298,6 +303,50 @@ function PrintStep({ draft, set, template, devices }: {
   )
 }
 
+function LookStep({ draft, set, template }: {
+  draft: Draft
+  set: <K extends keyof Draft>(k: K, v: Draft[K]) => void
+  template: Template
+}) {
+  const [preview, setPreview] = useState<string | null>(null)
+  useEffect(() => {
+    setPreview(null)
+    const t = setTimeout(() => {
+      window.booth.previewTemplate(template.id, draft.name, { look: draft.look, skinSmoothing: draft.skinSmoothing }).then(setPreview).catch(() => undefined)
+    }, 250) // the smoothing stepper can be pressed quickly
+    return () => clearTimeout(t)
+  }, [template.id, draft.name, draft.look, draft.skinSmoothing])
+
+  return (
+    <div className="launch">
+      <div className="form">
+        <div className="look-grid">
+          {LOOKS.map((l) => (
+            <button key={l.id} className={`look-card ${draft.look === l.id ? 'on' : ''}`} onClick={() => set('look', l.id)}>
+              <span className="look-swatch" style={{ filter: l.liveView }} />
+              <strong>{l.label}</strong>
+              <span className="muted small">{l.description}</span>
+            </button>
+          ))}
+        </div>
+        {draft.look === 'glam' && (
+          <Stepper label="Skin smoothing" value={draft.skinSmoothing} min={0} max={100} step={10}
+            format={(v) => (v === 0 ? 'Off' : v <= 30 ? `Light (${v})` : v <= 60 ? `Medium (${v})` : `Strong (${v})`)}
+            hint="Softens skin; eyes, hair and outlines stay sharp." onChange={(v) => set('skinSmoothing', v)} />
+        )}
+        {draft.look !== 'colour' && (
+          <label className="check">
+            <input type="checkbox" checked={draft.colourCopy} onChange={(e) => set('colourCopy', e.target.checked)} />
+            Also keep a colour version, so guests can have both (prints stay {lookInfo(draft.look).label})
+          </label>
+        )}
+        <p className="muted small">The live camera view on the booth screen shows the look too, so guests pose for it. Your original photos are always kept in full colour.</p>
+      </div>
+      <div className="preview-pane">{preview ? <img src={preview} alt={`${lookInfo(draft.look).label} preview`} /> : <div className="spinner" />}</div>
+    </div>
+  )
+}
+
 function LaunchStep({ draft, template, devices, onLaunch }: {
   draft: Draft & { id: string }
   template: Template
@@ -306,14 +355,15 @@ function LaunchStep({ draft, template, devices, onLaunch }: {
 }) {
   const [preview, setPreview] = useState<string | null>(null)
   useEffect(() => {
-    window.booth.previewTemplate(template.id, draft.name).then(setPreview).catch(() => undefined)
-  }, [template.id, draft.name])
+    window.booth.previewTemplate(template.id, draft.name, { look: draft.look, skinSmoothing: draft.skinSmoothing }).then(setPreview).catch(() => undefined)
+  }, [template.id, draft.name, draft.look, draft.skinSmoothing])
 
   const cam = devices?.camera
   const printer = devices?.printer
   const checks: { ok: boolean | 'warn'; label: string; detail: string }[] = [
     { ok: true, label: 'Event', detail: `${draft.name} · ${formatEventDate(draft.date, { day: 'numeric', month: 'long' })}` },
     { ok: true, label: 'Template', detail: `${template.name} · ${describe(template)}` },
+    { ok: true, label: 'Look', detail: `${lookInfo(draft.look).label}${draft.look === 'glam' ? ` · skin smoothing ${draft.skinSmoothing}` : ''}${draft.look !== 'colour' && draft.colourCopy ? ' · plus colour copy' : ''}` },
     { ok: cam?.state === 'ready', label: 'Camera', detail: cam?.state === 'ready' ? (cam.model ?? 'Connected') : (cam?.message ?? 'Not connected') },
     { ok: draft.exposure ? true : 'warn', label: 'Exposure', detail: draft.exposure ? describeExposure(draft.exposure) : "Not set: the camera's own settings will be used" },
     { ok: draft.printCopies === 0 || printer?.state === 'ready', label: 'Printer', detail: draft.printCopies === 0 ? 'Printing off' : `${printer?.state ?? '…'}${printer?.queueLength ? ` · ${printer.queueLength} waiting` : ''} · ${draft.printCopies} cop${draft.printCopies === 1 ? 'y' : 'ies'}${draft.autoPrint ? ', automatic' : ''}` },

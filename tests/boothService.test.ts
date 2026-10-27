@@ -47,6 +47,31 @@ describe('BoothService end to end (mock hardware)', () => {
     expect(readdirSync(join(dataDir, 'prints'))).toHaveLength(2) // 2 copies
   })
 
+  it('glam events print black and white, and keep a colour copy for guests when asked', async () => {
+    const { db, ev, service } = await setup()
+    expect(ev).toMatchObject({ look: 'colour', colourCopy: false }) // events from before looks existed
+    db.saveEvent({ ...ev, look: 'glam', skinSmoothing: 60, colourCopy: true })
+    expect(db.getEvent(ev.id)).toMatchObject({ look: 'glam', skinSmoothing: 60, colourCopy: true })
+
+    const { sessionId } = service.startSession()
+    const shots = []
+    for (let i = 0; i < 3; i++) shots.push((await service.capture(sessionId)).path)
+    const res = await service.finish(sessionId, shots, 'k')
+
+    // Colour balance of the first photo slot: equal channels = black and white.
+    const slotStats = async (file: string) => {
+      const crop = await sharp(file).extract({ left: 100, top: 100, width: 300, height: 200 }).toBuffer()
+      const [r, g, b] = (await sharp(crop).stats()).channels
+      return Math.max(Math.abs(r.mean - g.mean), Math.abs(r.mean - b.mean))
+    }
+    expect(await slotStats(res.session.compositePath!)).toBeLessThan(1.5)
+    expect(await slotStats(res.session.printPath!.replace('print-sheet', 'final'))).toBeLessThan(1.5)
+    const colourFile = join(res.session.compositePath!, '..', 'final-colour.jpg')
+    expect(await slotStats(colourFile)).toBeGreaterThan(3)
+    expect(res.colourPreview).toMatch(/^data:image\/jpeg/)
+    expect((await service.galleryItem(sessionId)).colour).toMatch(/^data:image\/jpeg/)
+  })
+
   it('makes a looping GIF of the session photos and lists the session in the guest gallery', async () => {
     const { db, ev, service } = await setup()
     const { sessionId } = service.startSession()

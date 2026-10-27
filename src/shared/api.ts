@@ -1,4 +1,5 @@
 import type {
+  AccountState,
   BoothEvent,
   CameraStatus,
   CaptureResult,
@@ -9,6 +10,7 @@ import type {
   ExposureSettings,
   ExposureState,
   FinishResult,
+  Look,
   PrintJob,
   PrinterDetection,
   PrinterStatus,
@@ -38,7 +40,7 @@ export interface BoothApi {
   liveViewStop(): Promise<void>
   /** Guest gallery: finished sessions of the active event (empty if the event hides the gallery). */
   galleryList(): Promise<{ id: string; createdAt: string; thumb: string; hasGif: boolean }[]>
-  galleryItem(sessionId: string): Promise<{ image: string; gif?: string }>
+  galleryItem(sessionId: string): Promise<{ image: string; gif?: string; colour?: string }>
 
   // admin
   listEvents(): Promise<BoothEvent[]>
@@ -54,7 +56,8 @@ export interface BoothApi {
   deleteEvent(id: string): Promise<void>
   setActiveEvent(id: string): Promise<void>
   listTemplates(): Promise<Template[]>
-  previewTemplate(templateId: string, eventName: string): Promise<string>
+  /** look: preview the event's filter on the sample photos. */
+  previewTemplate(templateId: string, eventName: string, look?: { look: Look; skinSmoothing: number }): Promise<string>
   chooseTemplateFile(): Promise<string | null>
   prepareTemplateImport(filePath: string, opts?: TemplateImportOptions): Promise<TemplateImportDraft>
   getTemplateArtwork(templateId: string): Promise<string | null>
@@ -90,6 +93,18 @@ export interface BoothApi {
   cancelPrintJob(id: string): Promise<boolean>
   markPrintJobPrinted(id: string): Promise<boolean>
   onPrintJobs(cb: () => void): () => void
+
+  /** Licence: signing in opens the website in the browser, which hands back to the app. */
+  accountState(): Promise<AccountState>
+  accountSignIn(): Promise<void>
+  /** The code shown on the website, when the browser couldn't open the app by itself. */
+  accountRedeemCode(code: string): Promise<AccountState>
+  accountRefresh(): Promise<AccountState>
+  accountSignOut(): Promise<AccountState>
+  openAccountWebsite(page: 'account' | 'pricing'): Promise<void>
+  onAccount(cb: (s: AccountState) => void): () => void
+  /** Sign-in finished in the browser but the website refused it (e.g. both computers already in use). */
+  onAccountError(cb: (message: string) => void): () => void
 
   testPrint(format: '4x6' | '2x6'): Promise<string>
   appInfo(): Promise<{ version: string; dataDir: string; logFile: string }>
