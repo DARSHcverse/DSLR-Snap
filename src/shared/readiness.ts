@@ -41,13 +41,21 @@ export function readiness(input: ReadinessInput): { ready: boolean; items: Check
       : { key: 'event', status: 'bad', label: 'Event', detail: 'No event selected', fix: { label: 'Choose an event', target: 'events' } }
   )
 
-  const cam = devices?.camera
-  if (!cam) items.push({ key: 'camera', status: 'warn', label: 'Camera', detail: 'Checking…' })
-  else if (cam.state === 'ready' || cam.state === 'busy') items.push({ key: 'camera', status: 'ok', label: 'Camera', detail: cam.model ?? 'Connected' })
-  else if (cam.state === 'connecting') items.push({ key: 'camera', status: 'warn', label: 'Camera', detail: 'Connecting…' })
-  else items.push({ key: 'camera', status: 'bad', label: 'Camera', detail: cam.message ?? 'Not connected. Check the USB cable and that the camera is on.', fix: { label: 'Reconnect', target: 'reconnect' } })
+  const mode = event?.mode ?? 'photo'
+  if (mode === 'photo') {
+    const cam = devices?.camera
+    if (!cam) items.push({ key: 'camera', status: 'warn', label: 'Camera', detail: 'Checking…' })
+    else if (cam.state === 'ready' || cam.state === 'busy') items.push({ key: 'camera', status: 'ok', label: 'Camera', detail: cam.model ?? 'Connected' })
+    else if (cam.state === 'connecting') items.push({ key: 'camera', status: 'warn', label: 'Camera', detail: 'Connecting…' })
+    else items.push({ key: 'camera', status: 'bad', label: 'Camera', detail: cam.message ?? 'Not connected. Check the USB cable and that the camera is on.', fix: { label: 'Reconnect', target: 'reconnect' } })
+  } else if (mode === '360') {
+    const gp = devices?.gopro
+    if (gp?.state === 'ready' || gp?.state === 'recording') items.push({ key: 'gopro', status: 'ok', label: 'GoPro', detail: 'Connected by USB' })
+    else if (gp?.state === 'connecting') items.push({ key: 'gopro', status: 'warn', label: 'GoPro', detail: 'Connecting…' })
+    else items.push({ key: 'gopro', status: 'bad', label: 'GoPro', detail: gp?.message ?? 'Connect a GoPro (HERO9–12) by USB and switch it on.', fix: { label: 'Devices', target: 'devices' } })
+  }
 
-  if (event) {
+  if (event && mode === 'photo') {
     items.push(
       event.exposure
         ? { key: 'exposure', status: 'ok', label: 'Exposure', detail: describeExposure(event.exposure) }
@@ -57,7 +65,9 @@ export function readiness(input: ReadinessInput): { ready: boolean; items: Check
 
   const printer = devices?.printer
   const failed = stats?.prints.failed ?? 0
-  if (event && event.printCopies === 0) {
+  if (mode !== 'photo') {
+    // Video guestbook and 360 don't print.
+  } else if (event && event.printCopies === 0) {
     items.push({ key: 'printer', status: 'ok', label: 'Printer', detail: 'Printing is off for this event' })
   } else if (!printer) {
     items.push({ key: 'printer', status: 'warn', label: 'Printer', detail: 'Checking…' })
@@ -71,7 +81,7 @@ export function readiness(input: ReadinessInput): { ready: boolean; items: Check
   }
 
   const paper = devices?.paper
-  if (paper && !(event && event.printCopies === 0)) {
+  if (paper && mode === 'photo' && !(event && event.printCopies === 0)) {
     const left = `${paper.remaining} of ${paper.capacity} prints left on the roll`
     if (paper.remaining === 0) items.push({ key: 'paper', status: 'bad', label: 'Paper', detail: 'The roll is used up. Load a new one.', fix: { label: 'New roll', target: 'devices' } })
     else if (paper.remaining <= LOW_PAPER) items.push({ key: 'paper', status: 'warn', label: 'Paper', detail: `Running low: ${left}`, fix: { label: 'New roll', target: 'devices' } })

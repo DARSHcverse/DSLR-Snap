@@ -188,6 +188,14 @@ function DevicesTab({ devices }: { devices: DeviceSnapshot | null }) {
       </div>
       <PaperCard paper={devices?.paper ?? null} />
       <WebcamCard settings={s} save={save} />
+      <div className="card">
+        <h3>360 camera (GoPro)</h3>
+        <p className={devices?.gopro.state === 'ready' ? '' : 'muted'}>
+          <span className={`side-dot ${devices?.gopro.state === 'ready' ? 'ok' : devices?.gopro.state === 'connecting' || devices?.gopro.state === 'recording' ? 'busy' : 'bad'}`} style={{ display: 'inline-block', marginRight: 8 }} />
+          {devices?.gopro.state === 'ready' ? 'GoPro connected by USB' : devices?.gopro.state === 'recording' ? 'Recording…' : (devices?.gopro.message ?? 'Looking for a GoPro…')}
+        </p>
+        <p className="muted small">GoPro HERO9–12. Plug it in by USB and switch it on; it's found automatically within a few seconds, no GoPro app needed. Use a memory card with space and keep it charging.</p>
+      </div>
       <PhoneRemoteCard />
       <div className="card">
         <h3>Booth lock</h3>

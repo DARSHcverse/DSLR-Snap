@@ -9,7 +9,7 @@ import { basename, dirname, join } from 'node:path'
  *     Prints/      finished designs   "20.14.05.jpg" (+ "20.14.05 colour.jpg")
  *     GIFs/        "20.14.05.gif"
  *     Boomerangs/  "20.14.05.gif" and "20.14.05.mp4"
- *     Videos/      video guestbook messages "20.14.05.mp4" (+ poster frame "20.14.05.jpg")
+ *     Videos/      video messages and 360 edits "20.14.05.mp4" (+ poster "20.14.05.jpg"); Raw/ = GoPro originals
  *     .booth/      print sheets and thumbnails the app needs (hidden on Windows)
  *
  * Files are named by the time the guest used the booth, so they sort in order.
@@ -51,6 +51,8 @@ export interface SessionLayout {
   video: string
   poster: string
   recording: string
+  /** 360 booth: the untouched GoPro clip (kept, in case the operator wants to re-edit). */
+  spinRaw: string
 }
 
 export function sessionLayout(eventFolder: string, stamp: string): SessionLayout {
@@ -66,7 +68,8 @@ export function sessionLayout(eventFolder: string, stamp: string): SessionLayout
     thumb: join(eventFolder, FOLDERS.internal, `${stamp} thumb.jpg`),
     video: join(eventFolder, FOLDERS.videos, `${stamp}.mp4`),
     poster: join(eventFolder, FOLDERS.videos, `${stamp}.jpg`),
-    recording: join(eventFolder, FOLDERS.internal, `${stamp} recording.webm`)
+    recording: join(eventFolder, FOLDERS.internal, `${stamp} recording.webm`),
+    spinRaw: join(eventFolder, FOLDERS.videos, 'Raw', `${stamp}.mp4`)
   }
 }
 
@@ -87,7 +90,8 @@ export function layoutFromFinal(finalPath: string): Omit<SessionLayout, 'photosD
       thumb: join(dir, 'thumb.jpg'),
       video: join(dir, 'video.mp4'),
       poster: join(dir, 'poster.jpg'),
-      recording: join(dir, 'recording.webm')
+      recording: join(dir, 'recording.webm'),
+      spinRaw: join(dir, 'spin-raw.mp4')
     }
   }
   const { original: _o, photosDir: _p, ...rest } = sessionLayout(dirname(dirname(finalPath)), basename(finalPath, '.jpg'))

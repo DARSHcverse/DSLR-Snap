@@ -6,6 +6,8 @@ import { describe, expect, it } from 'vitest'
 import { BoothService } from '../src/main/BoothService'
 import { boomerangPathFor, colourPathFor } from '../src/main/sessionFiles'
 import { Ffmpeg, locateFfmpeg } from '../src/main/video/ffmpeg'
+import { FakeGoPro } from '../src/main/gopro/FakeGoPro'
+import { GoPro } from '../src/main/gopro/GoPro'
 import { MockCamera } from '../src/main/camera/MockCamera'
 import { DisabledGallery, type CloudGallery } from '../src/main/cloud/CloudGallery'
 import { BoothDatabase } from '../src/main/db/database'
@@ -161,6 +163,41 @@ describe('BoothService end to end (mock hardware)', () => {
     expect(db.listPrintJobs()).toHaveLength(0)
     expect((await service.galleryList()).map((g) => g.id)).toContain(sessionId)
   }, 60_000)
+
+  it.skipIf(!locateFfmpeg({ appDir: join(__dirname, '..') }))('360 booth: the GoPro records the spin, then the edit lands in Videos with the raw clip kept', async () => {
+    const { db, ev, dataDir, printQueue, uploadQueue } = await setup()
+    const ff = new Ffmpeg(locateFfmpeg({ appDir: join(__dirname, '..') })!)
+    // The fake GoPro "records" a real 120 fps clip of however long the spin lasted.
+    const fake = new FakeGoPro(async (seconds) => {
+      const out = join(dataDir, `fake-${Date.now()}.mp4`)
+      await ff.run(['-f', 'lavfi', '-i', 'testsrc=size=1280x720:rate=120', '-t', String(seconds), '-c:v', 'libx264', '-preset', 'ultrafast', out])
+      return readFileSync(out)
+    })
+    const base = await fake.start()
+    try {
+      const gopro = new GoPro({ discover: () => base })
+      await gopro.tick()
+      const overlay = join(dataDir, 'ov-aaaaaaaaaaaa.png')
+      await sharp({ create: { width: 1080, height: 1920, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } } }).png().toFile(overlay)
+      db.saveEvent({ ...ev, mode: '360', spinSeconds: 3, spinFps: 120, overlayId: 'ov-aaaaaaaaaaaa' })
+      const camera = new MockCamera()
+      const service = new BoothService({ db, photosRoot: () => dataDir, camera: () => camera, printQueue, uploadQueue, gallery: new DisabledGallery(), ffmpeg: ff, gopro, assetPath: (id) => join(dataDir, `${id}.png`) })
+
+      const { sessionId } = service.startSession()
+      const res = await service.record360(sessionId)
+      const stamp = db.getSession(sessionId)!.stamp!
+      const folder = join(dataDir, 'Priya & Tom 2026-10-24')
+      expect(readdirSync(join(folder, 'Videos')).sort()).toEqual([`${stamp}.jpg`, `${stamp}.mp4`, 'Raw'])
+      expect(readdirSync(join(folder, 'Videos', 'Raw'))).toEqual([`${stamp}.mp4`])
+      expect(fake.settings).toEqual({ 2: 4, 3: 1 }) // 2.7K, 120 fps
+      expect(await ff.duration(join(folder, 'Videos', `${stamp}.mp4`))).toBeGreaterThan(6) // slow motion stretches it
+      expect((await sharp(join(folder, 'Videos', `${stamp}.jpg`)).metadata()).height).toBe(1920)
+      expect(res.video!.byteLength).toBeGreaterThan(1000)
+      expect(res.session.status).toBe('complete')
+    } finally {
+      await fake.stop()
+    }
+  }, 120_000)
 
   it('makes a looping GIF of the session photos and lists the session in the guest gallery', async () => {
     const { db, ev, service } = await setup()

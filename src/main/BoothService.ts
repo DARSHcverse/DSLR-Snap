@@ -10,6 +10,7 @@ import { compose, previewDataUrl, watermarkOverlay } from './compose/composer'
 import { eventFolderName, hideOnWindows, type SessionLayout, sessionLayout, sessionStamp } from './eventFolders'
 import { boomerangPathFor, colourPathFor, thumbPathFor } from './sessionFiles'
 import type { Ffmpeg } from './video/ffmpeg'
+import type { GoPro } from './gopro/GoPro'
 import type { BoothDatabase } from './db/database'
 import type { PrintQueue } from './queue/PrintQueue'
 import type { UploadQueue } from './queue/UploadQueue'
@@ -75,6 +76,9 @@ export class BoothService {
       backgroundPath?: (id: string) => string
       /** Video encoding; without it boomerangs are GIF only. */
       ffmpeg?: Ffmpeg
+      /** 360 booth camera, and where imported overlays/music live. */
+      gopro?: Pick<GoPro, 'configure' | 'record' | 'getStatus'>
+      assetPath?: (id: string) => string
     }
   ) {}
 
@@ -245,6 +249,51 @@ export class BoothService {
     const { galleryUrl, qrDataUrl } = await this.share(ev, sessionId, files.poster)
     this.deps.db.updateSession(sessionId, { status: 'complete' })
     return { session: this.deps.db.getSession(sessionId)!, poster: await previewDataUrl(files.poster, 900), galleryUrl, qrDataUrl }
+  }
+
+  /**
+   * 360 booth: the GoPro records the spin, then the edit (speed ramp, portrait, the event's overlay
+   * and music, trial band) is saved as Videos/<time>.mp4 with the raw clip under Videos/Raw.
+   */
+  async record360(sessionId: string): Promise<VideoResult> {
+    const { ffmpeg: ff, gopro } = this.deps
+    if (!ff) throw new Error('360 needs ffmpeg, which is missing. Reinstall DSLR Snap.')
+    if (!gopro) throw new Error('No GoPro support in this build.')
+    const { ev, files } = this.layout(sessionId)
+    // Settings first; a camera on unusual firmware may refuse one, so carry on with what it has.
+    await gopro.configure({ fps: ev.spinFps, resolution: ev.spinFps === 240 ? '1080' : '2.7K' }).catch((e) => this.deps.log?.('warn', `gopro settings: ${e instanceof Error ? e.message : e}`))
+    await gopro.record(ev.spinSeconds, files.spinRaw)
+
+    await mkdir(dirname(files.video), { recursive: true })
+    await mkdir(dirname(files.recording), { recursive: true })
+    hideOnWindows(dirname(files.recording))
+    const overlays: string[] = []
+    if (ev.overlayId && this.deps.assetPath && existsSync(this.deps.assetPath(ev.overlayId))) overlays.push(this.deps.assetPath(ev.overlayId))
+    const watermark = this.deps.watermark?.()
+    const trialBand = watermark ? `${files.recording}.trial.png` : undefined
+    if (trialBand) {
+      await writeFile(trialBand, await watermarkOverlay(watermark!, 1080, 1920))
+      overlays.push(trialBand)
+    }
+    const music = ev.musicId && this.deps.assetPath && existsSync(this.deps.assetPath(ev.musicId)) ? this.deps.assetPath(ev.musicId) : undefined
+    try {
+      await ff.make360(files.spinRaw, files.video, { slow: ev.spinFps === 240 ? 6 : 4, overlays, music })
+      await ff.posterFrame(files.video, files.poster, 2).catch(() => ff.posterFrame(files.video, files.poster, 0))
+    } finally {
+      if (trialBand) await rm(trialBand, { force: true })
+    }
+    await writeThumb(files.poster, thumbPathFor(files.poster))
+    this.deps.db.updateSession(sessionId, { compositePath: files.poster })
+    const { galleryUrl, qrDataUrl } = await this.share(ev, sessionId, files.poster)
+    this.deps.db.updateSession(sessionId, { status: 'complete' })
+    const video = await readFile(files.video)
+    return {
+      session: this.deps.db.getSession(sessionId)!,
+      poster: await previewDataUrl(files.poster, 900),
+      video: video.buffer.slice(video.byteOffset, video.byteOffset + video.byteLength) as ArrayBuffer,
+      galleryUrl,
+      qrDataUrl
+    }
   }
 
   private async waitForGalleryUrl(sessionId: string): Promise<string | undefined> {

@@ -12,7 +12,7 @@ type Draft = Omit<BoothEvent, 'id' | 'createdAt'> & { id?: string }
 const blankEvent = (templateId: string): Draft => ({
   name: '', date: todayIso(), templateId, photosPerSession: 3, countdownSeconds: 5, shotIntervalSeconds: 3, photoReviewSeconds: 3, doneScreenSeconds: 20,
   retakesAllowed: 2, printCopies: 1, autoPrint: true, galleryEnabled: false, showGallery: true,
-  look: 'colour', skinSmoothing: 50, colourCopy: false, boomerang: false, backdrop: 'none', backgrounds: [], mode: 'photo', videoSeconds: 20, videoPrompt: ''
+  look: 'colour', skinSmoothing: 50, colourCopy: false, boomerang: false, backdrop: 'none', backgrounds: [], mode: 'photo', videoSeconds: 20, videoPrompt: '', spinSeconds: 10, spinFps: 120
 })
 
 /** Big − / + control; easier on a touch screen than a number box. */
@@ -187,7 +187,9 @@ function EventSetup({ initial, devices, onClose, onLaunch }: {
             <div className="seg">
               <button className={draft.mode === 'photo' ? 'on' : ''} onClick={() => set('mode', 'photo')}>Photo booth</button>
               <button className={draft.mode === 'video' ? 'on' : ''} onClick={() => set('mode', 'video')}>Video guestbook</button>
+              <button className={draft.mode === '360' ? 'on' : ''} onClick={() => set('mode', '360')}>360 booth</button>
             </div>
+            {draft.mode === '360' && <Spin360Settings draft={draft} set={set} />}
             {draft.mode === 'video' && (
               <>
                 <label>What guests see before recording
@@ -322,6 +324,57 @@ function PrintStep({ draft, set, template, devices }: {
       )}
       {status && <p className="muted small">{status}</p>}
     </div>
+  )
+}
+
+/** 360 booth: spin length, frame rate, and the overlay frame and music burned into every video. */
+function Spin360Settings({ draft, set }: { draft: Draft; set: <K extends keyof Draft>(k: K, v: Draft[K]) => void }) {
+  const [overlay, setOverlay] = useState<string | null>(null)
+  const [musicName, setMusicName] = useState<string | null>(null)
+  useEffect(() => {
+    if (draft.overlayId) window.booth.overlayPreview(draft.overlayId).then(setOverlay).catch(() => setOverlay(null))
+    else setOverlay(null)
+  }, [draft.overlayId])
+  const pick = async (kind: 'overlay' | 'music') => {
+    const added = await window.booth.importAsset(kind)
+    if (!added) return
+    if (kind === 'overlay') set('overlayId', added.id)
+    else {
+      set('musicId', added.id)
+      setMusicName(added.name)
+    }
+  }
+  return (
+    <>
+      <Stepper label="Each spin records for" value={draft.spinSeconds} min={3} max={30} format={secs}
+        hint="The middle of the clip plays in slow motion, so the video ends up about twice as long." onChange={(v) => set('spinSeconds', v)} />
+      <div className="field">
+        <span className="field-label">Slow motion</span>
+        <div className="seg">
+          <button className={draft.spinFps === 120 ? 'on' : ''} onClick={() => set('spinFps', 120)}>120 fps (2.7K)</button>
+          <button className={draft.spinFps === 240 ? 'on' : ''} onClick={() => set('spinFps', 240)}>240 fps (1080p, extra slow)</button>
+        </div>
+      </div>
+      <div className="row">
+        <div className="field">
+          <span className="field-label">Overlay frame (PNG, 1080×1920, transparent middle)</span>
+          {overlay && <img src={overlay} alt="Overlay frame" className="overlay-thumb" />}
+          <div className="row">
+            <button className="btn small" onClick={() => pick('overlay')}>{draft.overlayId ? 'Change' : 'Add overlay'}</button>
+            {draft.overlayId && <button className="btn small ghost" onClick={() => set('overlayId', undefined)}>Remove</button>}
+          </div>
+        </div>
+        <div className="field">
+          <span className="field-label">Music</span>
+          <span className="muted small">{draft.musicId ? (musicName ?? 'Music added') : 'No music (silent video)'}</span>
+          <div className="row">
+            <button className="btn small" onClick={() => pick('music')}>{draft.musicId ? 'Change' : 'Add music'}</button>
+            {draft.musicId && <button className="btn small ghost" onClick={() => set('musicId', undefined)}>Remove</button>}
+          </div>
+        </div>
+      </div>
+      <p className="muted small">Use music you have the rights to play publicly. Each video is saved in the event's Videos folder (raw GoPro clips in Videos\Raw) and shared by QR.</p>
+    </>
   )
 }
 

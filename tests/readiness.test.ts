@@ -7,14 +7,15 @@ const GB = 1024 ** 3
 const event: BoothEvent = {
   id: 'e1', name: 'Priya & Tom', date: '2026-10-27', templateId: 't', photosPerSession: 3, countdownSeconds: 3, retakesAllowed: 1,
   printCopies: 1, autoPrint: true, galleryEnabled: false, shotIntervalSeconds: 3, photoReviewSeconds: 3, doneScreenSeconds: 20,
-  showGallery: true, look: 'glam', skinSmoothing: 50, colourCopy: false, boomerang: false, backdrop: 'none', backgrounds: [], mode: 'photo', videoSeconds: 20, videoPrompt: '', exposure: { iso: '400', aperture: '5.6', shutter: '1/125' },
+  showGallery: true, look: 'glam', skinSmoothing: 50, colourCopy: false, boomerang: false, backdrop: 'none', backgrounds: [], mode: 'photo', videoSeconds: 20, videoPrompt: '', spinSeconds: 10, spinFps: 120, exposure: { iso: '400', aperture: '5.6', shutter: '1/125' },
   createdAt: '2026-10-27T10:00:00Z'
 }
 const devices: DeviceSnapshot = {
   camera: { driver: 'canon-edsdk', state: 'ready', model: 'Canon EOS R100', liveViewSupported: true },
   printer: { driver: 'windows-driver', state: 'ready', printerName: 'DS-RX1', queueLength: 0 },
   uploads: { enabled: false, pending: 0, failed: 0, done: 0 },
-  paper: null
+  paper: null,
+  gopro: { state: 'disconnected', message: 'Connect a GoPro (HERO9–12) by USB and switch it on.' }
 }
 const stats = { sessions: 0, prints: { sent: 0, pending: 0, failed: 0 }, uploads: { done: 0, pending: 0, failed: 0 } }
 const base: ReadinessInput = {
@@ -65,6 +66,20 @@ describe('readiness', () => {
     expect(item(withPaper(30), 'paper')).toMatchObject({ status: 'warn', fix: { target: 'devices' } })
     expect(item(withPaper(0), 'paper')?.status).toBe('bad')
     expect(readiness(withPaper(0)).ready).toBe(false)
+  })
+
+  it('checks the GoPro instead of the DSLR and printer for a 360 booth', () => {
+    const spin = { ...base, event: { ...event, mode: '360' as const } }
+    expect(readiness(spin).items.map((i) => i.key)).toEqual(['event', 'gopro', 'disk', 'licence'])
+    expect(item(spin, 'gopro')).toMatchObject({ status: 'bad', fix: { target: 'devices' } })
+    const ready = { ...spin, devices: { ...devices, gopro: { state: 'ready' as const } } }
+    expect(readiness(ready).ready).toBe(true)
+  })
+
+  it('needs neither DSLR nor printer for a video guestbook', () => {
+    const video = { ...base, event: { ...event, mode: 'video' as const }, devices: { ...devices, camera: { ...devices.camera, state: 'disconnected' as const } } }
+    expect(readiness(video).items.map((i) => i.key)).toEqual(['event', 'disk', 'licence'])
+    expect(readiness(video).ready).toBe(true)
   })
 
   it('checks free disk space', () => {

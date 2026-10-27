@@ -97,12 +97,18 @@ export interface BoothEvent {
    */
   backdrop: Backdrop
   backgrounds: BackgroundRef[]
-  /** Photo booth (stills) or video guestbook (guests record a message with a webcam). */
-  mode: 'photo' | 'video'
+  /** Photo booth (stills), video guestbook (webcam message) or 360 booth (GoPro on a spinner). */
+  mode: BoothMode
   /** Video guestbook: longest recording, in seconds. */
   videoSeconds: number
   /** Video guestbook: shown before recording, e.g. "Leave a message for Priya & Tom". */
   videoPrompt: string
+  /** 360 booth: how long the camera records each spin, and at what frame rate (slow motion needs 120+). */
+  spinSeconds: number
+  spinFps: 120 | 240
+  /** 360 booth: imported overlay frame (PNG with transparency) and music, by id. */
+  overlayId?: string
+  musicId?: string
   /** The event's folder on disk, fixed at its first session (see main/eventFolders). */
   folder?: string
   createdAt: string
@@ -113,6 +119,8 @@ export interface BackgroundRef {
   id: string
   name: string
 }
+
+export type BoothMode = 'photo' | 'video' | '360'
 
 export type Backdrop = 'none' | 'green' | 'blue' | 'ai'
 
@@ -127,7 +135,7 @@ export interface EventStats {
 }
 
 /** Fields added after the first release; optional when saving so older callers keep working. */
-type NewerEventFields = 'shotIntervalSeconds' | 'photoReviewSeconds' | 'doneScreenSeconds' | 'showGallery' | 'look' | 'skinSmoothing' | 'colourCopy' | 'boomerang' | 'backdrop' | 'backgrounds' | 'folder' | 'mode' | 'videoSeconds' | 'videoPrompt'
+type NewerEventFields = 'shotIntervalSeconds' | 'photoReviewSeconds' | 'doneScreenSeconds' | 'showGallery' | 'look' | 'skinSmoothing' | 'colourCopy' | 'boomerang' | 'backdrop' | 'backgrounds' | 'folder' | 'mode' | 'videoSeconds' | 'videoPrompt' | 'spinSeconds' | 'spinFps' | 'overlayId' | 'musicId'
 export type EventInput = Omit<BoothEvent, 'id' | 'createdAt' | NewerEventFields> & Partial<Pick<BoothEvent, NewerEventFields>> & { id?: string }
 
 export type ExposureKey = 'iso' | 'aperture' | 'shutter' | 'whiteBalance'
@@ -224,6 +232,8 @@ export interface PrinterStatus {
 export interface VideoResult {
   session: SessionRecord
   poster: string
+  /** 360 booth: the finished edit, for playback on the booth screen. */
+  video?: ArrayBuffer
   galleryUrl?: string
   qrDataUrl?: string
 }

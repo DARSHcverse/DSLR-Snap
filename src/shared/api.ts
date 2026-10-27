@@ -46,6 +46,8 @@ export interface DeviceSnapshot {
   uploads: { enabled: boolean; pending: number; failed: number; done: number }
   /** null until the operator records a roll. */
   paper: PaperState | null
+  /** 360 booth camera (found automatically on USB). */
+  gopro: { state: 'disconnected' | 'connecting' | 'ready' | 'recording' | 'error'; address?: string; message?: string }
 }
 
 /** Everything the renderer may ask the main process to do. Exposed as window.booth by the preload. */
@@ -54,6 +56,11 @@ export interface BoothApi {
   getActiveEvent(): Promise<{ event: BoothEvent; template: Template } | null>
   startSession(): Promise<{ sessionId: string; event: BoothEvent }>
   capture(sessionId: string): Promise<CaptureResult>
+  /** 360 booth: the GoPro records a spin, then the edit is made and shared. */
+  record360(sessionId: string): Promise<VideoResult>
+  /** 360 overlay frame or music: file dialog, copied into the app; null if cancelled. */
+  importAsset(kind: 'overlay' | 'music'): Promise<{ id: string; name: string } | null>
+  overlayPreview(id: string): Promise<string>
   /** Video guestbook: the browser recording (WebM) → MP4 + poster in the event folder, shared by QR. */
   finishVideo(sessionId: string, recording: ArrayBuffer): Promise<VideoResult>
   /** ~1.5 s from the live view, saved as the session's boomerang. false = skipped (no live view). */

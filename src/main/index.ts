@@ -27,10 +27,12 @@ import { HostedGallery } from './cloud/HostedGallery'
 import { compose, previewDataUrl } from './compose/composer'
 import { createSampleShots } from './compose/sampleShots'
 import { setPortraitModel } from './compose/aiModel'
-import { Ffmpeg, locateFfmpeg } from './video/ffmpeg'
+import { encoderArgs, Ffmpeg, locateFfmpeg } from './video/ffmpeg'
+import { FakeGoPro } from './gopro/FakeGoPro'
+import { findWiredGoPro, GoPro } from './gopro/GoPro'
 import { aiOntoBackground } from './compose/chromaKey'
 import { defaultSlots, detectSlots, guessLayout, type Layout, normalizeArtwork, suggestFit } from './compose/templateImport'
-import { BACKGROUND_ID, BoothDatabase } from './db/database'
+import { ASSET_ID, BACKGROUND_ID, BoothDatabase } from './db/database'
 import { AccountService } from './licence/AccountService'
 import { machineHash } from './licence/machineId'
 import { MockPrinter } from './printer/MockPrinter'
@@ -159,7 +161,8 @@ async function devices(): Promise<DeviceSnapshot> {
     camera: camera.getStatus(),
     printer: { ...p, queueLength: printQueue.pendingCount() },
     uploads: { enabled: gallery?.enabled ?? false, ...db.uploadStats() },
-    paper: db.getPaper()
+    paper: db.getPaper(),
+    gopro: gopro.getStatus()
   }
 }
 
@@ -199,6 +202,32 @@ const sampleShotsBackdrop = {
 // Video encoding (boomerang MP4s now; video booth and 360 next). Optional: GIFs work without it.
 const ffmpegPath = locateFfmpeg({ resourcesDir: app.isPackaged ? process.resourcesPath : undefined, appDir: app.getAppPath() })
 const ffmpeg = ffmpegPath ? new Ffmpeg(ffmpegPath) : undefined
+
+// 360 booth: a GoPro found automatically on USB. DSLR_SNAP_FAKE_GOPRO=1 (development) serves a
+// fake camera that "records" ffmpeg test clips, to try the whole flow without one.
+let fakeGoProBase: string | null = null
+const gopro = new GoPro({ discover: () => fakeGoProBase ?? findWiredGoPro() })
+async function startGoPro(): Promise<void> {
+  if (!app.isPackaged && process.env.DSLR_SNAP_FAKE_GOPRO === '1' && ffmpeg) {
+    const clips = join(userData, 'fake-gopro')
+    await mkdir(clips, { recursive: true })
+    const fake = new FakeGoPro(async (seconds) => {
+      const out = join(clips, `${Date.now()}.mp4`)
+      await ffmpeg.run(['-f', 'lavfi', '-i', 'testsrc2=size=1920x1080:rate=120', '-t', String(seconds), ...encoderArgs(await ffmpeg.h264()), out])
+      return readFileSync(out)
+    })
+    fakeGoProBase = await fake.start()
+  }
+  gopro.on('status', () => void broadcastDevices())
+  gopro.start()
+}
+
+// 360 overlays (PNG with transparency) and music, imported by the operator.
+const assetsDir = join(userData, 'assets')
+function assetPath(id: string): string {
+  if (!ASSET_ID.test(id)) throw new Error('Unknown file')
+  return join(assetsDir, id.startsWith('ov-') ? `${id}.png` : `${id}.audio`)
+}
 
 // AI backgrounds: the MODNet model ships next to the app (npm run fetch-models in development).
 const aiModel = setPortraitModel(app.isPackaged ? join(process.resourcesPath, 'models', 'modnet.onnx') : join(app.getAppPath(), 'resources', 'models', 'modnet.onnx'))
@@ -313,6 +342,23 @@ function registerIpc(): void {
   handle('startSession', () => service.startSession())
   handle('capture', (sessionId: string) => service.capture(sessionId))
   handle('finishVideo', (sessionId: string, recording: ArrayBuffer) => service.finishVideo(sessionId, new Uint8Array(recording)))
+  handle('record360', (sessionId: string) => service.record360(sessionId))
+  /** 360 overlay frame (PNG, kept transparent) or music, copied into the app. */
+  handle('importAsset', async (kind: 'overlay' | 'music') => {
+    const res = await dialog.showOpenDialog(win!, {
+      title: kind === 'overlay' ? 'Choose the overlay frame (PNG with a transparent middle)' : 'Choose the music',
+      properties: ['openFile'],
+      filters: kind === 'overlay' ? [{ name: 'PNG image', extensions: ['png'] }] : [{ name: 'Music', extensions: ['mp3', 'm4a', 'aac', 'wav'] }]
+    })
+    const file = res.canceled ? undefined : res.filePaths[0]
+    if (!file) return null
+    await mkdir(assetsDir, { recursive: true })
+    const id = `${kind === 'overlay' ? 'ov' : 'mu'}-${randomBytes(6).toString('hex')}`
+    if (kind === 'overlay') await sharp(file).ensureAlpha().png().toFile(assetPath(id))
+    else await writeFile(assetPath(id), readFileSync(file))
+    return { id, name: basename(file) }
+  })
+  handle('overlayPreview', (id: string) => previewDataUrl(assetPath(id), 360))
   handle('recordBoomerang', (sessionId: string) => service.recordBoomerang(sessionId))
   handle('finish', (sessionId: string, paths: string[], key: string, opts?: { backgroundId?: string }) => service.finish(sessionId, paths, key, opts ?? {}))
   handle('importBackgrounds', async (paths?: string[]) => {
@@ -753,7 +799,9 @@ app.whenReady().then(async () => {
     log: (level, m) => void log(level, m),
     watermark: () => account.watermark(),
     backgroundPath,
-    ffmpeg
+    ffmpeg,
+    gopro,
+    assetPath
   })
 
   registerIpc()
@@ -768,6 +816,7 @@ app.whenReady().then(async () => {
   devicesTimer = setInterval(() => void broadcastDevices(), 5000)
   account.start()
   void applyRemote().catch((e) => log('warn', `phone remote: ${e}`))
+  void startGoPro().catch((e) => log('warn', `gopro: ${e}`))
   if (pendingDeepLink) void openDeepLink(pendingDeepLink)
   await log('info', `started v${app.getVersion()} · gallery ${gallery.enabled ? 'on' : 'off'} · ffmpeg ${ffmpegPath ?? 'missing'} · ai ${aiModel.available ? 'on' : 'off'}`)
 })
@@ -780,6 +829,7 @@ app.on('before-quit', () => {
   printQueue?.stop()
   uploadQueue?.stop()
   account?.stop()
+  gopro.stop()
   void remote?.stop()
   void camera?.disconnect()
   db?.close()

@@ -61,7 +61,26 @@ Gate checks:
 
 If the image is scaled or has white edges: the page size in `src/shared/layout.ts` (`SHEET`) or the driver's paper choice needs adjusting. Note the driver's reported printable size and update `SHEET`.
 
-## 3. Full event rehearsal
+## 3. 360 booth: GoPro HERO9–12 over USB
+
+The 360 booth was built against GoPro's Open GoPro API and tested with a simulated camera. These checks confirm a real one behaves the same (about 5 minutes):
+
+1. Update the GoPro firmware (GoPro Quik app), insert a memory card with space, and charge it.
+2. Open DSLR Snap → Operator → Printer & devices → **360 camera (GoPro)**. Plug the GoPro into the laptop by USB and switch it on.
+
+Gate checks:
+- [ ] Within ~5 s the card says **GoPro connected by USB** (no app, no pairing). If not: the GoPro may need *Preferences → Connections → USB Connection → GoPro Connect* (not MTP), then replug
+- [ ] Create an event with Booth type **360 booth**, spin 5 s, 120 fps → Home shows **GoPro: Connected by USB**
+- [ ] Start a session: the GoPro starts recording on "Spin!", stops after 5 s, and the app shows "Making your 360 video…"
+- [ ] The video plays on screen: normal speed → slow motion → normal, portrait, with your overlay and music
+- [ ] `Videos\<time>.mp4` (the edit) and `Videos\Raw\<time>.mp4` (the GoPro original) are in the event folder
+- [ ] Try 240 fps: the camera switches to 1080p 240 (if your model refuses that combination, the app logs it and records with the camera's current setting)
+- [ ] Unplug the USB mid-idle → the card shows disconnected; replug → connected again by itself
+- [ ] Leave it connected 30 minutes → still connected (the app keeps it awake)
+
+If the GoPro is found but "not answering", note the message in the log (Printer & devices → App → Log) and send it over.
+
+## 4. Full event rehearsal
 
 - [ ] App installed via the NSIS installer (not dev mode), runs fullscreen
 - [ ] Wi-Fi off: 30 sessions capture and print; QR screen says upload later

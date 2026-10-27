@@ -385,3 +385,9 @@ input[type='checkbox'] { width: 22px; height: 22px; accent-color: var(--accent);
 .done video.final { width: min(60vw, 1100px); aspect-ratio: 16 / 9; max-height: 80vh; border-radius: var(--radius); background: #000; }
 .webcam-preview { width: 100%; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 10px; background: #000; }
 .webcam.mirror, .webcam-preview.mirror { transform: scaleX(-1); } /* guests see a mirror; the saved video is not mirrored */
+
+/* 360 booth */
+.booth-360 { background: radial-gradient(120% 80% at 50% 0%, #241a2a 0%, var(--bg) 70%); }
+.display.recording { color: var(--accent); animation: pulse 0.6s ease-in-out infinite alternate; }
+.done video.final.portrait { width: auto; height: 80vh; aspect-ratio: 9 / 16; }
+.overlay-thumb { height: 140px; width: auto; border-radius: 8px; background: repeating-conic-gradient(#2a2a35 0% 25%, #1c1c24 0% 50%) 50% / 16px 16px; }
