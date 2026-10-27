@@ -13,6 +13,11 @@ const good = {
 };
 
 describe("parseUploadRequest", () => {
+  it("accepts a boomerang MP4 up to the video limit, and rejects a video posing as a photo", () => {
+    expect(parseUploadRequest({ ...good, files: [...good.files, { kind: "boomerangVideo", contentType: "video/mp4", bytes: 60_000_000 }] })).not.toHaveProperty("error");
+    expect(parseUploadRequest({ ...good, files: [{ kind: "photo", contentType: "video/mp4", bytes: 10 }] })).toHaveProperty("error");
+  });
+
   it("accepts a boomerang alongside the photo", () => {
     expect(parseUploadRequest({ ...good, files: [...good.files, { kind: "boomerang", contentType: "image/gif", bytes: 3_000_000 }] })).not.toHaveProperty("error");
   });
@@ -59,5 +64,7 @@ describe("gallery helpers", () => {
     const f = (kind: "photo" | "colour" | "gif" | "boomerang") => ({ kind, path: "", contentType: "" });
     expect(describeFiles([f("gif"), f("photo"), f("boomerang"), f("colour")]).map((d) => d.label)).toEqual(["Black & white", "Colour", "Boomerang", "Animated GIF"]);
     expect(describeFiles([f("photo")])[0].label).toBe("Your photo strip");
+    // With the MP4 boomerang, the GIF copy isn't offered twice.
+    expect(describeFiles([f("photo"), f("boomerang"), f("boomerangVideo" as never)]).map((d) => d.kind)).toEqual(["photo", "boomerangVideo"]);
   });
 });

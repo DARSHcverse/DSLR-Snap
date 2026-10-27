@@ -27,6 +27,7 @@ import { HostedGallery } from './cloud/HostedGallery'
 import { compose, previewDataUrl } from './compose/composer'
 import { createSampleShots } from './compose/sampleShots'
 import { setPortraitModel } from './compose/aiModel'
+import { Ffmpeg, locateFfmpeg } from './video/ffmpeg'
 import { aiOntoBackground } from './compose/chromaKey'
 import { defaultSlots, detectSlots, guessLayout, type Layout, normalizeArtwork, suggestFit } from './compose/templateImport'
 import { BACKGROUND_ID, BoothDatabase } from './db/database'
@@ -193,6 +194,10 @@ const sampleShotsBackdrop = {
   blue: createSampleShots(join(userData, 'template-previews-blue'), 'blue'),
   ai: sampleShots
 }
+
+// Video encoding (boomerang MP4s now; video booth and 360 next). Optional: GIFs work without it.
+const ffmpegPath = locateFfmpeg({ resourcesDir: app.isPackaged ? process.resourcesPath : undefined, appDir: app.getAppPath() })
+const ffmpeg = ffmpegPath ? new Ffmpeg(ffmpegPath) : undefined
 
 // AI backgrounds: the MODNet model ships next to the app (npm run fetch-models in development).
 const aiModel = setPortraitModel(app.isPackaged ? join(process.resourcesPath, 'models', 'modnet.onnx') : join(app.getAppPath(), 'resources', 'models', 'modnet.onnx'))
@@ -736,7 +741,8 @@ app.whenReady().then(async () => {
     gallery,
     log: (level, m) => void log(level, m),
     watermark: () => account.watermark(),
-    backgroundPath
+    backgroundPath,
+    ffmpeg
   })
 
   registerIpc()
@@ -752,7 +758,7 @@ app.whenReady().then(async () => {
   account.start()
   void applyRemote().catch((e) => log('warn', `phone remote: ${e}`))
   if (pendingDeepLink) void openDeepLink(pendingDeepLink)
-  await log('info', `started v${app.getVersion()} · gallery ${gallery.enabled ? 'on' : 'off'}`)
+  await log('info', `started v${app.getVersion()} · gallery ${gallery.enabled ? 'on' : 'off'} · ffmpeg ${ffmpegPath ?? 'missing'} · ai ${aiModel.available ? 'on' : 'off'}`)
 })
 
 app.on('window-all-closed', () => app.quit())

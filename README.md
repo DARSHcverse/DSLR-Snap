@@ -26,7 +26,7 @@ Capture and printing are 100% local; cloud is only used for optional QR gallerie
 
 ```bash
 npm install          # also rebuilds native modules for Electron
-npm run fetch-models # AI background model (~26 MB, checksum-verified); needed once
+npm run fetch-models # AI model + Windows ffmpeg (~110 MB, checksum-verified); needed once
 npm run dev          # opens the app with mock camera + mock printer
 ```
 
@@ -43,7 +43,7 @@ Mock prints land in `Documents/DSLR Snap/mock-prints`.
 | `npm run dev` | Run the app with hot reload |
 | `npm test` | Unit + integration tests (119) |
 | `npm run typecheck` | TypeScript check for main and renderer |
-| `npm run fetch-models` | Download the AI cut-out model into `resources/models/` (also run by `dist:win`) |
+| `npm run fetch-models` | Download the AI cut-out model and the LGPL Windows ffmpeg into `resources/` (also run by `dist:win`) |
 | `npm run render-samples` | Render every layout into `samples-output/` to eyeball designs |
 | `npm run dist:win` | Build the Windows installer (run on Windows or via CI) |
 

@@ -5,8 +5,9 @@ import { randomBytes } from "node:crypto";
 export const GALLERY_BUCKET = "galleries";
 export const RETENTION_DAYS = 365;
 export const MAX_FILE_BYTES = 25 * 1024 * 1024;
+export const MAX_VIDEO_BYTES = 120 * 1024 * 1024;
 
-export type GalleryFileKind = "photo" | "colour" | "gif" | "boomerang";
+export type GalleryFileKind = "photo" | "colour" | "gif" | "boomerang" | "boomerangVideo";
 export interface GalleryFile {
   kind: GalleryFileKind;
   path: string;
@@ -18,7 +19,10 @@ const KINDS: Record<GalleryFileKind, { contentType: string; ext: string }> = {
   colour: { contentType: "image/jpeg", ext: "jpg" },
   gif: { contentType: "image/gif", ext: "gif" },
   boomerang: { contentType: "image/gif", ext: "gif" },
+  boomerangVideo: { contentType: "video/mp4", ext: "mp4" },
 };
+
+export const isVideo = (kind: GalleryFileKind) => KINDS[kind].contentType.startsWith("video/");
 
 export const isUuid = (s: unknown): s is string =>
   typeof s === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s);
@@ -44,7 +48,8 @@ export function parseUploadRequest(body: Record<string, unknown> | null): Upload
     const kind = f.kind as GalleryFileKind;
     if (!(kind in KINDS) || seen.has(kind)) return { error: "Unknown file type." };
     if (f.contentType !== KINDS[kind].contentType) return { error: "Wrong file format." };
-    if (typeof f.bytes !== "number" || f.bytes <= 0 || f.bytes > MAX_FILE_BYTES) return { error: "File too large." };
+    const limit = KINDS[kind].contentType.startsWith("video/") ? MAX_VIDEO_BYTES : MAX_FILE_BYTES;
+    if (typeof f.bytes !== "number" || f.bytes <= 0 || f.bytes > limit) return { error: "File too large." };
     seen.add(kind);
     parsed.push({ kind, contentType: KINDS[kind].contentType, bytes: f.bytes });
   }
@@ -71,12 +76,14 @@ export function isExpired(createdAt: string, now: number): boolean {
 /** How each file is offered to guests, in page order. */
 export function describeFiles(files: GalleryFile[]): { kind: GalleryFileKind; label: string; filename: string }[] {
   const hasColour = files.some((f) => f.kind === "colour");
-  const order: GalleryFileKind[] = ["photo", "colour", "boomerang", "gif"];
+  // The MP4 boomerang is what guests can post; the GIF version is then redundant on the page.
+  const hasBoomerangVideo = files.some((f) => f.kind === "boomerangVideo");
+  const order: GalleryFileKind[] = ["photo", "colour", "boomerangVideo", "boomerang", "gif"];
   return order
-    .filter((k) => files.some((f) => f.kind === k))
+    .filter((k) => files.some((f) => f.kind === k) && !(k === "boomerang" && hasBoomerangVideo))
     .map((kind) => ({
       kind,
-      label: { photo: hasColour ? "Black & white" : "Your photo strip", colour: "Colour", boomerang: "Boomerang", gif: "Animated GIF" }[kind],
-      filename: { photo: "dslr-snap.jpg", colour: "dslr-snap-colour.jpg", boomerang: "dslr-snap-boomerang.gif", gif: "dslr-snap.gif" }[kind],
+      label: { photo: hasColour ? "Black & white" : "Your photo strip", colour: "Colour", boomerang: "Boomerang", boomerangVideo: "Boomerang", gif: "Animated GIF" }[kind],
+      filename: { photo: "dslr-snap.jpg", colour: "dslr-snap-colour.jpg", boomerang: "dslr-snap-boomerang.gif", boomerangVideo: "dslr-snap-boomerang.mp4", gif: "dslr-snap.gif" }[kind],
     }));
 }

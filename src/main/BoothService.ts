@@ -9,6 +9,7 @@ import type { CloudGallery } from './cloud/CloudGallery'
 import { compose, previewDataUrl } from './compose/composer'
 import { eventFolderName, hideOnWindows, type SessionLayout, sessionLayout, sessionStamp } from './eventFolders'
 import { boomerangPathFor, colourPathFor, thumbPathFor } from './sessionFiles'
+import type { Ffmpeg } from './video/ffmpeg'
 import type { BoothDatabase } from './db/database'
 import type { PrintQueue } from './queue/PrintQueue'
 import type { UploadQueue } from './queue/UploadQueue'
@@ -72,6 +73,8 @@ export class BoothService {
       watermark?: () => string | undefined
       /** File of an imported background (green screen). */
       backgroundPath?: (id: string) => string
+      /** Video encoding; without it boomerangs are GIF only. */
+      ffmpeg?: Ffmpeg
     }
   ) {}
 
@@ -147,6 +150,8 @@ export class BoothService {
     if (frames.length < 4) return false
     await mkdir(dirname(files.boomerang), { recursive: true })
     await makeBoomerang(frames, files.boomerang)
+    // The MP4 is for sharing; if encoding fails the GIF still works everywhere.
+    await this.deps.ffmpeg?.gifToMp4(files.boomerang, files.boomerangVideo).catch((e) => this.deps.log?.('warn', `boomerang mp4 for ${sessionId}: ${e instanceof Error ? e.message : e}`))
     return true
   }
 

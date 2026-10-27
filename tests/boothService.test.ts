@@ -5,6 +5,7 @@ import sharp from 'sharp'
 import { describe, expect, it } from 'vitest'
 import { BoothService } from '../src/main/BoothService'
 import { boomerangPathFor, colourPathFor } from '../src/main/sessionFiles'
+import { Ffmpeg, locateFfmpeg } from '../src/main/video/ffmpeg'
 import { MockCamera } from '../src/main/camera/MockCamera'
 import { DisabledGallery, type CloudGallery } from '../src/main/cloud/CloudGallery'
 import { BoothDatabase } from '../src/main/db/database'
@@ -22,7 +23,8 @@ async function setup(gallery: CloudGallery = new DisabledGallery(), templateId =
   const printer = new MockPrinter(join(dataDir, 'prints'), 10)
   const printQueue = new PrintQueue(db, () => printer)
   const uploadQueue = new UploadQueue(db, gallery)
-  const service = new BoothService({ db, photosRoot: () => dataDir, camera: () => camera, printQueue, uploadQueue, gallery, qrWaitMs, backgroundPath: (id) => join(dataDir, `${id}.jpg`) })
+  const ffPath = locateFfmpeg({ appDir: join(__dirname, '..') })
+  const service = new BoothService({ db, photosRoot: () => dataDir, camera: () => camera, printQueue, uploadQueue, gallery, qrWaitMs, backgroundPath: (id) => join(dataDir, `${id}.jpg`), ffmpeg: ffPath ? new Ffmpeg(ffPath) : undefined })
   return { db, ev, service, printQueue, uploadQueue, dataDir, camera }
 }
 
@@ -130,7 +132,8 @@ describe('BoothService end to end (mock hardware)', () => {
     expect(readdirSync(join(folder, 'Photos')).sort()).toEqual([`${stamp} 1.jpg`, `${stamp} 2.jpg`, `${stamp} 3.jpg`])
     expect(readdirSync(join(folder, 'Prints')).sort()).toEqual([`${stamp} colour.jpg`, `${stamp}.jpg`])
     expect(readdirSync(join(folder, 'GIFs'))).toEqual([`${stamp}.gif`])
-    expect(readdirSync(join(folder, 'Boomerangs'))).toEqual([`${stamp}.gif`])
+    // The MP4 copy for social media needs ffmpeg (always present in development via ffmpeg-static).
+    expect(readdirSync(join(folder, 'Boomerangs')).sort()).toEqual([`${stamp}.gif`, `${stamp}.mp4`])
     expect(readdirSync(join(folder, '.booth')).sort()).toEqual([`${stamp} print-sheet.jpg`, `${stamp} thumb.jpg`])
 
     // Renaming the event later doesn't move or split its folder.

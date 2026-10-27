@@ -21,6 +21,10 @@ extraResources:
     filter: ["*.onnx"]
   - from: resources/THIRD_PARTY_NOTICES.txt
     to: THIRD_PARTY_NOTICES.txt
+  # ffmpeg (LGPL build, npm run fetch-models): video encoding.
+  - from: resources/ffmpeg/win32
+    to: ffmpeg
+    filter: ["**/*"]
   # The compiled Canon bridge (see native/CanonBridge/README.md). Optional: app falls back to mock camera if missing.
   - from: native/CanonBridge/publish
     to: canon-bridge

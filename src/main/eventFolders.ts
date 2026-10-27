@@ -8,7 +8,7 @@ import { basename, dirname, join } from 'node:path'
  *     Photos/      camera originals   "20.14.05 1.jpg"
  *     Prints/      finished designs   "20.14.05.jpg" (+ "20.14.05 colour.jpg")
  *     GIFs/        "20.14.05.gif"
- *     Boomerangs/  "20.14.05.gif"
+ *     Boomerangs/  "20.14.05.gif" and "20.14.05.mp4"
  *     .booth/      print sheets and thumbnails the app needs (hidden on Windows)
  *
  * Files are named by the time the guest used the booth, so they sort in order.
@@ -42,6 +42,8 @@ export interface SessionLayout {
   colour: string
   gif: string
   boomerang: string
+  /** MP4 of the boomerang, for Instagram/WhatsApp (they don't take GIFs). */
+  boomerangVideo: string
   printSheet: string
   thumb: string
 }
@@ -54,6 +56,7 @@ export function sessionLayout(eventFolder: string, stamp: string): SessionLayout
     colour: join(eventFolder, FOLDERS.prints, `${stamp} colour.jpg`),
     gif: join(eventFolder, FOLDERS.gifs, `${stamp}.gif`),
     boomerang: join(eventFolder, FOLDERS.boomerangs, `${stamp}.gif`),
+    boomerangVideo: join(eventFolder, FOLDERS.boomerangs, `${stamp}.mp4`),
     printSheet: join(eventFolder, FOLDERS.internal, `${stamp} print-sheet.jpg`),
     thumb: join(eventFolder, FOLDERS.internal, `${stamp} thumb.jpg`)
   }
@@ -71,6 +74,7 @@ export function layoutFromFinal(finalPath: string): Omit<SessionLayout, 'photosD
       colour: join(dir, 'final-colour.jpg'),
       gif: join(dir, 'animation.gif'),
       boomerang: join(dir, 'boomerang.gif'),
+      boomerangVideo: join(dir, 'boomerang.mp4'),
       printSheet: join(dir, 'print-sheet.jpg'),
       thumb: join(dir, 'thumb.jpg')
     }

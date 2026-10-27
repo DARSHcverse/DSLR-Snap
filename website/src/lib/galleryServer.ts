@@ -1,5 +1,5 @@
 import "server-only";
-import { describeFiles, GALLERY_BUCKET, type GalleryFile, type GalleryFileKind, isExpired, makeShareToken, RETENTION_DAYS } from "./gallery";
+import { describeFiles, GALLERY_BUCKET, type GalleryFile, type GalleryFileKind, isExpired, isVideo, makeShareToken, RETENTION_DAYS } from "./gallery";
 import { supabaseAdmin } from "./supabase/server";
 
 /** The account's gallery record for a booth event, created on first use (with the host's share token). */
@@ -35,7 +35,7 @@ const LINK_SECONDS = 60 * 60;
 export type SessionGallery =
   | { state: "waiting" }
   | { state: "expired" }
-  | { state: "ready"; eventName: string | null; items: { kind: GalleryFileKind; label: string; view?: string; download?: string }[] };
+  | { state: "ready"; eventName: string | null; items: { kind: GalleryFileKind; label: string; video: boolean; view?: string; download?: string }[] };
 
 /** A guest session's photos with short-lived view and download links. */
 export async function loadSessionGallery(id: string): Promise<SessionGallery> {
@@ -58,7 +58,7 @@ export async function loadSessionGallery(id: string): Promise<SessionGallery> {
         bucket.createSignedUrl(path, LINK_SECONDS),
         bucket.createSignedUrl(path, LINK_SECONDS, { download: d.filename }),
       ]);
-      return { kind: d.kind, label: d.label, view: view.data?.signedUrl, download: download.data?.signedUrl };
+      return { kind: d.kind, label: d.label, video: isVideo(d.kind), view: view.data?.signedUrl, download: download.data?.signedUrl };
     }),
   );
   const event = data.gallery_events as unknown as { name: string } | null;

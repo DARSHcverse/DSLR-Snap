@@ -47,8 +47,12 @@ async function Session({ params }: Pick<PageProps<"/s/[id]">, "params">) {
       <div className={`mt-10 grid gap-6 ${items.length > 1 ? "sm:grid-cols-2" : "mx-auto max-w-md"}`}>
         {items.map((l) => (
           <figure key={l.kind} className="flex flex-col gap-3 rounded-card border border-line bg-surface p-4">
-            {/* eslint-disable-next-line @next/next/no-img-element -- short-lived signed storage URL */}
-            <img src={l.view} alt={l.label} className="mx-auto max-h-[70vh] w-auto rounded-lg" />
+            {l.video ? (
+              <video src={l.view} autoPlay muted loop playsInline className="mx-auto max-h-[70vh] w-auto rounded-lg" />
+            ) : (
+              // eslint-disable-next-line @next/next/no-img-element -- short-lived signed storage URL
+              <img src={l.view} alt={l.label} className="mx-auto max-h-[70vh] w-auto rounded-lg" />
+            )}
             <figcaption className="flex items-center justify-between gap-3">
               <span className="font-medium">{l.label}</span>
               <a href={l.download} className="rounded-full bg-accent px-5 py-2.5 text-sm font-semibold text-accent-ink transition-transform active:scale-[0.97]">

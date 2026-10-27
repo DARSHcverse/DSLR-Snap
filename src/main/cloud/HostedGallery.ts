@@ -1,9 +1,9 @@
 import { existsSync } from 'node:fs'
 import { readFile } from 'node:fs/promises'
-import { boomerangPathFor, colourPathFor, gifPathFor } from '../sessionFiles'
+import { boomerangPathFor, boomerangVideoPathFor, colourPathFor, gifPathFor } from '../sessionFiles'
 import type { CloudGallery } from './CloudGallery'
 
-export type GalleryFileKind = 'photo' | 'colour' | 'gif' | 'boomerang'
+export type GalleryFileKind = 'photo' | 'colour' | 'gif' | 'boomerang' | 'boomerangVideo'
 
 export interface HostedGalleryDeps {
   /** e.g. https://dslrsnap.com */
@@ -39,6 +39,7 @@ export class HostedGallery implements CloudGallery {
     if (existsSync(colourPathFor(filePath))) files.push({ kind: 'colour', path: colourPathFor(filePath), contentType: 'image/jpeg' })
     if (existsSync(gifPathFor(filePath))) files.push({ kind: 'gif', path: gifPathFor(filePath), contentType: 'image/gif' })
     if (existsSync(boomerangPathFor(filePath))) files.push({ kind: 'boomerang', path: boomerangPathFor(filePath), contentType: 'image/gif' })
+    if (existsSync(boomerangVideoPathFor(filePath))) files.push({ kind: 'boomerangVideo', path: boomerangVideoPathFor(filePath), contentType: 'video/mp4' })
     const bodies = await Promise.all(files.map((f) => readFile(f.path)))
 
     const { uploads, pageUrl } = await this.post<{ uploads: { kind: GalleryFileKind; url: string; headers?: Record<string, string> }[]; pageUrl: string }>('/api/app/uploads', {
