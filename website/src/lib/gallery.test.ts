@@ -64,6 +64,8 @@ describe("gallery helpers", () => {
     const f = (kind: "photo" | "colour" | "gif" | "boomerang") => ({ kind, path: "", contentType: "" });
     expect(describeFiles([f("gif"), f("photo"), f("boomerang"), f("colour")]).map((d) => d.label)).toEqual(["Black & white", "Colour", "Boomerang", "Animated GIF"]);
     expect(describeFiles([f("photo")])[0].label).toBe("Your photo strip");
+    // A video message shows the video, not its poster frame.
+    expect(describeFiles([f("photo"), f("video" as never)]).map((d) => [d.kind, d.label])).toEqual([["video", "Your video message"]]);
     // With the MP4 boomerang, the GIF copy isn't offered twice.
     expect(describeFiles([f("photo"), f("boomerang"), f("boomerangVideo" as never)]).map((d) => d.kind)).toEqual(["photo", "boomerangVideo"]);
   });

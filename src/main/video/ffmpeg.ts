@@ -75,6 +75,28 @@ export class Ffmpeg {
   }
 
   /**
+   * A browser recording (WebM, variable frame rate) → MP4 every phone plays: H.264 + AAC, constant
+   * 30 fps, at most 1080 px tall, cut at `maxSeconds`. `overlay` (a PNG, e.g. the trial band) is
+   * stretched over the whole frame.
+   */
+  async webmToMp4(input: string, out: string, opts: { maxSeconds: number; overlay?: string }): Promise<void> {
+    const encoder = await this.h264()
+    const base = "scale=-2:'min(1080,ih)',fps=30,format=yuv420p"
+    const video = opts.overlay
+      ? ['-i', opts.overlay, '-filter_complex', `[0:v]${base}[v];[1:v][v]scale2ref=w=iw:h=ih[o][v2];[v2][o]overlay=0:0,format=yuv420p[out]`, '-map', '[out]', '-map', '0:a?']
+      : ['-vf', base]
+    await this.run(
+      ['-i', input, ...video, '-t', String(opts.maxSeconds), ...encoderArgs(encoder), '-c:a', 'aac', '-b:a', '160k', '-movflags', '+faststart', out],
+      Math.max(120_000, opts.maxSeconds * 10_000)
+    )
+  }
+
+  /** A still from `atSeconds` in, for galleries and the QR page. */
+  async posterFrame(video: string, out: string, atSeconds = 1): Promise<void> {
+    await this.run(['-ss', String(atSeconds), '-i', video, '-frames:v', '1', '-q:v', '3', out])
+  }
+
+  /**
    * Animated GIF (e.g. a boomerang) → MP4 that Instagram and WhatsApp accept: played `loops` times,
    * even dimensions, yuv420p, fast start for streaming on the guest page.
    */

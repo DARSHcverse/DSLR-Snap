@@ -7,7 +7,7 @@ export const RETENTION_DAYS = 365;
 export const MAX_FILE_BYTES = 25 * 1024 * 1024;
 export const MAX_VIDEO_BYTES = 120 * 1024 * 1024;
 
-export type GalleryFileKind = "photo" | "colour" | "gif" | "boomerang" | "boomerangVideo";
+export type GalleryFileKind = "photo" | "colour" | "gif" | "boomerang" | "boomerangVideo" | "video";
 export interface GalleryFile {
   kind: GalleryFileKind;
   path: string;
@@ -20,6 +20,8 @@ const KINDS: Record<GalleryFileKind, { contentType: string; ext: string }> = {
   gif: { contentType: "image/gif", ext: "gif" },
   boomerang: { contentType: "image/gif", ext: "gif" },
   boomerangVideo: { contentType: "video/mp4", ext: "mp4" },
+  // Video guestbook message; "photo" is then its poster frame.
+  video: { contentType: "video/mp4", ext: "mp4" },
 };
 
 export const isVideo = (kind: GalleryFileKind) => KINDS[kind].contentType.startsWith("video/");
@@ -78,12 +80,14 @@ export function describeFiles(files: GalleryFile[]): { kind: GalleryFileKind; la
   const hasColour = files.some((f) => f.kind === "colour");
   // The MP4 boomerang is what guests can post; the GIF version is then redundant on the page.
   const hasBoomerangVideo = files.some((f) => f.kind === "boomerangVideo");
-  const order: GalleryFileKind[] = ["photo", "colour", "boomerangVideo", "boomerang", "gif"];
+  // A video message's "photo" is just its poster frame.
+  const hasVideo = files.some((f) => f.kind === "video");
+  const order: GalleryFileKind[] = ["video", "photo", "colour", "boomerangVideo", "boomerang", "gif"];
   return order
-    .filter((k) => files.some((f) => f.kind === k) && !(k === "boomerang" && hasBoomerangVideo))
+    .filter((k) => files.some((f) => f.kind === k) && !(k === "boomerang" && hasBoomerangVideo) && !(k === "photo" && hasVideo))
     .map((kind) => ({
       kind,
-      label: { photo: hasColour ? "Black & white" : "Your photo strip", colour: "Colour", boomerang: "Boomerang", boomerangVideo: "Boomerang", gif: "Animated GIF" }[kind],
-      filename: { photo: "dslr-snap.jpg", colour: "dslr-snap-colour.jpg", boomerang: "dslr-snap-boomerang.gif", boomerangVideo: "dslr-snap-boomerang.mp4", gif: "dslr-snap.gif" }[kind],
+      label: { photo: hasColour ? "Black & white" : "Your photo strip", colour: "Colour", boomerang: "Boomerang", boomerangVideo: "Boomerang", video: "Your video message", gif: "Animated GIF" }[kind],
+      filename: { photo: "dslr-snap.jpg", colour: "dslr-snap-colour.jpg", boomerang: "dslr-snap-boomerang.gif", boomerangVideo: "dslr-snap-boomerang.mp4", video: "dslr-snap-message.mp4", gif: "dslr-snap.gif" }[kind],
     }));
 }

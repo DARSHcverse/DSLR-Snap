@@ -1,9 +1,9 @@
 import { existsSync } from 'node:fs'
 import { readFile } from 'node:fs/promises'
-import { boomerangPathFor, boomerangVideoPathFor, colourPathFor, gifPathFor } from '../sessionFiles'
+import { boomerangPathFor, boomerangVideoPathFor, colourPathFor, gifPathFor, videoPathFor } from '../sessionFiles'
 import type { CloudGallery } from './CloudGallery'
 
-export type GalleryFileKind = 'photo' | 'colour' | 'gif' | 'boomerang' | 'boomerangVideo'
+export type GalleryFileKind = 'photo' | 'colour' | 'gif' | 'boomerang' | 'boomerangVideo' | 'video'
 
 export interface HostedGalleryDeps {
   /** e.g. https://dslrsnap.com */
@@ -39,6 +39,8 @@ export class HostedGallery implements CloudGallery {
     if (existsSync(colourPathFor(filePath))) files.push({ kind: 'colour', path: colourPathFor(filePath), contentType: 'image/jpeg' })
     if (existsSync(gifPathFor(filePath))) files.push({ kind: 'gif', path: gifPathFor(filePath), contentType: 'image/gif' })
     if (existsSync(boomerangPathFor(filePath))) files.push({ kind: 'boomerang', path: boomerangPathFor(filePath), contentType: 'image/gif' })
+    // Video guestbook sessions: filePath is the poster; the message itself goes up as 'video'.
+    if (existsSync(videoPathFor(filePath))) files.push({ kind: 'video', path: videoPathFor(filePath), contentType: 'video/mp4' })
     if (existsSync(boomerangVideoPathFor(filePath))) files.push({ kind: 'boomerangVideo', path: boomerangVideoPathFor(filePath), contentType: 'video/mp4' })
     const bodies = await Promise.all(files.map((f) => readFile(f.path)))
 

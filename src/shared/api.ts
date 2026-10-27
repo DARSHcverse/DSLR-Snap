@@ -21,7 +21,8 @@ import type {
   Template,
   TemplateImportDraft,
   TemplateImportOptions,
-  TestShot
+  TestShot,
+  VideoResult
 } from './types'
 
 /** What the event editor previews: filter, and green-screen background. */
@@ -53,6 +54,8 @@ export interface BoothApi {
   getActiveEvent(): Promise<{ event: BoothEvent; template: Template } | null>
   startSession(): Promise<{ sessionId: string; event: BoothEvent }>
   capture(sessionId: string): Promise<CaptureResult>
+  /** Video guestbook: the browser recording (WebM) → MP4 + poster in the event folder, shared by QR. */
+  finishVideo(sessionId: string, recording: ArrayBuffer): Promise<VideoResult>
   /** ~1.5 s from the live view, saved as the session's boomerang. false = skipped (no live view). */
   recordBoomerang(sessionId: string): Promise<boolean>
   /** backgroundId: the guest's pick on a green-screen event (default: the event's first background). */

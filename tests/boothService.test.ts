@@ -1,4 +1,4 @@
-import { existsSync, mkdtempSync, readdirSync } from 'node:fs'
+import { existsSync, mkdtempSync, readdirSync, readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import sharp from 'sharp'
@@ -142,6 +142,25 @@ describe('BoothService end to end (mock hardware)', () => {
     await service.capture(next.sessionId)
     expect(readdirSync(dataDir).filter((f) => f !== 'prints')).toEqual(['Priya & Tom 2026-10-24']) // 'prints' = this test's mock printer
   })
+
+  it.skipIf(!locateFfmpeg({ appDir: join(__dirname, '..') }))('video guestbook: the recording becomes Videos/<time>.mp4 with a poster, nothing printed', async () => {
+    const { db, ev, service, dataDir } = await setup()
+    db.saveEvent({ ...ev, mode: 'video', videoSeconds: 10, videoPrompt: 'Leave a message for Priya & Tom' })
+    const ff = new Ffmpeg(locateFfmpeg({ appDir: join(__dirname, '..') })!)
+    const webm = join(dataDir, 'browser.webm')
+    await ff.run(['-f', 'lavfi', '-i', 'testsrc=size=640x360:rate=24', '-f', 'lavfi', '-i', 'sine=frequency=440', '-t', '3', '-c:v', 'libvpx', '-c:a', 'libopus', webm])
+
+    const { sessionId } = service.startSession()
+    const res = await service.finishVideo(sessionId, new Uint8Array(readFileSync(webm)))
+    const stamp = db.getSession(sessionId)!.stamp!
+    const folder = join(dataDir, 'Priya & Tom 2026-10-24')
+    expect(readdirSync(join(folder, 'Videos')).sort()).toEqual([`${stamp}.jpg`, `${stamp}.mp4`])
+    expect(readdirSync(join(folder, '.booth'))).toEqual([`${stamp} thumb.jpg`]) // recording cleaned up
+    expect(res.session).toMatchObject({ status: 'complete', compositePath: join(folder, 'Videos', `${stamp}.jpg`) })
+    expect(res.poster).toMatch(/^data:image\/jpeg/)
+    expect(db.listPrintJobs()).toHaveLength(0)
+    expect((await service.galleryList()).map((g) => g.id)).toContain(sessionId)
+  }, 60_000)
 
   it('makes a looping GIF of the session photos and lists the session in the guest gallery', async () => {
     const { db, ev, service } = await setup()

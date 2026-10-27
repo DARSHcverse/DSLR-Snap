@@ -54,13 +54,18 @@ const MIGRATIONS: string[] = [
   `ALTER TABLE events ADD COLUMN backdrop TEXT NOT NULL DEFAULT 'none';
    ALTER TABLE events ADD COLUMN backgrounds TEXT NOT NULL DEFAULT '[]';`,
   `ALTER TABLE events ADD COLUMN folder TEXT;
-   ALTER TABLE sessions ADD COLUMN stamp TEXT;`
+   ALTER TABLE sessions ADD COLUMN stamp TEXT;`,
+  `ALTER TABLE events ADD COLUMN mode TEXT NOT NULL DEFAULT 'photo';
+   ALTER TABLE events ADD COLUMN video_seconds INTEGER NOT NULL DEFAULT 20;
+   ALTER TABLE events ADD COLUMN video_prompt TEXT NOT NULL DEFAULT '';`
 ]
 
 const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(min, Math.round(v)))
 
 export const DEFAULT_DEVICE_SETTINGS: DeviceSettings = {
   kioskLock: true,
+  videoInputId: '',
+  audioInputId: '',
   cameraDriver: 'auto',
   printerDriver: 'auto',
   // Empty = detect the DNP printer, whatever Windows named it.
@@ -184,6 +189,7 @@ export class BoothDatabase {
       doneScreenSeconds: r.done_screen_seconds, showGallery: !!r.show_gallery,
       look: LOOK_IDS.has(r.look) ? r.look : 'colour', skinSmoothing: r.skin_smoothing, colourCopy: !!r.colour_copy, boomerang: !!r.boomerang,
       backdrop: BACKDROPS.has(r.backdrop) ? r.backdrop : 'none', backgrounds: JSON.parse(r.backgrounds || '[]'), folder: r.folder ?? undefined,
+      mode: r.mode === 'video' ? 'video' : 'photo', videoSeconds: r.video_seconds, videoPrompt: r.video_prompt,
       exposure: r.exposure ? JSON.parse(r.exposure) : undefined, createdAt: r.created_at
     }
   }
@@ -217,19 +223,22 @@ export class BoothDatabase {
       boomerang: e.boomerang ?? false,
       backdrop: e.backdrop && BACKDROPS.has(e.backdrop) ? e.backdrop : 'none',
       backgrounds: (e.backgrounds ?? []).filter((b) => BACKGROUND_ID.test(b.id)).slice(0, 24),
+      mode: e.mode === 'video' ? 'video' : 'photo',
+      videoSeconds: clamp(e.videoSeconds ?? 20, 5, 120),
+      videoPrompt: (e.videoPrompt ?? '').slice(0, 140),
       retakesAllowed: clamp(e.retakesAllowed, 0, 10),
       printCopies: clamp(e.printCopies, 0, 10)
     }
     this.db
       .prepare(
         `INSERT INTO events (id, name, date, template_id, photos_per_session, countdown_seconds, retakes_allowed, print_copies, auto_print, gallery_enabled,
-           shot_interval_seconds, photo_review_seconds, done_screen_seconds, show_gallery, look, skin_smoothing, colour_copy, boomerang, backdrop, backgrounds, exposure, created_at)
+           shot_interval_seconds, photo_review_seconds, done_screen_seconds, show_gallery, look, skin_smoothing, colour_copy, boomerang, backdrop, backgrounds, mode, video_seconds, video_prompt, exposure, created_at)
          VALUES (@id, @name, @date, @templateId, @photosPerSession, @countdownSeconds, @retakesAllowed, @printCopies, @autoPrint, @galleryEnabled,
-           @shotIntervalSeconds, @photoReviewSeconds, @doneScreenSeconds, @showGallery, @look, @skinSmoothing, @colourCopy, @boomerang, @backdrop, @backgrounds, @exposure, @createdAt)
+           @shotIntervalSeconds, @photoReviewSeconds, @doneScreenSeconds, @showGallery, @look, @skinSmoothing, @colourCopy, @boomerang, @backdrop, @backgrounds, @mode, @videoSeconds, @videoPrompt, @exposure, @createdAt)
          ON CONFLICT(id) DO UPDATE SET name=@name, date=@date, template_id=@templateId, photos_per_session=@photosPerSession,
            countdown_seconds=@countdownSeconds, retakes_allowed=@retakesAllowed, print_copies=@printCopies, auto_print=@autoPrint, gallery_enabled=@galleryEnabled,
            shot_interval_seconds=@shotIntervalSeconds, photo_review_seconds=@photoReviewSeconds, done_screen_seconds=@doneScreenSeconds, show_gallery=@showGallery,
-           look=@look, skin_smoothing=@skinSmoothing, colour_copy=@colourCopy, boomerang=@boomerang, backdrop=@backdrop, backgrounds=@backgrounds`
+           look=@look, skin_smoothing=@skinSmoothing, colour_copy=@colourCopy, boomerang=@boomerang, backdrop=@backdrop, backgrounds=@backgrounds, mode=@mode, video_seconds=@videoSeconds, video_prompt=@videoPrompt`
       )
       .run({
         ...ev,

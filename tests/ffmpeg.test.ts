@@ -42,3 +42,31 @@ describe.skipIf(!path)('ffmpeg', () => {
     await expect(new Ffmpeg(path!).run(['-i', '/nonexistent.gif', '/tmp/x.mp4'])).rejects.toThrow(/ffmpeg failed/)
   })
 })
+
+describe.skipIf(!path)('video guestbook conversion', () => {
+  it('turns a browser WebM recording into a phone-friendly MP4 with sound, cut at the limit, plus a poster', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'vid-'))
+    const ff = new Ffmpeg(path!)
+    // A 4 s 1280x720 WebM with audio, like MediaRecorder makes.
+    await ff.run(['-f', 'lavfi', '-i', 'testsrc=size=1280x720:rate=24', '-f', 'lavfi', '-i', 'sine=frequency=440', '-t', '4', '-c:v', 'libvpx', '-b:v', '1M', '-c:a', 'libopus', join(dir, 'rec.webm')])
+    const band = join(dir, 'band.png')
+    await sharp({ create: { width: 1280, height: 720, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0.4 } } }).png().toFile(band)
+
+    await ff.webmToMp4(join(dir, 'rec.webm'), join(dir, 'out.mp4'), { maxSeconds: 3, overlay: band })
+    await ff.posterFrame(join(dir, 'out.mp4'), join(dir, 'poster.jpg'))
+
+    const info = await new Promise<string>((resolve) => {
+      const p = require('node:child_process').spawn(path!, ['-hide_banner', '-i', join(dir, 'out.mp4')])
+      let s = ''
+      p.stderr.on('data', (d: Buffer) => (s += d))
+      p.on('close', () => resolve(s))
+    })
+    expect(info).toMatch(/Video: h264/)
+    expect(info).toMatch(/yuv420p/)
+    expect(info).toMatch(/Audio: aac/)
+    const secs = Number(/Duration: 00:00:(\d+\.\d+)/.exec(info)?.[1])
+    expect(secs).toBeGreaterThan(2.5)
+    expect(secs).toBeLessThan(3.5)
+    expect((await sharp(join(dir, 'poster.jpg')).metadata()).width).toBe(1280)
+  }, 60_000)
+})

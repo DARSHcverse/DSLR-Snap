@@ -69,7 +69,7 @@ export async function loadSessionGallery(id: string): Promise<SessionGallery> {
 export async function loadEventGallery(
   token: string,
   limit = 500,
-): Promise<{ name: string; date: string | null; sessions: { id: string; photo: string }[] } | null> {
+): Promise<{ name: string; date: string | null; sessions: { id: string; photo: string; video: boolean }[] } | null> {
   const db = supabaseAdmin();
   const { data: event } = await db.from("gallery_events").select("id, name, event_date").eq("share_token", token).maybeSingle();
   if (!event) return null;
@@ -82,8 +82,8 @@ export async function loadEventGallery(
     .order("created_at", { ascending: false })
     .limit(limit);
   const list = ((rows ?? []) as { id: string; files: GalleryFile[] }[])
-    .map((s) => ({ id: s.id, path: s.files.find((f) => f.kind === "photo")?.path }))
-    .filter((s): s is { id: string; path: string } => !!s.path);
+    .map((s) => ({ id: s.id, path: s.files.find((f) => f.kind === "photo")?.path, video: s.files.some((f) => f.kind === "video") }))
+    .filter((s): s is { id: string; path: string; video: boolean } => !!s.path);
   const { data: signed } = list.length
     ? await db.storage.from(GALLERY_BUCKET).createSignedUrls(list.map((s) => s.path), LINK_SECONDS)
     : { data: [] };
@@ -91,6 +91,6 @@ export async function loadEventGallery(
   return {
     name: event.name,
     date: event.event_date,
-    sessions: list.flatMap((s) => (urlFor.get(s.path) ? [{ id: s.id, photo: urlFor.get(s.path)! }] : [])),
+    sessions: list.flatMap((s) => (urlFor.get(s.path) ? [{ id: s.id, photo: urlFor.get(s.path)!, video: s.video }] : [])),
   };
 }

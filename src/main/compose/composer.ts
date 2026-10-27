@@ -58,6 +58,14 @@ function watermarkSvg(text: string, w: number, h: number): Buffer {
  * Renders photos into a template. Photos are centre-cropped to fill each slot ("cover"),
  * which is what guests expect from a booth print. EXIF rotation is applied first.
  */
+/** The trial band alone on a transparent frame, to lay over videos. */
+export function watermarkOverlay(text: string, w = 1920, h = 1080): Promise<Buffer> {
+  return sharp({ create: { width: w, height: h, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } } })
+    .composite([{ input: watermarkSvg(text, w, h), left: 0, top: 0 }])
+    .png()
+    .toBuffer()
+}
+
 export async function compose(input: ComposeInput): Promise<ComposeOutput> {
   const { template, photoPaths } = input
   if (photoPaths.length < template.slots.length) {

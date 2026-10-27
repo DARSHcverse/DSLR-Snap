@@ -9,11 +9,12 @@ import { basename, dirname, join } from 'node:path'
  *     Prints/      finished designs   "20.14.05.jpg" (+ "20.14.05 colour.jpg")
  *     GIFs/        "20.14.05.gif"
  *     Boomerangs/  "20.14.05.gif" and "20.14.05.mp4"
+ *     Videos/      video guestbook messages "20.14.05.mp4" (+ poster frame "20.14.05.jpg")
  *     .booth/      print sheets and thumbnails the app needs (hidden on Windows)
  *
  * Files are named by the time the guest used the booth, so they sort in order.
  */
-export const FOLDERS = { photos: 'Photos', prints: 'Prints', gifs: 'GIFs', boomerangs: 'Boomerangs', internal: '.booth' } as const
+export const FOLDERS = { photos: 'Photos', prints: 'Prints', gifs: 'GIFs', boomerangs: 'Boomerangs', videos: 'Videos', internal: '.booth' } as const
 
 /** Folder-safe text for Windows and macOS: no \ / : * ? " < > | and no trailing dots or spaces. */
 export function safeFolderName(s: string): string {
@@ -46,6 +47,10 @@ export interface SessionLayout {
   boomerangVideo: string
   printSheet: string
   thumb: string
+  /** Video guestbook: the message, its poster frame, and the raw recording while it's converted. */
+  video: string
+  poster: string
+  recording: string
 }
 
 export function sessionLayout(eventFolder: string, stamp: string): SessionLayout {
@@ -58,7 +63,10 @@ export function sessionLayout(eventFolder: string, stamp: string): SessionLayout
     boomerang: join(eventFolder, FOLDERS.boomerangs, `${stamp}.gif`),
     boomerangVideo: join(eventFolder, FOLDERS.boomerangs, `${stamp}.mp4`),
     printSheet: join(eventFolder, FOLDERS.internal, `${stamp} print-sheet.jpg`),
-    thumb: join(eventFolder, FOLDERS.internal, `${stamp} thumb.jpg`)
+    thumb: join(eventFolder, FOLDERS.internal, `${stamp} thumb.jpg`),
+    video: join(eventFolder, FOLDERS.videos, `${stamp}.mp4`),
+    poster: join(eventFolder, FOLDERS.videos, `${stamp}.jpg`),
+    recording: join(eventFolder, FOLDERS.internal, `${stamp} recording.webm`)
   }
 }
 
@@ -76,7 +84,10 @@ export function layoutFromFinal(finalPath: string): Omit<SessionLayout, 'photosD
       boomerang: join(dir, 'boomerang.gif'),
       boomerangVideo: join(dir, 'boomerang.mp4'),
       printSheet: join(dir, 'print-sheet.jpg'),
-      thumb: join(dir, 'thumb.jpg')
+      thumb: join(dir, 'thumb.jpg'),
+      video: join(dir, 'video.mp4'),
+      poster: join(dir, 'poster.jpg'),
+      recording: join(dir, 'recording.webm')
     }
   }
   const { original: _o, photosDir: _p, ...rest } = sessionLayout(dirname(dirname(finalPath)), basename(finalPath, '.jpg'))

@@ -5,7 +5,7 @@ import type { AccountState } from '../shared/types'
 const invoke = (channel: string) => (...args: unknown[]) => ipcRenderer.invoke(channel, ...args)
 
 const methods = [
-  'getActiveEvent', 'startSession', 'capture', 'recordBoomerang', 'finish', 'reprint', 'liveViewStart', 'liveViewFrame', 'aiAvailable', 'liveViewStop', 'galleryList', 'galleryItem',
+  'getActiveEvent', 'startSession', 'capture', 'recordBoomerang', 'finishVideo', 'finish', 'reprint', 'liveViewStart', 'liveViewFrame', 'aiAvailable', 'liveViewStop', 'galleryList', 'galleryItem',
   'listEvents', 'saveEvent', 'deleteEvent', 'setActiveEvent', 'listTemplates', 'previewTemplate', 'importBackgrounds', 'backgroundImage', 'listSessions', 'openEventFolder', 'photosFolder', 'setPhotosFolder',
   'chooseTemplateFile', 'prepareTemplateImport', 'getTemplateArtwork', 'saveTemplate', 'deleteTemplate', 'discardTemplateDraft',
   'previewTemplateDraft', 'testPrintTemplate',

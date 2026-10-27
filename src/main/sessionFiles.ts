@@ -7,3 +7,4 @@ export const colourPathFor = (compositePath: string) => layoutFromFinal(composit
 export const gifPathFor = (compositePath: string) => layoutFromFinal(compositePath).gif
 export const boomerangPathFor = (compositePath: string) => layoutFromFinal(compositePath).boomerang
 export const boomerangVideoPathFor = (compositePath: string) => layoutFromFinal(compositePath).boomerangVideo
+export const videoPathFor = (compositePath: string) => layoutFromFinal(compositePath).video

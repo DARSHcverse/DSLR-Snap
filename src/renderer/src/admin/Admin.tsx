@@ -1,4 +1,4 @@
-import { type ReactNode, useEffect, useState } from 'react'
+import { type ReactNode, useEffect, useRef, useState } from 'react'
 import type { DeviceSnapshot, RemoteInfo } from '@shared/api'
 import type { DeviceSettings, DeviceState, EventStats, PrinterDetection, PrintJob, SessionRecord } from '@shared/types'
 import AccountTab, { useAccount } from './Account'
@@ -187,6 +187,7 @@ function DevicesTab({ devices }: { devices: DeviceSnapshot | null }) {
         {msg && <p className="muted">{msg}</p>}
       </div>
       <PaperCard paper={devices?.paper ?? null} />
+      <WebcamCard settings={s} save={save} />
       <PhoneRemoteCard />
       <div className="card">
         <h3>Booth lock</h3>
@@ -238,6 +239,49 @@ function PhoneRemoteCard() {
       {info?.problem && <p className="warn small">{info.problem}</p>}
       <p className="muted small">See the camera, printer, paper and guest count, pause the booth, retry failed prints and reprint recent sessions. If Windows asks, allow DSLR Snap on private networks.</p>
       {msg && <p className="warn small">{msg}</p>}
+    </div>
+  )
+}
+
+/** Video guestbook: which webcam and microphone to record with, with a live check. */
+function WebcamCard({ settings, save }: { settings: DeviceSettings; save: (s: DeviceSettings) => Promise<void> }) {
+  const [devices, setDevices] = useState<MediaDeviceInfo[]>([])
+  const [error, setError] = useState<string | null>(null)
+  const preview = useRef<HTMLVideoElement>(null)
+  useEffect(() => {
+    let stream: MediaStream | null = null
+    ;(async () => {
+      try {
+        // Device names only appear once access is granted, so open the chosen camera first.
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: settings.videoInputId ? { deviceId: { exact: settings.videoInputId } } : true,
+          audio: settings.audioInputId ? { deviceId: { exact: settings.audioInputId } } : true
+        })
+        if (preview.current) preview.current.srcObject = stream
+        setDevices(await navigator.mediaDevices.enumerateDevices())
+        setError(null)
+      } catch (e) {
+        setError(e instanceof Error && e.name === 'NotFoundError' ? 'No webcam or microphone found.' : `Can't open the webcam: ${e instanceof Error ? e.message : e}`)
+      }
+    })()
+    return () => stream?.getTracks().forEach((t) => t.stop())
+  }, [settings.videoInputId, settings.audioInputId])
+  const pick = (kind: MediaDeviceKind, key: 'videoInputId' | 'audioInputId', label: string) => (
+    <label>{label}
+      <select value={settings[key]} onChange={(e) => save({ ...settings, [key]: e.target.value })}>
+        <option value="">System default</option>
+        {devices.filter((d) => d.kind === kind && d.deviceId).map((d) => <option key={d.deviceId} value={d.deviceId}>{d.label || 'Unnamed device'}</option>)}
+      </select>
+    </label>
+  )
+  return (
+    <div className="card">
+      <h3>Video guestbook</h3>
+      <video ref={preview} className="webcam-preview mirror" autoPlay muted playsInline />
+      {pick('videoinput', 'videoInputId', 'Webcam')}
+      {pick('audioinput', 'audioInputId', 'Microphone')}
+      <p className="muted small">Any USB webcam, or a GoPro in webcam mode. The DSLR stays the photo camera.</p>
+      {error && <p className="warn small">{error}</p>}
     </div>
   )
 }

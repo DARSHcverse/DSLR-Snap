@@ -5,6 +5,7 @@ import type { BoothEvent, FinishResult, Template } from '@shared/types'
 import Gallery, { GalleryCorner } from '../components/Gallery'
 import { lookInfo } from '@shared/looks'
 import LiveView from '../components/LiveView'
+import VideoBooth from './VideoBooth'
 
 interface Props {
   /** Opens the operator menu (through the PIN keypad when a PIN is set). */
@@ -170,6 +171,9 @@ export default function Booth({ onNeedSetup }: Props) {
       </div>
     )
   }
+
+  // Video guestbook events use the webcam screen instead of the DSLR photo flow.
+  if (active.event.mode === 'video') return <VideoBooth event={active.event} paused={paused} onNeedSetup={onNeedSetup} />
 
   const cameraReady = devices?.camera.state === 'ready' || devices?.camera.state === 'busy'
   const showLive = state.name === 'countdown' || state.name === 'capturing'

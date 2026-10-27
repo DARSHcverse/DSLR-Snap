@@ -97,6 +97,12 @@ export interface BoothEvent {
    */
   backdrop: Backdrop
   backgrounds: BackgroundRef[]
+  /** Photo booth (stills) or video guestbook (guests record a message with a webcam). */
+  mode: 'photo' | 'video'
+  /** Video guestbook: longest recording, in seconds. */
+  videoSeconds: number
+  /** Video guestbook: shown before recording, e.g. "Leave a message for Priya & Tom". */
+  videoPrompt: string
   /** The event's folder on disk, fixed at its first session (see main/eventFolders). */
   folder?: string
   createdAt: string
@@ -121,7 +127,7 @@ export interface EventStats {
 }
 
 /** Fields added after the first release; optional when saving so older callers keep working. */
-type NewerEventFields = 'shotIntervalSeconds' | 'photoReviewSeconds' | 'doneScreenSeconds' | 'showGallery' | 'look' | 'skinSmoothing' | 'colourCopy' | 'boomerang' | 'backdrop' | 'backgrounds' | 'folder'
+type NewerEventFields = 'shotIntervalSeconds' | 'photoReviewSeconds' | 'doneScreenSeconds' | 'showGallery' | 'look' | 'skinSmoothing' | 'colourCopy' | 'boomerang' | 'backdrop' | 'backgrounds' | 'folder' | 'mode' | 'videoSeconds' | 'videoPrompt'
 export type EventInput = Omit<BoothEvent, 'id' | 'createdAt' | NewerEventFields> & Partial<Pick<BoothEvent, NewerEventFields>> & { id?: string }
 
 export type ExposureKey = 'iso' | 'aperture' | 'shutter' | 'whiteBalance'
@@ -214,6 +220,14 @@ export interface PrinterStatus {
   queueLength: number
 }
 
+/** A recorded video guestbook message, ready to watch and share. */
+export interface VideoResult {
+  session: SessionRecord
+  poster: string
+  galleryUrl?: string
+  qrDataUrl?: string
+}
+
 export interface DeviceSettings {
   /** 'auto' = Canon over USB on Windows, mock camera elsewhere. */
   cameraDriver: 'auto' | 'mock' | 'canon-edsdk'
@@ -232,6 +246,9 @@ export interface DeviceSettings {
    * Leaving it goes through the operator menu (and its PIN). Installed app only.
    */
   kioskLock: boolean
+  /** Video guestbook: webcam and microphone (browser device ids; empty = system default). */
+  videoInputId: string
+  audioInputId: string
 }
 
 /** Which printer queues the app will actually use, for the Devices screen. */

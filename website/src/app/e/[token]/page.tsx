@@ -38,7 +38,10 @@ async function EventGallery({ params }: Pick<PageProps<"/e/[token]">, "params">)
       {n ? (
         <div className="mt-10 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
           {gallery.sessions.map((s) => (
-            <Link key={s.id} href={`/s/${s.id}`} className="overflow-hidden rounded-xl border border-line bg-surface transition-transform active:scale-[0.98]">
+            <Link key={s.id} href={`/s/${s.id}`} className="relative overflow-hidden rounded-xl border border-line bg-surface transition-transform active:scale-[0.98]">
+              {s.video && (
+                <span className="absolute top-2 left-2 rounded-full bg-black/60 px-2.5 py-1 text-xs font-semibold" aria-label="Video message">▶ Video</span>
+              )}
               {/* eslint-disable-next-line @next/next/no-img-element -- short-lived signed storage URL */}
               <img src={s.photo} alt="" loading="lazy" className="aspect-[2/3] w-full object-cover" />
             </Link>

@@ -57,7 +57,8 @@ sharp.cache({ files: 0 })
 const userData = app.getPath('userData')
 const dataDir = join(app.getPath('documents'), 'DSLR Snap')
 /** The operator's photos folder: chosen at first setup (Home), default Documents/DSLR Snap. */
-const photosRoot = () => db.getSetting('photosRoot') || dataDir
+// DSLR_SNAP_PHOTOS_ROOT (development only) keeps test runs out of the real photos folder.
+const photosRoot = () => (!app.isPackaged && process.env.DSLR_SNAP_PHOTOS_ROOT) || db.getSetting('photosRoot') || dataDir
 const logFile = join(userData, 'logs', 'booth.log')
 
 async function log(level: 'info' | 'warn' | 'error', msg: string): Promise<void> {
@@ -311,6 +312,7 @@ function registerIpc(): void {
   })
   handle('startSession', () => service.startSession())
   handle('capture', (sessionId: string) => service.capture(sessionId))
+  handle('finishVideo', (sessionId: string, recording: ArrayBuffer) => service.finishVideo(sessionId, new Uint8Array(recording)))
   handle('recordBoomerang', (sessionId: string) => service.recordBoomerang(sessionId))
   handle('finish', (sessionId: string, paths: string[], key: string, opts?: { backgroundId?: string }) => service.finish(sessionId, paths, key, opts ?? {}))
   handle('importBackgrounds', async (paths?: string[]) => {
@@ -638,6 +640,13 @@ function applyBoothLock(boothShowing: boolean): void {
   win?.setKiosk(lock)
 }
 
+// Video guestbook: allow the booth's own page to use the webcam and microphone (nothing else asks).
+// DSLR_SNAP_FAKE_MEDIA=1 (development) swaps in Chromium's test camera and tone.
+if (!app.isPackaged && process.env.DSLR_SNAP_FAKE_MEDIA === '1') {
+  app.commandLine.appendSwitch('use-fake-device-for-media-stream')
+  app.commandLine.appendSwitch('use-fake-ui-for-media-stream')
+}
+
 function createWindow(): void {
   win = new BrowserWindow({
     width: 1280,
@@ -647,6 +656,8 @@ function createWindow(): void {
     backgroundColor: '#0b0b0f',
     webPreferences: { preload: join(__dirname, '../preload/index.js'), sandbox: false, contextIsolation: true, nodeIntegration: false }
   })
+  win.webContents.session.setPermissionRequestHandler((wc, permission, done) => done(permission === 'media' && wc === win?.webContents))
+  win.webContents.session.setPermissionCheckHandler((wc, permission) => permission === 'media' && wc === win?.webContents)
   // Block navigation away from the app and pop-ups.
   win.webContents.on('will-navigate', (e) => e.preventDefault())
   win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))

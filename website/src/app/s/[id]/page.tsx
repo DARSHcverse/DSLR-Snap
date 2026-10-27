@@ -48,7 +48,12 @@ async function Session({ params }: Pick<PageProps<"/s/[id]">, "params">) {
         {items.map((l) => (
           <figure key={l.kind} className="flex flex-col gap-3 rounded-card border border-line bg-surface p-4">
             {l.video ? (
-              <video src={l.view} autoPlay muted loop playsInline className="mx-auto max-h-[70vh] w-auto rounded-lg" />
+              // Boomerangs loop silently like a GIF; a video message plays with sound when tapped.
+              l.kind === "video" ? (
+                <video src={l.view} controls playsInline preload="metadata" className="mx-auto max-h-[70vh] w-auto rounded-lg" />
+              ) : (
+                <video src={l.view} autoPlay muted loop playsInline className="mx-auto max-h-[70vh] w-auto rounded-lg" />
+              )
             ) : (
               // eslint-disable-next-line @next/next/no-img-element -- short-lived signed storage URL
               <img src={l.view} alt={l.label} className="mx-auto max-h-[70vh] w-auto rounded-lg" />

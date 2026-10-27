@@ -12,7 +12,7 @@ type Draft = Omit<BoothEvent, 'id' | 'createdAt'> & { id?: string }
 const blankEvent = (templateId: string): Draft => ({
   name: '', date: todayIso(), templateId, photosPerSession: 3, countdownSeconds: 5, shotIntervalSeconds: 3, photoReviewSeconds: 3, doneScreenSeconds: 20,
   retakesAllowed: 2, printCopies: 1, autoPrint: true, galleryEnabled: false, showGallery: true,
-  look: 'colour', skinSmoothing: 50, colourCopy: false, boomerang: false, backdrop: 'none', backgrounds: []
+  look: 'colour', skinSmoothing: 50, colourCopy: false, boomerang: false, backdrop: 'none', backgrounds: [], mode: 'photo', videoSeconds: 20, videoPrompt: ''
 })
 
 /** Big − / + control; easier on a touch screen than a number box. */
@@ -183,6 +183,22 @@ function EventSetup({ initial, devices, onClose, onLaunch }: {
           <div className="form narrow">
             <label>Event name<input value={draft.name} onChange={(e) => set('name', e.target.value)} placeholder="Priya & Tom's Wedding" autoFocus /></label>
             <label>Date<input type="date" value={draft.date} onChange={(e) => set('date', e.target.value)} /></label>
+            <h3 className="section-title">Booth type</h3>
+            <div className="seg">
+              <button className={draft.mode === 'photo' ? 'on' : ''} onClick={() => set('mode', 'photo')}>Photo booth</button>
+              <button className={draft.mode === 'video' ? 'on' : ''} onClick={() => set('mode', 'video')}>Video guestbook</button>
+            </div>
+            {draft.mode === 'video' && (
+              <>
+                <label>What guests see before recording
+                  <input value={draft.videoPrompt} maxLength={140} onChange={(e) => set('videoPrompt', e.target.value)}
+                    placeholder={`Leave a message for ${draft.name || 'the couple'}`} />
+                </label>
+                <Stepper label="Longest message" value={draft.videoSeconds} min={5} max={120} step={5} format={secs}
+                  hint="Uses the webcam chosen under Printer & devices. Messages are saved as MP4 in the event's Videos folder and shared by QR."
+                  onChange={(v) => set('videoSeconds', v)} />
+              </>
+            )}
             <h3 className="section-title">Timing</h3>
             <div className="grid2 two">
               <Stepper label="Countdown before the first photo" value={draft.countdownSeconds} min={1} max={10} format={secs} onChange={(v) => set('countdownSeconds', v)} />

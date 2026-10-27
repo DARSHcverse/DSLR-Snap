@@ -1,12 +1,12 @@
 import { existsSync } from 'node:fs'
-import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
+import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import QRCode from 'qrcode'
 import sharp from 'sharp'
-import type { BoothEvent, CaptureResult, FinishResult } from '../shared/types'
+import type { BoothEvent, CaptureResult, FinishResult, VideoResult } from '../shared/types'
 import type { CameraAdapter } from './camera/CameraAdapter'
 import type { CloudGallery } from './cloud/CloudGallery'
-import { compose, previewDataUrl } from './compose/composer'
+import { compose, previewDataUrl, watermarkOverlay } from './compose/composer'
 import { eventFolderName, hideOnWindows, type SessionLayout, sessionLayout, sessionStamp } from './eventFolders'
 import { boomerangPathFor, colourPathFor, thumbPathFor } from './sessionFiles'
 import type { Ffmpeg } from './video/ffmpeg'
@@ -160,7 +160,7 @@ export class BoothService {
    * @param requestKey unique per "finish" press; repeats return the existing print job
    */
   async finish(sessionId: string, photoPaths: string[], requestKey: string, opts: { backgroundId?: string } = {}): Promise<FinishResult> {
-    const { db, printQueue, uploadQueue, gallery } = this.deps
+    const { db, printQueue } = this.deps
     const session = db.getSession(sessionId)
     if (!session) throw new Error('Session not found')
     const known = new Set(session.photoPaths)
@@ -200,19 +200,51 @@ export class BoothService {
       printJobId = printQueue.enqueue(sessionId, `auto:${requestKey}`, printPath, template.format, ev.printCopies).id
     }
 
-    let galleryUrl: string | undefined
-    let qrDataUrl: string | undefined
-    if (ev.galleryEnabled && gallery.enabled) {
-      uploadQueue.enqueue(sessionId, compositePath)
-      // Instant QR when the link is known up front; the upload finishes in the background.
-      galleryUrl = gallery.sessionUrl?.(sessionId, ev.id) ?? (await this.waitForGalleryUrl(sessionId))
-      if (galleryUrl) qrDataUrl = await QRCode.toDataURL(galleryUrl, { margin: 1, width: 512, errorCorrectionLevel: 'M' })
-    }
-
+    const { galleryUrl, qrDataUrl } = await this.share(ev, sessionId, compositePath)
     db.updateSession(sessionId, { status: 'complete' })
     const boomerangPath = boomerangPathFor(compositePath)
     const boomerang = existsSync(boomerangPath) ? `data:image/gif;base64,${(await readFile(boomerangPath)).toString('base64')}` : undefined
     return { session: db.getSession(sessionId)!, printPreview: await previewDataUrl(composite, 700), colourPreview, boomerang, galleryUrl, qrDataUrl, printJobId }
+  }
+
+  /** Queues the upload and makes the QR (instant when the link is known up front). */
+  private async share(ev: BoothEvent, sessionId: string, compositePath: string): Promise<{ galleryUrl?: string; qrDataUrl?: string }> {
+    const { gallery, uploadQueue } = this.deps
+    if (!ev.galleryEnabled || !gallery.enabled) return {}
+    uploadQueue.enqueue(sessionId, compositePath)
+    const galleryUrl = gallery.sessionUrl?.(sessionId, ev.id) ?? (await this.waitForGalleryUrl(sessionId))
+    const qrDataUrl = galleryUrl ? await QRCode.toDataURL(galleryUrl, { margin: 1, width: 512, errorCorrectionLevel: 'M' }) : undefined
+    return { galleryUrl, qrDataUrl }
+  }
+
+  /**
+   * Video guestbook: the browser's recording becomes "Videos/20.14.05.mp4" (H.264 + AAC, trial band
+   * when unlicensed) with a poster frame, then it's shared like a photo session. Nothing is printed.
+   */
+  async finishVideo(sessionId: string, recording: Uint8Array): Promise<VideoResult> {
+    const ff = this.deps.ffmpeg
+    if (!ff) throw new Error('Video needs ffmpeg, which is missing. Reinstall DSLR Snap.')
+    if (!recording.byteLength || recording.byteLength > 400 * 1024 * 1024) throw new Error('The recording is empty or too large.')
+    const { ev, files } = this.layout(sessionId)
+    for (const f of [files.video, files.recording]) await mkdir(dirname(f), { recursive: true })
+    hideOnWindows(dirname(files.recording))
+    await writeFile(files.recording, recording)
+    const watermark = this.deps.watermark?.()
+    const overlay = watermark ? `${files.recording}.trial.png` : undefined
+    if (overlay) await writeFile(overlay, await watermarkOverlay(watermark!))
+    try {
+      // A couple of seconds' grace: the guest's "Stop" or the timer can land just after the limit.
+      await ff.webmToMp4(files.recording, files.video, { maxSeconds: ev.videoSeconds + 2, overlay })
+      await ff.posterFrame(files.video, files.poster, 1).catch(() => ff.posterFrame(files.video, files.poster, 0))
+    } finally {
+      await rm(files.recording, { force: true })
+      if (overlay) await rm(overlay, { force: true })
+    }
+    await writeThumb(files.poster, thumbPathFor(files.poster))
+    this.deps.db.updateSession(sessionId, { compositePath: files.poster })
+    const { galleryUrl, qrDataUrl } = await this.share(ev, sessionId, files.poster)
+    this.deps.db.updateSession(sessionId, { status: 'complete' })
+    return { session: this.deps.db.getSession(sessionId)!, poster: await previewDataUrl(files.poster, 900), galleryUrl, qrDataUrl }
   }
 
   private async waitForGalleryUrl(sessionId: string): Promise<string | undefined> {
