@@ -249,3 +249,23 @@ Sources:
 - [dslrBooth v6.34 beauty/glam filter](https://blog.dslrbooth.com/?p=2685)
 - [Photo Booth Supply Co. glam booth guide](https://support.photoboothsupplyco.com/salsa/how-to-create-the-kardashian-style-glam-photo-booth)
 - [dslrBooth user reviews](https://dslrbooth.com/dslrbooth-reviews?stars=3)
+
+## 9. Phase F: capture modes (green screen, AI backgrounds, video, 360)
+
+These are expected of a serious booth app, so they move from "later" into the plan. They share two foundations, so the order matters.
+
+| Step | What | Hardware | Notes |
+|---|---|---|---|
+| F1 | **Green screen** (stills) | Green or blue backdrop, even lighting | Chroma key in the existing compose step. A background library per event, and guests pick a background on screen before shooting. Live view shows the key in real time. Edges softened, green spill removed. |
+| F2 | **AI backgrounds** (no backdrop) | None | On-device cut-out with BiRefNet (MIT licence, so no per-photo cost and it works offline). Expect about 2–4 s per photo on a Surface. Reuses F1's background picker. Generated "AI scenes" (e.g. "Paris at night") need a cloud model with a per-image cost, so they're a later paid add-on. |
+| F0 | **Video foundation** | — | Bundle ffmpeg to record, encode, overlay and add music. MP4 support in the booth gallery, the cloud gallery and the guest page. Needed by F3 and F4. |
+| F3 | **Video booth / video guestbook** | Webcam or GoPro | A short clip with a countdown and a prompt ("Leave a message for the couple"). The Canon R100 can't stream video to a PC through Canon's SDK, so video uses a webcam or a GoPro. |
+| F4 | **360 booth** | 360 spinner + GoPro HERO9–12 | Automatic connection: the booth finds a GoPro plugged in by USB (Open GoPro). It records at 120/240 fps while the arm spins, downloads the clip, then automatically adds a speed ramp (normal, slow-mo, normal), an overlay frame, music and an intro/outro. The QR is delivered the same way as photos. Start from the app, the phone remote or a foot pedal. |
+
+Testing needs the real hardware for F3 and F4: a GoPro on the laptop, and ideally a spinner.
+
+Sources:
+- [Open GoPro](https://gopro.com/en/mt/info/open-gopro)
+- [BiRefNet (MIT)](https://replicate.com/sprited/birefnet/readme)
+- [dslrBooth 360](https://dslrbooth.com/360)
+- [dslrBooth GoPro 360 support](https://blog.dslrbooth.com/dslrbooth-for-windows-v6-41-gopro-360-support/)
