@@ -85,5 +85,8 @@ export async function syncSubscription(subscriptionId: string): Promise<void> {
     extra_devices: extraDevices,
     updated_at: new Date().toISOString(),
   });
+  // 23503: the login no longer exists (account deleted, subscription cancelled with it). Nothing to
+  // save; failing would only make Stripe retry for days.
+  if (error?.code === "23503") return;
   if (error) throw new Error(`Could not save subscription: ${error.message}`);
 }

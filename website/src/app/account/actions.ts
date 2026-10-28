@@ -4,9 +4,9 @@ import { redirect } from "next/navigation";
 import { appUrl, stripeConfig } from "@/lib/config";
 import type { PlanId } from "@/lib/plans";
 import { deviceLimit } from "@/lib/appAuth";
-import { devicesFor, entitlementFor } from "@/lib/account";
+import { DELETE_CONFIRMATION, deleteAccount, devicesFor, entitlementFor } from "@/lib/account";
 import { customerFor, setExtraComputers, stripe } from "@/lib/stripe";
-import { getCurrentUser, supabaseAdmin } from "@/lib/supabase/server";
+import { getCurrentUser, supabaseAdmin, supabaseForRequest } from "@/lib/supabase/server";
 
 async function requireUser() {
   const user = await getCurrentUser();
@@ -80,4 +80,18 @@ export async function changeExtraComputers(form: FormData): Promise<void> {
     redirect("/account?error=computers");
   }
   redirect("/account");
+}
+
+/** Deletes the account for good after the person types DELETE. See deleteAccount for the order. */
+export async function deleteMyAccount(form: FormData): Promise<void> {
+  const user = await requireUser();
+  if (String(form.get("confirm") ?? "").trim().toUpperCase() !== DELETE_CONFIRMATION) redirect("/account?error=confirm-delete#delete");
+  try {
+    await deleteAccount(user.id);
+  } catch (e) {
+    console.error(`delete account ${user.id}:`, e);
+    redirect("/account?error=delete#delete");
+  }
+  await (await supabaseForRequest()).auth.signOut().catch(() => {}); // the login is gone; just clear the cookie
+  redirect("/goodbye");
 }

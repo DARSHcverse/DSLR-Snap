@@ -62,7 +62,7 @@ Full checklist with tick boxes: [HARDWARE_SETUP.md](HARDWARE_SETUP.md) (34 open 
 - [ ] **Copy the ffmpeg build** to a release in your GitHub repo, and point `scripts/fetch-models.mjs` at it (BtbN deletes old builds)
 - [x] **2-inch cut button**: opens Windows' Printing Preferences for the right printer and comes back to the app (built). Still open: set up a second "2x6 cut" printer entry automatically, after the printer-info output
 - [ ] **Founding-member banner** on the pricing section (if you want the offer)
-- [ ] **Account deletion** button on the website (today: by email, as the privacy policy says)
+- [x] **Account deletion** on the Account page: cancels the subscription, deletes gallery files and the login (tested against Supabase and Stripe test mode)
 - [x] **Nikon Z-series bridge** (built, untested: no camera yet). Kept out of git in `native/NikonBridge/` until the repo is private; then delete the temporary line in `.gitignore` and commit it. Test steps in HARDWARE_SETUP.md section 1b
 - [ ] **Nikon D-series bridge** (D750/D780/D850/D810/D610/D7500/D7200/D5600/D5300): Nikon's older MAID3 modules, a separate bridge. The website says "coming next"
 - [ ] **More cameras and printers**: other Canon bodies need testing; Sony, Mitsubishi and Citizen are on the roadmap only

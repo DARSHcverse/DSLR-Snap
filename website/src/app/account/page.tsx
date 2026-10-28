@@ -4,13 +4,13 @@ import { Suspense } from "react";
 import { Icon } from "@/components/Icon";
 import { Card, NotReady, PageShell } from "@/components/PageShell";
 import { primaryButton, secondaryButton } from "@/components/ui";
-import { devicesFor, entitlementFor } from "@/lib/account";
+import { DELETE_CONFIRMATION, devicesFor, entitlementFor } from "@/lib/account";
 import { deviceLimit } from "@/lib/appAuth";
 import { accountsEnabled, stripeConfig } from "@/lib/config";
 import { EXTRA_COMPUTER, MAX_DEVICES, OFFLINE_GRACE_DAYS, PLAN_INCLUDES, PLANS } from "@/lib/plans";
 import { getCurrentUser } from "@/lib/supabase/server";
 import { signOut } from "../(auth)/actions";
-import { changeExtraComputers, openBillingPortal, removeDevice, startCheckout } from "./actions";
+import { changeExtraComputers, deleteMyAccount, openBillingPortal, removeDevice, startCheckout } from "./actions";
 
 export const metadata: Metadata = { title: "Your account", robots: { index: false } };
 
@@ -143,6 +143,28 @@ async function Account({ searchParams }: Pick<PageProps<"/account">, "searchPara
       <form action={signOut}>
         <button className="text-sm text-muted hover:text-fg">Sign out of the website</button>
       </form>
+
+      <details id="delete" className="rounded-card border border-bad/30 p-6" open={sp.error === "confirm-delete" || sp.error === "delete"}>
+        <summary className="cursor-pointer font-semibold text-bad">Delete your account</summary>
+        <div className="mt-3 flex flex-col gap-3 text-sm text-muted">
+          <p>This can&apos;t be undone. Straight away:</p>
+          <ul className="list-disc pl-5">
+            {ent.active && <li>Your plan ends now, with no refund for the time left. To stop renewing but keep using it until {ent.periodEnd ? date(ent.periodEnd) : "the end of the period"}, cancel under Manage billing instead.</li>}
+            <li>Every booth computer is signed out and drops to the free trial.</li>
+            <li>Every cloud gallery, QR link and host page stops working, and their photos and videos are deleted.</li>
+          </ul>
+          <p>Photos on your booth computers aren&apos;t touched. Stripe keeps your invoices, as the law requires.</p>
+          {sp.error === "confirm-delete" && <p className="text-bad">Type {DELETE_CONFIRMATION} in capitals to confirm.</p>}
+          {sp.error === "delete" && <p className="text-bad">Something went wrong and nothing was deleted. Try again, or email us.</p>}
+          <form action={deleteMyAccount} className="flex flex-wrap items-center gap-3">
+            <label className="flex flex-col gap-1">
+              <span>Type {DELETE_CONFIRMATION} to confirm</span>
+              <input name="confirm" autoComplete="off" required className="rounded-xl border border-line bg-bg px-3 py-2 text-fg" />
+            </label>
+            <button className="self-end rounded-full border border-bad/60 px-5 py-2.5 font-semibold text-bad hover:bg-bad/10">Delete my account</button>
+          </form>
+        </div>
+      </details>
     </div>
   );
 }

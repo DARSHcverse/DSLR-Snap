@@ -39,7 +39,7 @@ export default function PrivacyPage() {
         <p>Only the providers that run the service: Supabase (accounts, database and gallery storage), Stripe (payments), Vercel (website hosting and analytics) and Resend (sending email). Each processes data under a data processing agreement. Some are based in the US; transfers are covered by standard contractual clauses or the UK-US data bridge.</p>
 
         <h2>Your rights</h2>
-        <p>You can ask for a copy of your data, to correct or delete it, or object to how we use it, by emailing <a href={`mailto:${site.supportEmail}`}>{site.supportEmail}</a>. Guests asking about their photos can contact the booth operator, or us and we&apos;ll pass it on. You can also complain to the Information Commissioner&apos;s Office (ico.org.uk).</p>
+        <p>You can delete your account yourself at any time under Your account: that deletes your login, booth computers and every gallery photo and video straight away (Stripe keeps payment records for as long as the law requires). You can also ask for a copy of your data, to correct or delete it, or object to how we use it, by emailing <a href={`mailto:${site.supportEmail}`}>{site.supportEmail}</a>. Guests asking about their photos can contact the booth operator, or us and we&apos;ll pass it on. You can also complain to the Information Commissioner&apos;s Office (ico.org.uk).</p>
 
         <h2>Changes</h2>
         <p>We&apos;ll update this page if anything changes and email customers about important changes.</p>
