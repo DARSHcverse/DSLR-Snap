@@ -116,6 +116,8 @@ export interface BoothApi {
   getDeviceSettings(): Promise<DeviceSettings>
   saveDeviceSettings(s: DeviceSettings): Promise<void>
   detectPrinters(): Promise<PrinterDetection>
+  /** Windows' Printing Preferences for the printer `format` uses (2-inch cut); resolves when closed. */
+  openPrinterPreferences(format: '4x6' | '2x6'): Promise<{ printer: string; cut: 'on' | 'off'; sharedQueue: boolean }>
   reconnectCamera(): Promise<void>
   getDevices(): Promise<DeviceSnapshot>
   onDevices(cb: (d: DeviceSnapshot) => void): () => void

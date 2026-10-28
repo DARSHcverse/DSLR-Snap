@@ -176,9 +176,7 @@ function DevicesTab({ devices }: { devices: DeviceSnapshot | null }) {
           <>
             {printerField('printerName4x6', 'Printer for 4×6')}
             {printerField('printerName2x6', 'Printer for 2×6 strips')}
-            {found?.stripsUncut && !s.printerName2x6 && (
-              <p className="muted small">Strips will print as one uncut 4×6. To cut them automatically, add the DNP printer a second time with "2 inch cut" turned on.</p>
-            )}
+            <CutSettings found={found} onChanged={detect} />
           </>
         )}
         <div className="row">
@@ -287,6 +285,65 @@ function PhoneRemoteCard() {
       {info?.problem && <p className="warn small">{info.problem}</p>}
       <p className="muted small">See the camera, printer, paper and guest count, pause the booth, retry failed prints and reprint recent sessions. If Windows asks, allow DSLR Snap on private networks.</p>
       {msg && <p className="warn small">{msg}</p>}
+    </div>
+  )
+}
+
+/**
+ * "2inch cut" lives in the DNP driver's Printing Preferences. These buttons open that Windows dialog
+ * for the right printer; DSLR Snap comes back to the front when it's closed.
+ */
+function CutSettings({ found, onChanged }: { found: PrinterDetection | null; onChanged: () => void }) {
+  const [format, setFormat] = useState<'4x6' | '2x6' | null>(null)
+  const [msg, setMsg] = useState<string | null>(null)
+  const [eventFormat, setEventFormat] = useState<'4x6' | '2x6' | null>(null)
+  useEffect(() => void window.booth.getActiveEvent().then((a) => setEventFormat(a?.template.format ?? null)).catch(() => undefined), [])
+  if (!found?.queue4x6) return null
+  const separate = !!found.queue2x6 && found.queue2x6 !== found.queue4x6
+
+  const open = async (f: '4x6' | '2x6') => {
+    setFormat(f)
+    setMsg(null)
+    try {
+      const t = await window.booth.openPrinterPreferences(f)
+      setMsg(`Back from the settings for ${t.printer}. Press "Test print ${f === '2x6' ? '2×6' : '4×6'}" to check the ${f === '2x6' ? 'cut' : 'print'}.`)
+      onChanged()
+    } catch (e) {
+      setMsg(message(e))
+    } finally {
+      setFormat(null)
+    }
+  }
+
+  return (
+    <div className="field cut-settings">
+      <span className="field-label">2-inch cut (strips)</span>
+      {format ? (
+        <p className="busy-note">
+          Printer settings are open: find <strong>2inch cut</strong> (usually under Advanced or Options), set it to{' '}
+          <strong>{format === '2x6' ? 'ON' : 'OFF'}</strong>, then press <strong>OK</strong>. You&apos;ll come straight back here.
+        </p>
+      ) : separate ? (
+        <>
+          <div className="row">
+            <button className="btn" onClick={() => open('2x6')}>2×6 printer settings (cut ON)</button>
+            <button className="btn" onClick={() => open('4x6')}>4×6 printer settings (cut OFF)</button>
+          </div>
+          <p className="muted small">Two printer entries: strips print cut, 4×6 prints uncut, automatically. Use these to check or fix the cut setting on each.</p>
+        </>
+      ) : (
+        <>
+          <div className="row">
+            <button className={`btn ${eventFormat === '2x6' ? 'primary' : ''}`} onClick={() => open('2x6')}>Turn cut ON (for 2×6 strips)</button>
+            <button className={`btn ${eventFormat === '4x6' ? 'primary' : ''}`} onClick={() => open('4x6')}>Turn cut OFF (for 4×6 prints)</button>
+          </div>
+          <p className="muted small">
+            One printer entry, so it cuts or doesn&apos;t for every print. {eventFormat ? `The active event prints ${eventFormat === '2x6' ? '2×6 strips: cut ON' : '4×6: cut OFF'}. ` : ''}
+            Each button opens the printer&apos;s settings; change <strong>2inch cut</strong>, press OK, and you&apos;re back here.
+          </p>
+        </>
+      )}
+      {msg && <p className="muted small">{msg}</p>}
     </div>
   )
 }

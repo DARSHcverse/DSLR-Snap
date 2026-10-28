@@ -9,7 +9,7 @@ const methods = [
   'listEvents', 'saveEvent', 'deleteEvent', 'setActiveEvent', 'listTemplates', 'previewTemplate', 'importBackgrounds', 'backgroundImage', 'listSessions', 'openEventFolder', 'photosFolder', 'setPhotosFolder',
   'chooseTemplateFile', 'prepareTemplateImport', 'getTemplateArtwork', 'saveTemplate', 'deleteTemplate', 'discardTemplateDraft',
   'previewTemplateDraft', 'testPrintTemplate',
-  'getDeviceSettings', 'saveDeviceSettings', 'detectPrinters', 'reconnectCamera', 'getDevices',
+  'getDeviceSettings', 'saveDeviceSettings', 'detectPrinters', 'openPrinterPreferences', 'reconnectCamera', 'getDevices',
   'getExposure', 'setExposure', 'applyExposure', 'testShot',
   'duplicateEvent', 'eventStats', 'exportEventPhotos', 'hasPin', 'verifyPin', 'setPin',
   'listPrintJobs', 'retryPrintJob', 'cancelPrintJob', 'markPrintJobPrinted', 'testPrint', 'newPaperRoll', 'eventGalleryLink', 'diskFree', 'remoteInfo', 'remoteSetEnabled', 'remoteNewLink', 'setPaused', 'setBoothShowing', 'appInfo', 'quit',

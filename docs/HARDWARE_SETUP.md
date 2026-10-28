@@ -47,9 +47,9 @@ If the selftest crashes or errors on struct/stack issues: compare `Edsdk.cs` sig
 
 1. Install DNP's official Windows driver for the DS-RX1HS.
 2. Plug it in. The app finds the DNP printer by itself (Admin → Devices shows "Automatic — <name>"), whatever Windows named it. No renaming needed.
-3. For **2×6 strips cut automatically**, Windows needs a second entry for the same printer with the cut turned on (until the app sets this up itself):
-   - Add the printer again (same port), give it a name containing `2x6` or `cut` (e.g. `DS-RX1 (2x6 cut)`) → Printing preferences: paper **(6x4)** with **2-inch cut** enabled
-   - Without it, strips still print, as one uncut 4×6, and Devices says so.
+3. **2-inch cut for strips**: Printer & devices → Printer → **2-inch cut**. The buttons open Windows' Printing Preferences for the DNP printer. Set **2inch cut** (usually under Advanced or Options) and press OK, and DSLR Snap comes back to the front.
+   - One printer entry: use **Turn cut ON** before a 2×6 strip event and **Turn cut OFF** before a 4×6 event (the button for the active event is highlighted).
+   - Two printer entries (optional, no switching): add the DNP printer a second time with a name containing `2x6` or `cut`. Strips then go to the cut entry and 4×6 prints to the other, automatically.
 4. Press **Test print 4×6** and **Test print 2×6**.
 
 Gate checks:

@@ -1,4 +1,5 @@
 import { app, BrowserWindow, dialog, ipcMain, powerSaveBlocker, safeStorage, shell } from 'electron'
+import { execFile } from 'node:child_process'
 import { randomBytes, randomUUID } from 'node:crypto'
 import { existsSync, readFileSync } from 'node:fs'
 import { appendFile, mkdir, readdir, rm, statfs, writeFile } from 'node:fs/promises'
@@ -38,6 +39,7 @@ import { machineHash } from './licence/machineId'
 import { MockPrinter } from './printer/MockPrinter'
 import type { PrinterAdapter } from './printer/PrinterAdapter'
 import { WindowsPrinter } from './printer/WindowsPrinter'
+import { preferencesTarget, printerPreferencesCommand } from './printer/printerPreferences'
 import { PrintQueue } from './queue/PrintQueue'
 import { UploadQueue } from './queue/UploadQueue'
 
@@ -513,6 +515,28 @@ function registerIpc(): void {
     await broadcastDevices()
   })
   handle('detectPrinters', () => printer.detect())
+  /**
+   * Opens Windows' Printing Preferences for the printer used by `format` (where DNP keeps "2inch
+   * cut"), waits until the operator presses OK or Cancel, then brings DSLR Snap back to the front.
+   */
+  handle('openPrinterPreferences', async (format: '4x6' | '2x6') => {
+    if (process.platform !== 'win32') throw new Error('Printer settings open on the Windows booth computer.')
+    const target = preferencesTarget(await printer.detect(), format === '2x6' ? '2x6' : '4x6')
+    if (!target) throw new Error('No DNP printer found. Connect it by USB and switch it on.')
+    const { file, args } = printerPreferencesCommand(target.printer)
+    await new Promise<void>((resolve) => execFile(file, args, { windowsHide: false }, () => resolve()))
+    if (win && !win.isDestroyed()) {
+      if (win.isMinimized()) win.restore()
+      // Windows won't let an app grab focus outright; briefly going on top brings it forward.
+      win.setAlwaysOnTop(true)
+      win.show()
+      win.focus()
+      win.setAlwaysOnTop(false)
+    }
+    if (printer instanceof WindowsPrinter) printer.refresh()
+    await broadcastDevices()
+    return target
+  })
   handle('reconnectCamera', async () => {
     await camera.disconnect().catch(() => undefined)
     await connectCamera()

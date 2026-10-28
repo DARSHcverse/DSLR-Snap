@@ -24,6 +24,11 @@ export class WindowsPrinter implements PrinterAdapter {
 
   constructor(private getSettings: () => DeviceSettings) {}
 
+  /** Forget the cached printer list, e.g. after the operator changed printer settings. */
+  refresh(): void {
+    this.cache = undefined
+  }
+
   /** Installed printers with driver and status, from one PowerShell call shared by status polling and printing. */
   private installed(): Promise<WinPrinter[]> {
     if (this.cache && Date.now() - this.cache.at < LIST_TTL_MS) return this.cache.list

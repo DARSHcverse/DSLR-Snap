@@ -57,7 +57,7 @@ Full checklist with tick boxes: [HARDWARE_SETUP.md](HARDWARE_SETUP.md) (34 open 
 - [ ] **Auto-updates** that never install during an event (planned, not built). Until then, customers would reinstall by hand
 - [ ] **Download page** on the website for signed-in customers, and hosting for the installer
 - [ ] **Copy the ffmpeg build** to a release in your GitHub repo, and point `scripts/fetch-models.mjs` at it (BtbN deletes old builds)
-- [ ] **2×6 cut queue set up automatically** (after the printer-info output)
+- [x] **2-inch cut button**: opens Windows' Printing Preferences for the right printer and comes back to the app (built). Still open: set up a second "2x6 cut" printer entry automatically, after the printer-info output
 - [ ] **Founding-member banner** on the pricing section (if you want the offer)
 - [ ] **Account deletion** button on the website (today: by email, as the privacy policy says)
 - [ ] **More cameras and printers**: other Canon bodies need testing; Nikon, Sony, Mitsubishi and Citizen are on the roadmap only

@@ -391,3 +391,4 @@ input[type='checkbox'] { width: 22px; height: 22px; accent-color: var(--accent);
 .display.recording { color: var(--accent); animation: pulse 0.6s ease-in-out infinite alternate; }
 .done video.final.portrait { width: auto; height: 80vh; aspect-ratio: 9 / 16; }
 .overlay-thumb { height: 140px; width: auto; border-radius: 8px; background: repeating-conic-gradient(#2a2a35 0% 25%, #1c1c24 0% 50%) 50% / 16px 16px; }
+.busy-note { margin: 0; padding: 10px 12px; border-radius: 10px; background: color-mix(in srgb, var(--busy) 14%, transparent); border: 1px solid color-mix(in srgb, var(--busy) 45%, transparent); font-size: 14px; }
