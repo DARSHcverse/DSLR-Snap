@@ -101,3 +101,15 @@ No code is needed for this. Checkout already accepts promotion codes.
 | Licence | Signed by the website, checked by the app offline | Tied to one computer; 14 days offline; trial watermark without a plan |
 | Cloud gallery | `/api/app/uploads` → signed upload links → `/s/<session>` and `/e/<link>` | Only signed-in booths with an active plan can upload; the booth holds no storage key. Photos stay private (short-lived signed links) and are deleted after a year |
 | Tamper protection | Electron fuses in `electron-builder.yml` | The installed app refuses to start if its code was edited |
+
+## Admin ("Office")
+
+The admin lives at a private address, never written in the code (the repository can be read):
+
+1. `cd website && node scripts/generate-admin.mjs` prints `ADMIN_USERNAME`, `ADMIN_PASSWORD_HASH`, `ADMIN_TOTP_SECRET` and `ADMIN_SESSION_SECRET`, plus the password (shown once: put it in a password manager) and an authenticator link.
+2. In Vercel add those four, plus `ADMIN_PATH` (your private address, letters/numbers, 12+ characters), then redeploy.
+3. Scan the authenticator link as a QR code with Google Authenticator, 1Password or Authy.
+4. Open `https://dslrsnap.com/<ADMIN_PATH>`: username + password, then the 6-digit code. `/admin` itself always shows "not found".
+
+To change the password, run step 1 again and replace the values in Vercel (every admin session signs out).
+Inside: dashboard, customers (reset links, temporary passwords, free access, cancel, sign out computers, delete), support chat inbox, update announcements and an activity log.

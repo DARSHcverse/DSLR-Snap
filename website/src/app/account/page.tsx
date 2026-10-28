@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { Icon } from "@/components/Icon";
@@ -159,6 +160,12 @@ async function Account({ searchParams }: Pick<PageProps<"/account">, "searchPara
           <input type="hidden" name="on" value={updates ? "0" : "1"} />
           <button className={secondaryButton}>{updates ? "Stop update emails" : "Email me about updates"}</button>
         </form>
+      </Card>
+
+      <Card>
+        <h2 className="text-lg font-semibold">Need help?</h2>
+        <p className="mt-2 text-muted">Chat with us about setup, your booth or your plan. We email you when we reply.</p>
+        <Link href="/account/support" className={`${secondaryButton} mt-4`}>Chat with us</Link>
       </Card>
 
       <form action={signOut}>

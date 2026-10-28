@@ -76,6 +76,14 @@ Full checklist with tick boxes: [HARDWARE_SETUP.md](HARDWARE_SETUP.md) (34 open 
 - [ ] **Rate limiting** on the website's API routes and contact form (today: one-time codes, PKCE and a honeypot)
 - [ ] Look into the one flaky test (the GIF test once hung during a full parallel run)
 
+## 5b. Built on 28 October (emails, admin, chat)
+
+- [x] Branded emails for sign-up, password reset, billing, computers, deletion, updates and support, plus team notices to support@
+- [x] Admin at a private address: dashboard, customers, free access, password help, support inbox, update announcements, activity log
+- [x] Support chat for customers (website and the app's Help & chat button); the contact form opens a conversation too
+- [ ] **You**: add `SEND_EMAIL_HOOK_SECRET` and the five `ADMIN_*` values in Vercel; turn on the Supabase Send Email hook (ACCOUNTS_SETUP.md); paste the Gmail signatures (docs/email-signature.html)
+- [ ] Later: replies to emails land in support@, not in the chat; reading them into the chat needs inbound email (Resend inbound)
+
 ## 6. Already done and working without credentials
 
 Everything else from the plan is built and tested with simulated hardware or locally:

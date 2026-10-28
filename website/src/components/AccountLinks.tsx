@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useSyncExternalStore } from "react";
 
 // Supabase keeps the session in "sb-<project>-auth-token" (split into .0, .1 … when large). The
@@ -31,5 +32,24 @@ export function AccountLinks() {
         Start free
       </Link>
     </div>
+  );
+}
+
+/**
+ * Floating "Chat with us" for signed-in customers. Rendered from the footer, not the header: the
+ * header's backdrop blur would make "fixed" position relative to the header instead of the screen.
+ */
+export function ChatButton() {
+  const known = useSyncExternalStore(subscribe, signedIn, () => false);
+  const path = usePathname();
+  if (!known || path.startsWith("/account/support")) return null;
+  return (
+    <Link
+      href="/account/support"
+      className="fixed right-4 bottom-4 z-40 inline-flex items-center gap-2 rounded-full bg-accent px-4 py-3 text-sm font-semibold text-accent-ink shadow-xl shadow-black/40 transition-transform active:scale-[0.97] sm:right-6 sm:bottom-6"
+    >
+      <svg viewBox="0 0 24 24" aria-hidden="true" className="size-4 fill-none stroke-current stroke-2"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12Z" strokeLinejoin="round" /></svg>
+      Chat with us
+    </Link>
   );
 }

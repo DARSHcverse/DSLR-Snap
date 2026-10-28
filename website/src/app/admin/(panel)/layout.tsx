@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { Logo } from "@/components/Logo";
 import { adminHref, requireAdmin } from "@/lib/admin/server";
+import { unreadCount } from "@/lib/support";
 import { logout } from "../login/actions";
 import { AdminNav } from "./AdminNav";
 
@@ -22,10 +23,11 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
 
 async function Panel({ children }: { children: React.ReactNode }) {
   await requireAdmin();
+  const unread = await unreadCount();
   const links = [
     { href: adminHref(), label: "Dashboard" },
     { href: adminHref("customers"), label: "Customers" },
-    { href: adminHref("support"), label: "Support" },
+    { href: adminHref("support"), label: "Support", badge: unread },
     { href: adminHref("emails"), label: "Emails" },
     { href: adminHref("activity"), label: "Activity" },
   ];

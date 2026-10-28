@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { SOLUTIONS } from "@/lib/marketing";
 import { site, tradingName } from "@/lib/site";
+import { ChatButton } from "./AccountLinks";
 import { Logo } from "./Logo";
 
 // Cached so the page can stay static; Next refreshes it on revalidation.
@@ -42,6 +43,7 @@ export function Footer() {
   const socials = (Object.keys(site.social) as (keyof typeof site.social)[]).filter((k) => site.social[k]);
   return (
     <footer className="border-t border-line">
+      <ChatButton />
       <div className="mx-auto grid max-w-6xl gap-10 px-4 py-12 sm:px-6 md:grid-cols-[1.3fr_repeat(3,1fr)]">
         <div className="flex flex-col gap-3">
           <Logo />

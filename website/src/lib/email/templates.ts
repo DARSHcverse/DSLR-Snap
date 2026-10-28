@@ -228,12 +228,17 @@ export const contactReceived = (o: { topic: string }): RenderedEmail =>
     ],
   });
 
-export const supportReply = (o: { reply: string; url: string }): RenderedEmail =>
+/** The team's answer. Customers with an account get a link to the chat; visitors just reply by email. */
+export const supportReply = (o: { reply: string; url: string | null }): RenderedEmail =>
   r({
     subject: "New reply from DSLR Snap support",
     preheader: o.reply.slice(0, 90),
     heading: "You have a reply",
-    blocks: [{ quote: o.reply, by: "DSLR Snap support" }, { button: "Open the conversation", url: o.url }, { note: "You can also reply to this email." }],
+    blocks: [
+      { quote: o.reply, by: "DSLR Snap support" },
+      ...(o.url ? [{ button: "Open the conversation", url: o.url } as Block] : []),
+      { note: o.url ? "Reply in the conversation so everything stays in one place, or reply to this email." : "Just reply to this email to carry on." },
+    ],
   });
 
 // ---------- To the DSLR Snap team ----------

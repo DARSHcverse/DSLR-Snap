@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { pageMetadata } from "@/lib/seo";
 import { ContentPage, JsonLd } from "@/components/ContentPage";
 import { FAQ } from "@/lib/marketing";
@@ -88,6 +89,9 @@ export default function SupportPage() {
           <p className="mt-3 text-muted">
             Questions before buying, help at an event, or billing. Or email{" "}
             <a href={`mailto:${site.supportEmail}`} className="text-accent hover:underline">{site.supportEmail}</a>.
+          </p>
+          <p className="mt-3 text-muted">
+            Already a customer? <Link href="/account/support" className="text-accent hover:underline">Chat with us from your account</Link> and keep the whole conversation in one place.
           </p>
           <p className="mt-3 text-sm text-muted">Tip: in the app, Printer &amp; devices → App shows your version and the log file. Attaching the log helps us fix things fast.</p>
         </div>
