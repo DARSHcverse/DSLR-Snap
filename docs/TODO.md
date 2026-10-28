@@ -1,20 +1,26 @@
 # To do before launch
 
-Everything that's left, from a full review of the app and website (27 October 2026). Nothing below needs new code unless it's under "Still to build".
+Everything that's left, from a full review of the app and website (27 October 2026, updated 28 October). Nothing below needs new code unless it's under "Still to build".
 
 ## 1. Accounts and credentials (you)
 
-None of these exist yet; the app and website switch each feature on once its settings are added. Step-by-step: [ACCOUNTS_SETUP.md](ACCOUNTS_SETUP.md).
+Set up in test mode on 28 October 2026 and checked end to end (sign-up, Google, $168 test payment, app sign-in, licence). Step-by-step: [ACCOUNTS_SETUP.md](ACCOUNTS_SETUP.md).
 
-- [ ] **Domain**: point dslrsnap.com at Vercel; create the inboxes hello@ and support@dslrsnap.com
-- [ ] **Licence keys**: `node website/scripts/generate-licence-keys.mjs`. Private key in Vercel; public key in the app's `.env` before building the installer. Keep the private key in a password manager
-- [ ] **Supabase**: create the project, run migrations `0001`–`0004`, set redirect URLs, custom SMTP for sign-up emails, optional Google sign-in
-- [ ] **Stripe** (test mode first): two "DSLR Snap" prices ($30/month, $168/year) and two "Extra booth computer" prices ($5/month, $50/year), customer portal, webhook; optional Stripe Tax; optional `FOUNDER` promotion code
-- [ ] **Vercel environment variables**: every name in `website/.env.example`, including `CRON_SECRET`
-- [ ] **Resend** (contact form email): verify the domain, add `RESEND_API_KEY`
-- [ ] **Google Search Console**: add `NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION`, then submit `https://dslrsnap.com/sitemap.xml`
-- [ ] **Run the end-to-end test** in ACCOUNTS_SETUP.md section 5 (sign up, pay with the test card, sign the app in, QR gallery, host gallery, cancel)
-- [ ] **Stripe live mode**: recreate the products, prices and webhook in live mode and swap the keys
+- [x] **Domain**: dslrsnap.com on Vercel (www redirects to it); downloads.dslrsnap.com on R2
+- [ ] **Inboxes**: confirm hello@ and support@dslrsnap.com receive mail (Cloudflare Email Routing MX records exist)
+- [x] **Licence keys** generated: private key in Vercel, public key in the app's `.env`
+- [ ] **Copy `LICENCE_PRIVATE_KEY` into a password manager** (losing it signs every booth out)
+- [x] **Supabase**: project, migrations `0001`–`0004`, gallery bucket, redirect URLs, Google sign-in
+- [ ] **Supabase custom SMTP** (Authentication → Emails → SMTP, e.g. Resend): the built-in sender only sends a few emails an hour, so sign-up confirmations will fail at launch volume
+- [x] **Stripe test mode**: products, prices, portal, webhook (`website/scripts/setup-stripe.mjs`); checkout charges USD only
+- [ ] **Stripe branding** (logo, icon, #FF7A59) and archive the unused duplicate price `dslrsnap_extra_device_yearly`; optional Stripe Tax; optional `FOUNDER` code
+- [x] **Vercel environment variables**
+- [x] **Resend** key added and DNS records in place
+- [ ] **Send a test message** through dslrsnap.com/support#contact and confirm it arrives
+- [ ] **Google Search Console**: domain verified by DNS record; submit `https://dslrsnap.com/sitemap.xml`
+- [x] **End-to-end test**: sign up, Google, pay with the test card, sign the app in
+- [ ] **Still to test**: QR gallery and host gallery from a real session, Add a computer, cancel in the billing portal, Delete account in the browser
+- [ ] **Stripe live mode** (launch day): `node scripts/setup-stripe.mjs --live` with a live secret key, then put the live values in Vercel
 
 ## 2. Business and legal (you)
 
@@ -58,7 +64,7 @@ Full checklist with tick boxes: [HARDWARE_SETUP.md](HARDWARE_SETUP.md) (34 open 
 ## 5. Still to build (me, when you say go)
 
 - [x] **Auto-updates** that never install during an event (built; first real test needs two released versions). Releases: `npm run dist:win` then `npm run release`
-- [x] **Download page** (public /download) reading the newest release from R2. Needs: R2 keys in the root `.env`, the bucket made public on `downloads.dslrsnap.com`, then a first `npm run release`
+- [x] **Download page** (public /download) reading the newest release from R2. R2 is set up and tested (keys in the root `.env`, public on `downloads.dslrsnap.com`); shows the button after the first `npm run release`
 - [ ] **Copy the ffmpeg build** to a release in your GitHub repo, and point `scripts/fetch-models.mjs` at it (BtbN deletes old builds)
 - [x] **2-inch cut button**: opens Windows' Printing Preferences for the right printer and comes back to the app (built). Still open: set up a second "2x6 cut" printer entry automatically, after the printer-info output
 - [ ] **Founding-member banner** on the pricing section (if you want the offer)
