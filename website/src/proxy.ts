@@ -3,6 +3,11 @@ import { type NextRequest, NextResponse } from "next/server";
 
 /** Keeps the Supabase login fresh on account pages (rotated tokens are written back as cookies). */
 export async function proxy(request: NextRequest) {
+  // The admin is only reachable through its private address (next.config.ts rewrites it to /admin
+  // after this proxy runs), so a request that names /admin itself is turned away.
+  if (request.nextUrl.pathname === "/admin" || request.nextUrl.pathname.startsWith("/admin/")) {
+    return new NextResponse("Not found", { status: 404, headers: { "content-type": "text/plain" } });
+  }
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
   if (!url || !key) return NextResponse.next();
@@ -24,5 +29,5 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/account/:path*", "/app/:path*", "/login", "/signup", "/auth/:path*"],
+  matcher: ["/account/:path*", "/app/:path*", "/login", "/signup", "/auth/:path*", "/admin", "/admin/:path*"],
 };

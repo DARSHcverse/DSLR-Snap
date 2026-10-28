@@ -70,6 +70,27 @@ export interface Entitlement {
   cancelAtPeriodEnd: boolean;
   /** Extra booth computers paid for on this subscription. */
   extraDevices: number;
+  /** Free access given from the admin (no Stripe subscription). */
+  complimentary?: boolean;
+}
+
+/** Free access set in the admin: forever (until null) or until a date, with its own computer allowance. */
+export interface Complimentary {
+  active: boolean;
+  until: string | null;
+  devices: number;
+}
+
+/**
+ * A paid plan wins; otherwise free access, if it's on and not past its date, counts exactly like a
+ * paid plan (no watermark, its own number of computers). An end date behaves like a cancelled plan,
+ * so offline licences never outlast it.
+ */
+export function withComplimentary(paid: Entitlement, comp: Complimentary | null, now: number): Entitlement {
+  if (paid.active) return { ...paid, complimentary: false };
+  const until = comp?.until ? Date.parse(comp.until) : null;
+  if (!comp?.active || (until !== null && until <= now)) return { ...paid, complimentary: false };
+  return { active: true, plan: null, periodEnd: until, cancelAtPeriodEnd: until !== null, extraDevices: Math.max(0, comp.devices - MAX_DEVICES), complimentary: true };
 }
 
 /** Stripe keeps retrying a failed card (past_due) for a while; the customer keeps access meanwhile. */

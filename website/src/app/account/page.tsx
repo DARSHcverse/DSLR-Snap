@@ -55,7 +55,15 @@ async function Account({ searchParams }: Pick<PageProps<"/account">, "searchPara
 
       <Card>
         <h2 className="text-lg font-semibold">Plan</h2>
-        {ent.active ? (
+        {ent.complimentary ? (
+          <p className="mt-2">
+            <span className="font-semibold">Free access</span>
+            <span className="text-muted">
+              {" · "}
+              {ent.periodEnd ? `until ${date(ent.periodEnd)}` : "no end date"} · every feature, no watermark
+            </span>
+          </p>
+        ) : ent.active ? (
           <>
             <p className="mt-2">
               <span className="font-semibold">{ent.plan === "monthly" ? "Monthly" : "Yearly"} plan</span>

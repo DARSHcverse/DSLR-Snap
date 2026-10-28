@@ -12,6 +12,7 @@ import {
   pkceMatches,
   safeNext,
   signLicence,
+  withComplimentary,
 } from "./appAuth";
 
 const DAY = 86_400_000;
@@ -110,5 +111,28 @@ describe("sign-in helpers", () => {
     expect(cleanDeviceName("Surface.localdomain")).toBe("Surface");
     expect(cleanDeviceName("Studio v2.5")).toBe("Studio v2.5"); // a real dot in a name stays
     expect(cleanDeviceName(".local")).toBe("Booth computer");
+  });
+});
+
+describe("free (complimentary) access", () => {
+  const now = Date.parse("2026-11-01T00:00:00Z");
+  const none = entitlementFrom([], now);
+  const paid = entitlementFrom([{ status: "active", plan: "yearly", current_period_end: "2027-11-01T00:00:00Z", cancel_at_period_end: false, extra_devices: 1 }], now);
+
+  it("gives a free account everything a paid plan has, forever or until a date", () => {
+    expect(withComplimentary(none, { active: true, until: null, devices: 5 }, now)).toMatchObject({ active: true, complimentary: true, plan: null, extraDevices: 3, cancelAtPeriodEnd: false });
+    const until = withComplimentary(none, { active: true, until: "2026-12-01T00:00:00Z", devices: 2 }, now);
+    expect(until).toMatchObject({ active: true, complimentary: true, periodEnd: Date.parse("2026-12-01T00:00:00Z"), cancelAtPeriodEnd: true });
+    expect(deviceLimit(until)).toBe(2);
+  });
+
+  it("ends when the date passes or it's switched off", () => {
+    expect(withComplimentary(none, { active: true, until: "2026-10-01T00:00:00Z", devices: 2 }, now).active).toBe(false);
+    expect(withComplimentary(none, { active: false, until: null, devices: 2 }, now).active).toBe(false);
+    expect(withComplimentary(none, null, now).active).toBe(false);
+  });
+
+  it("a paying customer keeps their paid plan; free access never replaces it", () => {
+    expect(withComplimentary(paid, { active: true, until: null, devices: 2 }, now)).toEqual({ ...paid, complimentary: false });
   });
 });

@@ -1,18 +1,28 @@
 import "server-only";
-import { type Entitlement, entitlementFrom, type SubscriptionRow } from "./appAuth";
+import { type Entitlement, entitlementFrom, type SubscriptionRow, withComplimentary } from "./appAuth";
 import { stripeConfig } from "./config";
 import { GALLERY_BUCKET, type GalleryFile } from "./gallery";
 import { stripe } from "./stripe";
 import { supabaseAdmin } from "./supabase/server";
 
-/** Whether this account has a paid plan right now. Read from the Stripe mirror, never from the browser. */
+/**
+ * Whether this account has a plan right now: a paid one (from the Stripe mirror) or free access
+ * given in the admin. Never read from the browser.
+ */
 export async function entitlementFor(userId: string): Promise<Entitlement> {
-  const { data, error } = await supabaseAdmin()
-    .from("subscriptions")
-    .select("status, plan, current_period_end, cancel_at_period_end, extra_devices")
-    .eq("user_id", userId);
-  if (error) throw new Error(`Could not read subscription: ${error.message}`);
-  return entitlementFrom((data ?? []) as SubscriptionRow[], Date.now());
+  const db = supabaseAdmin();
+  const [subs, profile] = await Promise.all([
+    db.from("subscriptions").select("status, plan, current_period_end, cancel_at_period_end, extra_devices").eq("user_id", userId),
+    db.from("customer_profiles").select("comp_active, comp_until, comp_devices").eq("user_id", userId).maybeSingle(),
+  ]);
+  if (subs.error) throw new Error(`Could not read subscription: ${subs.error.message}`);
+  const now = Date.now();
+  const p = profile.data;
+  return withComplimentary(
+    entitlementFrom((subs.data ?? []) as SubscriptionRow[], now),
+    p ? { active: p.comp_active, until: p.comp_until, devices: p.comp_devices } : null,
+    now,
+  );
 }
 
 export interface DeviceRow {
