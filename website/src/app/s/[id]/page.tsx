@@ -6,7 +6,7 @@ import { accountsEnabled } from "@/lib/config";
 import { isUuid } from "@/lib/gallery";
 import { loadSessionGallery } from "@/lib/galleryServer";
 
-export const metadata: Metadata = { title: "Your photos · DSLR Snap", robots: { index: false, follow: false } };
+export const metadata: Metadata = { title: "Your photos", robots: { index: false, follow: false } };
 
 /** A guest's photos from one booth session: the link in the QR code. */
 export default function SessionPage({ params }: PageProps<"/s/[id]">) {

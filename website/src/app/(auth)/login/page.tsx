@@ -7,7 +7,7 @@ import { accountsEnabled } from "@/lib/config";
 import { getCurrentUser } from "@/lib/supabase/server";
 import { AuthForm } from "../AuthForm";
 
-export const metadata: Metadata = { title: "Sign in · DSLR Snap", robots: { index: false } };
+export const metadata: Metadata = { title: "Sign in", robots: { index: false } };
 
 export default function LoginPage({ searchParams }: PageProps<"/login">) {
   return (

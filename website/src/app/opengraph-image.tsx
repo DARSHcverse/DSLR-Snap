@@ -28,10 +28,10 @@ export default function OpengraphImage() {
           Photo booth software
         </div>
         <div style={{ fontSize: 76, fontWeight: 700, lineHeight: 1.05, letterSpacing: -2, color: "#ff7a59" }}>
-          for Windows
+          for Windows &amp; Surface
         </div>
         <div style={{ marginTop: 36, fontSize: 30, color: "#9a98a3" }}>
-          Canon DSLR · DNP printing · Works offline
+          Canon &amp; Nikon · DNP printing · 360 · Works offline
         </div>
       </div>
     ),

@@ -67,7 +67,7 @@ export function Footer() {
         <p className="mx-auto max-w-6xl px-4 py-6 text-xs text-muted sm:px-6">
           © <CopyrightYear /> {tradingName}
           {site.business.companyNumber ? ` · Company no. ${site.business.companyNumber}` : ""}
-          {site.business.vatNumber ? ` · VAT ${site.business.vatNumber}` : ""}. Canon, GoPro, DNP and Windows are trademarks of their respective owners.
+          {site.business.vatNumber ? ` · VAT ${site.business.vatNumber}` : ""}. Canon, Nikon, GoPro, DNP, Microsoft, Windows and Surface are trademarks of their respective owners.
         </p>
       </div>
     </footer>

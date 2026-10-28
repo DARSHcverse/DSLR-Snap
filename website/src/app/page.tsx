@@ -49,6 +49,9 @@ const jsonLd = [
     applicationCategory: "MultimediaApplication",
     operatingSystem: "Windows 10, Windows 11",
     url: siteUrl,
+    image: `${siteUrl}/opengraph-image`,
+    featureList: FEATURES.map((f) => f.title),
+    softwareRequirements: "Windows 10 or 11; Canon or Nikon camera; DNP dye-sub printer for prints",
     offers: PLANS.map((p) => ({
       "@type": "Offer",
       name: `${p.name} plan`,
@@ -236,8 +239,8 @@ export default function Home() {
                 {
                   icon: "camera" as const,
                   label: "Camera",
-                  name: "Canon EOS R100",
-                  note: "Connected through Canon's official SDK. More Canon bodies are coming next.",
+                  name: "Canon or Nikon",
+                  note: "Connected through Canon's and Nikon's official SDKs. Nikon Z series in beta; D-series DSLRs next.",
                 },
                 {
                   icon: "printer" as const,

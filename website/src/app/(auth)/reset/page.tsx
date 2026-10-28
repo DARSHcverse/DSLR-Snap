@@ -4,7 +4,7 @@ import { NotReady, PageShell } from "@/components/PageShell";
 import { accountsEnabled } from "@/lib/config";
 import { ResetForm } from "./ResetForm";
 
-export const metadata: Metadata = { title: "Reset password · DSLR Snap", robots: { index: false } };
+export const metadata: Metadata = { title: "Reset password", robots: { index: false } };
 
 export default function ResetPage({ searchParams }: PageProps<"/reset">) {
   return (

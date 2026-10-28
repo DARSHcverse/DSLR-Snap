@@ -16,6 +16,8 @@ export const metadata: Metadata = {
     "touch screen photo booth software",
     "DSLR photo booth",
     "Canon photo booth software",
+    "Nikon photo booth software",
+    "Windows tablet photo booth",
     "DNP printer photo booth",
     "photo booth templates",
     "360 photo booth software",

@@ -2,7 +2,7 @@ export const site = {
   name: "DSLR Snap",
   title: "DSLR Snap – Photo Booth Software for Windows",
   description:
-    "Photo booth software for Windows: DSLR photo booth, glam B&W, green screen and AI backgrounds, 360 booth with GoPro, video guestbook, boomerangs and QR sharing. Works offline at events.",
+    "Photo booth software for Windows and Surface Pro: Canon and Nikon DSLR booth, glam B&W, green screen and AI backgrounds, 360 with GoPro, video guestbook and QR sharing. Works offline.",
   /** Where early-access requests and support mail go. TODO(business): confirm the inbox exists. */
   contactEmail: "hello@dslrsnap.com",
   supportEmail: "support@dslrsnap.com",
@@ -30,10 +30,13 @@ export const site = {
 /** The trading name for legal text: the company name once set, otherwise the product name. */
 export const tradingName = site.business.legalName || site.name;
 
-// Vercel sets VERCEL_PROJECT_PRODUCTION_URL on every deployment; localhost covers `next dev`.
-export const siteUrl = process.env.VERCEL_PROJECT_PRODUCTION_URL
-  ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
-  : "http://localhost:3000";
+/** The one canonical address (no www): sitemap, canonical links, Stripe and email links all use it. */
+export const productionUrl = "https://dslrsnap.com";
+// Every Vercel deployment points search engines at production; localhost covers `next dev`.
+export const siteUrl = process.env.VERCEL ? productionUrl : "http://localhost:3000";
+
+/** When the marketing copy last changed: the sitemap's lastmod. Bump it with real content changes. */
+export const contentUpdated = "2026-10-28";
 
 export const earlyAccessHref = `mailto:${site.contactEmail}?subject=${encodeURIComponent(
   "DSLR Snap early access",

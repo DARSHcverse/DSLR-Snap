@@ -6,7 +6,7 @@ import { accountsEnabled } from "@/lib/config";
 import { isShareToken } from "@/lib/gallery";
 import { loadEventGallery } from "@/lib/galleryServer";
 
-export const metadata: Metadata = { title: "Event photos · DSLR Snap", robots: { index: false, follow: false } };
+export const metadata: Metadata = { title: "Event photos", robots: { index: false, follow: false } };
 
 /** The host's page: every photo from the event, newest first. Each opens the session page to download. */
 export default function EventGalleryPage({ params }: PageProps<"/e/[token]">) {

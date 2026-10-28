@@ -12,7 +12,7 @@ import { getCurrentUser } from "@/lib/supabase/server";
 import { signOut } from "../(auth)/actions";
 import { changeExtraComputers, openBillingPortal, removeDevice, startCheckout } from "./actions";
 
-export const metadata: Metadata = { title: "Your account · DSLR Snap", robots: { index: false } };
+export const metadata: Metadata = { title: "Your account", robots: { index: false } };
 
 const date = (ms: number | string) => new Date(ms).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
 

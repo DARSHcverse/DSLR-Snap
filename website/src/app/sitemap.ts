@@ -1,11 +1,12 @@
 import type { MetadataRoute } from "next";
 import { SOLUTIONS } from "@/lib/marketing";
-import { siteUrl } from "@/lib/site";
+import { contentUpdated, siteUrl } from "@/lib/site";
 
 /** Every public marketing page. Account, app sign-in and gallery pages are private and left out. */
 export default function sitemap(): MetadataRoute.Sitemap {
   const page = (path: string, priority: number, changeFrequency: "weekly" | "monthly" | "yearly" = "monthly") => ({
     url: `${siteUrl}${path}`,
+    lastModified: contentUpdated,
     changeFrequency,
     priority,
   });

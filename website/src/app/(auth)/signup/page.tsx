@@ -7,7 +7,7 @@ import { accountsEnabled } from "@/lib/config";
 import { getCurrentUser } from "@/lib/supabase/server";
 import { AuthForm } from "../AuthForm";
 
-export const metadata: Metadata = { title: "Create your account · DSLR Snap" };
+export const metadata: Metadata = { title: "Create your account", description: "Start DSLR Snap free: every feature works, with a small watermark until you choose a plan.", alternates: { canonical: "/signup" } };
 
 export default function SignupPage({ searchParams }: PageProps<"/signup">) {
   return (
