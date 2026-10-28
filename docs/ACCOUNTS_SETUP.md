@@ -20,10 +20,15 @@ It prints two lines:
 2. **SQL editor** → run the four files in `website/supabase/migrations/` in order (`0001` to `0004`). `0003` also creates the private `galleries` storage bucket.
 3. **Authentication → URL configuration**:
    - Site URL: `https://dslrsnap.com`
-   - Redirect URLs: add `https://dslrsnap.com/auth/callback`, `http://localhost:3000/auth/callback` and your Vercel preview URL pattern (`https://*-<your-team>.vercel.app/auth/callback`)
+   - Redirect URLs: add `https://dslrsnap.com/auth/callback**`, `http://localhost:3000/auth/callback**` (the `**` lets the return page ride along after `?next=`) and your Vercel preview URL pattern (`https://*-<your-team>.vercel.app/auth/callback`)
 4. **Authentication → Sign In / Providers**:
    - Email is on by default. Keep "Confirm email" on.
-   - Google (optional): create an OAuth client in Google Cloud Console, then paste its client ID and secret here.
+   - Google (optional; the "Continue with Google" button appears by itself within minutes of switching it on):
+     1. console.cloud.google.com → new project "DSLR Snap" → **Google Auth Platform → Branding**: app name DSLR Snap, support email, logo, home page `https://dslrsnap.com`, privacy `https://dslrsnap.com/privacy`, terms `https://dslrsnap.com/terms`, authorised domains `dslrsnap.com` and `supabase.co`.
+     2. **Audience**: External, then **Publish app** (in "Testing" only listed test users can sign in).
+     3. **Clients → Create client → Web application**. Authorised JavaScript origins: `https://dslrsnap.com`. Authorised redirect URI: Supabase's callback, shown on the Google provider page in Supabase (`https://<project-ref>.supabase.co/auth/v1/callback`).
+     4. Paste the client ID and secret into Supabase → Sign In / Providers → Google, and enable it.
+     The app needs nothing extra: its Sign in opens the website, so Google works there too.
 5. **Authentication → Emails**: Supabase's built-in email sender is rate-limited. Before launch, set up custom SMTP (for example Resend or Postmark) so sign-up emails arrive reliably.
 6. **Project Settings → API Keys**: copy the **publishable** key and a **secret** key.
 

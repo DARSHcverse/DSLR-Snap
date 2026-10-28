@@ -4,7 +4,7 @@ import { useActionState } from "react";
 import { inputClass, primaryButton, secondaryButton } from "@/components/ui";
 import { type AuthResult, googleAuth, passwordAuth } from "./actions";
 
-export function AuthForm({ mode, next, notice }: { mode: "login" | "signup"; next: string; notice?: string }) {
+export function AuthForm({ mode, next, notice, google }: { mode: "login" | "signup"; next: string; notice?: string; google: boolean }) {
   const [state, action, pending] = useActionState<AuthResult, FormData>(passwordAuth, null);
   if (state?.message) {
     return <p className="rounded-card border border-ok/40 bg-ok/10 p-5 text-pretty">{state.message}</p>;
@@ -12,15 +12,19 @@ export function AuthForm({ mode, next, notice }: { mode: "login" | "signup"; nex
   return (
     <div className="flex flex-col gap-6">
       {notice && <p className="rounded-xl border border-line bg-surface-2 px-4 py-3 text-sm text-muted">{notice}</p>}
-      <form action={googleAuth}>
-        <input type="hidden" name="next" value={next} />
-        <button className={`${secondaryButton} w-full`}>Continue with Google</button>
-      </form>
-      <div className="flex items-center gap-3 text-xs tracking-[0.2em] text-muted uppercase">
-        <span className="h-px flex-1 bg-line" />
-        or
-        <span className="h-px flex-1 bg-line" />
-      </div>
+      {google && (
+        <>
+          <form action={googleAuth}>
+            <input type="hidden" name="next" value={next} />
+            <button className={`${secondaryButton} w-full`}>Continue with Google</button>
+          </form>
+          <div className="flex items-center gap-3 text-xs tracking-[0.2em] text-muted uppercase">
+            <span className="h-px flex-1 bg-line" />
+            or
+            <span className="h-px flex-1 bg-line" />
+          </div>
+        </>
+      )}
       <form action={action} className="flex flex-col gap-4">
         <input type="hidden" name="mode" value={mode} />
         <input type="hidden" name="next" value={next} />

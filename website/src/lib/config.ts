@@ -1,4 +1,5 @@
 import "server-only";
+import { cacheLife } from "next/cache";
 import type { PlanId } from "./plans";
 import { siteUrl } from "./site";
 
@@ -40,3 +41,19 @@ export const appSignInEnabled = accountsEnabled && !!supabaseSecretKey && !!lice
 
 /** Where emails and Stripe send people back to. NEXT_PUBLIC_SITE_URL overrides for local testing. */
 export const appUrl = (env.NEXT_PUBLIC_SITE_URL || siteUrl).replace(/\/$/, "");
+
+/**
+ * Whether Google is switched on in Supabase (Authentication → Sign In / Providers). The button stays
+ * hidden until it is: clicking it before would only show Supabase's "provider is not enabled" page.
+ */
+export async function googleSignInEnabled(): Promise<boolean> {
+  "use cache";
+  cacheLife("minutes");
+  if (!supabaseConfig) return false;
+  try {
+    const res = await fetch(`${supabaseConfig.url}/auth/v1/settings`, { headers: { apikey: supabaseConfig.publishableKey }, signal: AbortSignal.timeout(3000) });
+    return res.ok && (await res.json())?.external?.google === true;
+  } catch {
+    return false;
+  }
+}

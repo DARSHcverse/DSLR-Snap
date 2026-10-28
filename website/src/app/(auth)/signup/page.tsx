@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { NotReady, PageShell } from "@/components/PageShell";
 import { safeNext } from "@/lib/appAuth";
-import { accountsEnabled } from "@/lib/config";
+import { accountsEnabled, googleSignInEnabled } from "@/lib/config";
 import { getCurrentUser } from "@/lib/supabase/server";
 import { AuthForm } from "../AuthForm";
 
@@ -40,7 +40,7 @@ async function Signup({ searchParams }: Pick<PageProps<"/signup">, "searchParams
   if (await getCurrentUser()) redirect(next);
   return (
     <>
-      <AuthForm mode="signup" next={next} />
+      <AuthForm mode="signup" next={next} google={await googleSignInEnabled()} />
       <p className="mt-6 text-sm text-muted">
         Already have an account?{" "}
         <a href={`/login?next=${encodeURIComponent(next)}`} className="text-fg underline-offset-4 hover:underline">Sign in</a>

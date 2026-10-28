@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { NotReady, PageShell } from "@/components/PageShell";
 import { safeNext } from "@/lib/appAuth";
-import { accountsEnabled } from "@/lib/config";
+import { accountsEnabled, googleSignInEnabled } from "@/lib/config";
 import { getCurrentUser } from "@/lib/supabase/server";
 import { AuthForm } from "../AuthForm";
 
@@ -32,6 +32,7 @@ async function Login({ searchParams }: Pick<PageProps<"/login">, "searchParams">
     <>
       <AuthForm
         mode="login"
+        google={await googleSignInEnabled()}
         next={next}
         notice={fromApp ? "Sign in to connect DSLR Snap on your booth computer." : sp.error ? "That link didn't work. Try signing in again." : undefined}
       />
