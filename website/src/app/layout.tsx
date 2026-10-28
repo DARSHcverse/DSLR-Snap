@@ -12,6 +12,8 @@ export const metadata: Metadata = {
   keywords: [
     "photo booth software",
     "photo booth software for Windows",
+    "Surface Pro photo booth software",
+    "touch screen photo booth software",
     "DSLR photo booth",
     "Canon photo booth software",
     "DNP printer photo booth",

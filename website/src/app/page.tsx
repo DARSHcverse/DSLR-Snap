@@ -104,7 +104,7 @@ export default function Home() {
               </h1>
               <p className="mx-auto mt-6 max-w-xl text-lg text-pretty text-muted lg:mx-0">
                 DSLR photo booth, glam B&amp;W, green screen and AI backgrounds, 360 with GoPro and a video
-                guestbook, in one Windows app. Prints, GIFs and QR downloads, and it keeps going when the
+                guestbook, in one app for Surface Pro and Windows touch devices. Prints, GIFs and QR downloads, and it keeps going when the
                 venue <span className="whitespace-nowrap">Wi-Fi</span> drops.
               </p>
               <div className="mt-9 flex flex-col items-center gap-3 sm:flex-row sm:justify-center lg:justify-start">
@@ -249,7 +249,7 @@ export default function Home() {
                   icon: "windows" as const,
                   label: "Computer",
                   name: "Windows 10 or 11",
-                  note: "Any touch laptop or tablet. A Surface Pro is ideal.",
+                  note: "Surface Pro, Windows tablets, all-in-one touch PCs or a laptop. A Surface Pro fits neatly in most booth shells.",
                 },
               ].map((kit) => (
                 <div key={kit.label} className="rounded-card border border-line bg-surface p-6">

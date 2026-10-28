@@ -47,7 +47,7 @@ export const FEATURES: { icon: IconName; title: string; body: string }[] = [
   {
     icon: "offline",
     title: "Works without Wi-Fi",
-    body: "Capture, design and printing all happen on the laptop. Uploads wait and send when you're back online. Your licence works offline for 14 days.",
+    body: "Capture, design and printing all happen on the booth computer. Uploads wait and send when you're back online. Your licence works offline for 14 days.",
   },
   {
     icon: "layout",
@@ -89,11 +89,11 @@ export const FAQ = [
   },
   {
     q: "Does it do 360 videos?",
-    a: "Yes. Plug a GoPro HERO9–12 into the laptop by USB. DSLR Snap finds it, records each spin at 120 or 240 fps and makes a slow-motion portrait video with your overlay frame and music. Start spins from the screen, your phone or a foot pedal.",
+    a: "Yes. Plug a GoPro HERO9–12 into the booth computer by USB. DSLR Snap finds it, records each spin at 120 or 240 fps and makes a slow-motion portrait video with your overlay frame and music. Start spins from the screen, your phone or a foot pedal.",
   },
   {
     q: "What computer do I need?",
-    a: "A Windows 10 or 11 laptop or tablet with a touch screen works best. A Surface Pro makes a great booth screen.",
+    a: "Any Windows 10 or 11 device, and a touch screen works best. A Surface Pro fits neatly in most booth shells, and Windows tablets, all-in-one touch PCs, or a laptop or mini PC with a touch monitor work just as well.",
   },
   {
     q: "Can I use my own designs?",
@@ -121,21 +121,21 @@ export const SOLUTIONS: {
     title: "360 Photo Booth Software for GoPro",
     description:
       "360 photo booth software for Windows: automatic GoPro HERO9–12 connection, 120/240 fps slow motion, speed ramps, overlays, music and QR sharing.",
-    intro: "Plug a GoPro into the laptop, step on the platform, spin. DSLR Snap does the rest: slow motion, your branding, music, and a QR code before the guest steps off.",
+    intro: "Plug a GoPro into the booth computer, step on the platform, spin. DSLR Snap does the rest: slow motion, your branding, music, and a QR code before the guest steps off.",
     points: [
       { title: "Finds the GoPro by itself", body: "HERO9 to HERO12 over USB, no pairing and no GoPro app. Unplug and replug and it reconnects." },
       { title: "Automatic speed ramp", body: "Normal speed, slow motion, normal again, from 120 or 240 fps clips. Portrait 1080×1920 for stories and reels." },
       { title: "Your overlay and music", body: "Add the event's frame and a track once; every video gets them, with the music fading out at the end." },
       { title: "Start it your way", body: "Tap Start, press a foot pedal, or start the spin from your phone while you work the arm." },
     ],
-    hardware: "A Windows laptop, a 360 spinner platform and a GoPro HERO9–12 on a USB cable.",
+    hardware: "A Surface Pro or other Windows touch device, a 360 spinner platform and a GoPro HERO9–12 on a USB cable.",
   },
   {
     slug: "glam-booth-software",
     name: "Glam booth",
     title: "Glam Booth Software: Hollywood Black and White",
     description:
-      "Glam photo booth software with Hollywood black and white, adjustable skin smoothing and soft contrast. Optional colour copies for guests. For Windows and Canon DSLR.",
+      "Glam photo booth software with Hollywood black and white, adjustable skin smoothing and soft contrast. Optional colour copies for guests. For Surface Pro and Windows touch devices, with Canon and Nikon cameras.",
     intro: "The look clients book a glam booth for: soft, bright black and white with smooth skin, straight from your DSLR, on screen and in print.",
     points: [
       { title: "Hollywood B&W", body: "Soft contrast, lifted blacks and a gentle glow, tuned for flattering portraits." },
@@ -143,7 +143,7 @@ export const SOLUTIONS: {
       { title: "Guests pose for the look", body: "The live view shows black and white too, so people pose for the final photo." },
       { title: "Colour copy on request", body: "Print in B&W and let guests download both versions from the QR page." },
     ],
-    hardware: "A Windows laptop, a Canon DSLR or mirrorless camera, a flash and a DNP dye-sub printer.",
+    hardware: "A Surface Pro or other Windows touch device, a Canon or Nikon camera, a flash and a DNP dye-sub printer.",
   },
   {
     slug: "green-screen-photo-booth-software",
@@ -156,9 +156,9 @@ export const SOLUTIONS: {
       { title: "Green, blue or no backdrop", body: "Clean chroma key with spill removal, or AI that cuts people out with no backdrop at all." },
       { title: "Live preview", body: "Guests see themselves on the background before the countdown, with logos the right way round." },
       { title: "Guests choose", body: "Add several backgrounds and guests pick their favourite on the start screen." },
-      { title: "Works offline", body: "The AI runs on the laptop, so there's no per-photo cost and no internet needed." },
+      { title: "Works offline", body: "The AI runs on the booth computer, so there's no per-photo cost and no internet needed." },
     ],
-    hardware: "A Windows laptop, a Canon DSLR, a DNP printer, and a green or blue backdrop if you want the cleanest edges.",
+    hardware: "A Surface Pro or other Windows touch device, a Canon or Nikon camera, a DNP printer, and a green or blue backdrop if you want the cleanest edges.",
   },
   {
     slug: "video-guestbook-software",
@@ -173,7 +173,7 @@ export const SOLUTIONS: {
       { title: "One gallery for the couple", body: "Every message on a private page the hosts can share with family." },
       { title: "Any webcam", body: "Use any USB webcam and microphone, or a GoPro in webcam mode." },
     ],
-    hardware: "A Windows laptop with a USB webcam and microphone.",
+    hardware: "A Surface Pro or other Windows touch device with a USB webcam and microphone.",
   },
 ];
 

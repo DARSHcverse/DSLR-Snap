@@ -14,7 +14,7 @@ const GUIDES: { title: string; steps: string[] }[] = [
   {
     title: "Getting started",
     steps: [
-      "Install DSLR Snap on your Windows 10 or 11 laptop and open it.",
+      "Install DSLR Snap on your Windows 10 or 11 booth computer (Surface Pro, tablet, touch PC or laptop) and open it.",
       "Choose where photos are saved (Home asks the first time). Each event gets its own folder with Photos, Prints, GIFs and Videos.",
       "Plug in the camera and printer. They're found automatically: Home shows a green tick for each.",
       "Create an event: name, booth type, template, look, camera exposure, print and QR settings. Then Start booth.",
