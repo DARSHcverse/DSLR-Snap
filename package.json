@@ -2,7 +2,7 @@
   "name": "dslr-snap",
   "productName": "DSLR Snap",
   "version": "0.1.0",
-  "description": "DSLR Snap – Photo Booth Software for Windows",
+  "description": "DSLR Snap \u2013 Photo Booth Software for Windows",
   "main": "./out/main/index.js",
   "author": "Darshan Subramaniam",
   "private": true,
@@ -15,16 +15,19 @@
     "render-samples": "vitest run tests/renderSamples.test.ts",
     "postinstall": "electron-builder install-app-deps",
     "dist:win": "npm run fetch-models && npm run build && electron-builder --win --x64",
+    "release": "node scripts/publish-release.mjs",
     "fetch-models": "node scripts/fetch-models.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.118.0",
     "better-sqlite3": "^13.0.3",
+    "electron-updater": "^6.8.11",
     "onnxruntime-node": "^1.31.1",
     "qrcode": "^1.5.4",
     "sharp": "^0.35.5"
   },
   "devDependencies": {
+    "@aws-sdk/client-s3": "^3.1158.0",
     "@types/better-sqlite3": "^9.6.0",
     "@types/node": "^26.6.5",
     "@types/qrcode": "^1.5.6",

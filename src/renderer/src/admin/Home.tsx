@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import type { DeviceSnapshot } from '@shared/api'
 import { type FixTarget, readiness } from '@shared/readiness'
 import type { AccountState, BoothEvent, EventStats } from '@shared/types'
+import type { UpdateStatus } from '@shared/updates'
 import { message } from './Templates'
 
 /**
@@ -107,6 +108,7 @@ export default function Home({ devices, account, onStart, onNavigate }: {
               <div className="stat"><span className="stat-value">{stats.prints.sent}</span><span className="muted small">Prints</span></div>
             </div>
           )}
+          <UpdateCard />
           <div className="card">
             <h3>Quick actions</h3>
             <button className="btn" onClick={() => onNavigate('events')}>{active ? 'Edit or switch event' : 'Create an event'}</button>
@@ -116,5 +118,34 @@ export default function Home({ devices, account, onStart, onNavigate }: {
         </div>
       </div>
     </section>
+  )
+}
+
+/** A downloaded update: installs by itself when DSLR Snap closes, or now if nothing is in flight. */
+function UpdateCard() {
+  const [status, setStatus] = useState<UpdateStatus>({ state: 'off' })
+  const [blocker, setBlocker] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  useEffect(() => {
+    const load = () => window.booth.updateState().then((u) => (setStatus(u.status), setBlocker(u.blocker))).catch(() => undefined)
+    void load()
+    const t = setInterval(load, 10_000) // the blocker changes as prints finish
+    const off = window.booth.onUpdate((s) => (setStatus(s), void load()))
+    return () => (clearInterval(t), off())
+  }, [])
+
+  if (status.state === 'downloading') {
+    return <div className="card"><h3>Downloading update {status.version}</h3><p className="muted small">{status.percent}% · the booth keeps working meanwhile.</p></div>
+  }
+  if (status.state !== 'ready') return null
+  return (
+    <div className="card">
+      <h3>Update {status.version} ready</h3>
+      <p className="muted small">It installs by itself the next time you close DSLR Snap, so it never interrupts an event.</p>
+      <button className="btn" disabled={!!blocker} title={blocker ?? undefined} onClick={() => window.booth.updateInstall().catch((e) => setError(message(e)))}>
+        Restart to update now
+      </button>
+      {(error ?? blocker) && <p className="muted small">{error ?? blocker}</p>}
+    </div>
   )
 }

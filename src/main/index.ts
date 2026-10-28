@@ -43,6 +43,8 @@ import type { PrinterAdapter } from './printer/PrinterAdapter'
 import { WindowsPrinter } from './printer/WindowsPrinter'
 import { preferencesTarget, printerPreferencesCommand } from './printer/printerPreferences'
 import { PrintQueue } from './queue/PrintQueue'
+import { Updates } from './updates'
+import { installBlocker } from '../shared/updates'
 import { UploadQueue } from './queue/UploadQueue'
 
 if (!app.requestSingleInstanceLock()) app.quit()
@@ -94,6 +96,7 @@ let uploadQueue: UploadQueue
 let service: BoothService
 let pinLock: PinLock
 let account: AccountService
+let updates: Updates | undefined
 let gallery: CloudGallery
 loadEnv(join(userData, '.env'))
 loadEnv(join(process.cwd(), '.env')) // dev convenience
@@ -629,12 +632,21 @@ function registerIpc(): void {
   })
   handle('setPaused', (paused: boolean) => setPaused(!!paused))
   handle('setBoothShowing', (showing: boolean) => {
+    boothShowing = !!showing
     applyBoothLock(!!showing)
     if (showing) win?.webContents.send('booth:paused', boothPaused) // a fresh booth screen picks up the pause
   })
   handle('quit', () => {
     allowQuit = true
     app.quit()
+  })
+  handle('updateState', async () => ({ status: updates?.state() ?? { state: 'off' }, blocker: await updateBlocker() }))
+  handle('updateCheck', () => updates?.check(true))
+  handle('updateInstall', async () => {
+    const blocker = await updateBlocker()
+    if (blocker) throw new Error(blocker)
+    allowQuit = true
+    updates?.installNow()
   })
 }
 
@@ -725,7 +737,14 @@ async function remoteInfo(): Promise<{ enabled: boolean; url?: string; qr?: stri
 // Kiosk lock: while guests are on the booth screen, the window covers the taskbar and ignores
 // close/quit/reload shortcuts. Only the installed app locks, so development stays usable.
 let boothLocked = false
+let boothShowing = false
 let allowQuit = false
+
+/** Why "Restart to update" must wait (guests on screen, prints or a recording in flight), or null. */
+async function updateBlocker(): Promise<string | null> {
+  const d = await devices()
+  return installBlocker({ boothShowing, printsWaiting: d.printer.queueLength ?? 0, recording: d.gopro.state === 'recording' })
+}
 function applyBoothLock(boothShowing: boolean): void {
   const lock = shouldLock({ packaged: app.isPackaged, boothShowing, kioskLock: db.getDeviceSettings().kioskLock })
   if (lock === boothLocked) return
@@ -823,6 +842,9 @@ app.whenReady().then(async () => {
     log: (level, m) => void log(level, `account: ${m}`)
   })
   account.on('changed', () => win?.webContents.send('booth:account', account.state()))
+  updates = new Updates(app.isPackaged, (level, m) => void log(level, `updates: ${m}`))
+  updates.on('changed', (s) => win?.webContents.send('booth:update', s))
+  updates.start()
   // Developer override: a Supabase service key in .env uploads straight to storage (own booths only).
   // Otherwise photos go through dslrsnap.com, which checks the booth's sign-in and plan.
   const devGallery = galleryFromEnv(process.env)
@@ -876,6 +898,7 @@ app.on('before-quit', () => {
   printQueue?.stop()
   uploadQueue?.stop()
   account?.stop()
+  updates?.stop()
   gopro.stop()
   void remote?.stop()
   void camera?.disconnect()

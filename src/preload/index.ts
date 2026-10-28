@@ -1,6 +1,7 @@
 import { contextBridge, ipcRenderer, webUtils } from 'electron'
 import type { BoothApi, DeviceSnapshot } from '../shared/api'
 import type { AccountState } from '../shared/types'
+import type { UpdateStatus } from '../shared/updates'
 
 const invoke = (channel: string) => (...args: unknown[]) => ipcRenderer.invoke(channel, ...args)
 
@@ -13,7 +14,8 @@ const methods = [
   'getExposure', 'setExposure', 'applyExposure', 'testShot',
   'duplicateEvent', 'eventStats', 'exportEventPhotos', 'hasPin', 'verifyPin', 'setPin',
   'listPrintJobs', 'retryPrintJob', 'cancelPrintJob', 'markPrintJobPrinted', 'testPrint', 'newPaperRoll', 'eventGalleryLink', 'diskFree', 'remoteInfo', 'remoteSetEnabled', 'remoteNewLink', 'setPaused', 'setBoothShowing', 'appInfo', 'quit',
-  'accountState', 'accountSignIn', 'accountRedeemCode', 'accountRefresh', 'accountSignOut', 'openAccountWebsite'
+  'accountState', 'accountSignIn', 'accountRedeemCode', 'accountRefresh', 'accountSignOut', 'openAccountWebsite',
+  'updateState', 'updateCheck', 'updateInstall'
 ] as const
 
 const api = Object.fromEntries(methods.map((m) => [m, invoke(`booth:${m}`)])) as unknown as BoothApi
@@ -35,6 +37,11 @@ api.onPrintJobs = (cb: () => void) => {
   return () => ipcRenderer.removeListener('booth:printJobs', listener)
 }
 
+api.onUpdate = (cb: (s: UpdateStatus) => void) => {
+  const listener = (_: unknown, s: UpdateStatus) => cb(s)
+  ipcRenderer.on('booth:update', listener)
+  return () => ipcRenderer.removeListener('booth:update', listener)
+}
 api.onAccount = (cb: (s: AccountState) => void) => {
   const listener = (_: unknown, s: AccountState) => cb(s)
   ipcRenderer.on('booth:account', listener)

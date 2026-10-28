@@ -1,3 +1,4 @@
+import type { UpdateStatus } from './updates'
 import type {
   AccountState,
   Backdrop,
@@ -140,6 +141,12 @@ export interface BoothApi {
 
   /** Licence: signing in opens the website in the browser, which hands back to the app. */
   accountState(): Promise<AccountState>
+  /** App updates: status plus why "Restart to update" must wait right now (null = safe). */
+  updateState(): Promise<{ status: UpdateStatus; blocker: string | null }>
+  updateCheck(): Promise<void>
+  /** Restarts into the downloaded update; rejects with the reason if it isn't safe yet. */
+  updateInstall(): Promise<void>
+  onUpdate(cb: (s: UpdateStatus) => void): () => void
   accountSignIn(): Promise<void>
   /** The code shown on the website, when the browser couldn't open the app by itself. */
   accountRedeemCode(code: string): Promise<AccountState>

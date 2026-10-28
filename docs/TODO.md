@@ -57,8 +57,8 @@ Full checklist with tick boxes: [HARDWARE_SETUP.md](HARDWARE_SETUP.md) (34 open 
 
 ## 5. Still to build (me, when you say go)
 
-- [ ] **Auto-updates** that never install during an event (planned, not built). Until then, customers would reinstall by hand
-- [ ] **Download page** on the website for signed-in customers, and hosting for the installer
+- [x] **Auto-updates** that never install during an event (built; first real test needs two released versions). Releases: `npm run dist:win` then `npm run release`
+- [x] **Download page** (public /download) reading the newest release from R2. Needs: R2 keys in the root `.env`, the bucket made public on `downloads.dslrsnap.com`, then a first `npm run release`
 - [ ] **Copy the ffmpeg build** to a release in your GitHub repo, and point `scripts/fetch-models.mjs` at it (BtbN deletes old builds)
 - [x] **2-inch cut button**: opens Windows' Printing Preferences for the right printer and comes back to the app (built). Still open: set up a second "2x6 cut" printer entry automatically, after the printer-info output
 - [ ] **Founding-member banner** on the pricing section (if you want the offer)
