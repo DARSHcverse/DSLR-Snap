@@ -7,6 +7,7 @@ const NAV = [
   { href: "/features", label: "Features" },
   { href: "/solutions/360-photo-booth-software", label: "360" },
   { href: "/pricing", label: "Pricing" },
+  { href: "/download", label: "Download" },
   { href: "/support", label: "Support" },
 ];
 

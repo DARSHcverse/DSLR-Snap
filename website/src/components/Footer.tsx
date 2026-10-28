@@ -15,6 +15,7 @@ const COLUMNS: { title: string; links: { href: string; label: string }[] }[] = [
     links: [
       { href: "/features", label: "Features" },
       { href: "/pricing", label: "Pricing" },
+      { href: "/download", label: "Download" },
       { href: "/compare/dslrbooth", label: "vs dslrBooth" },
       { href: "/account", label: "Your account" },
     ],
