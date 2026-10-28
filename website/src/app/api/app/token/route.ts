@@ -1,6 +1,8 @@
 import { cleanDeviceName, deviceLimit, hashSecret, isMachineHash, isSignInCode, isVerifier, makeRefreshToken, pkceMatches } from "@/lib/appAuth";
 import { fail, licenceFor, notConfigured, readJson } from "@/lib/appApi";
 import { entitlementFor } from "@/lib/account";
+import { after } from "next/server";
+import { emailNewDevice } from "@/lib/email/lifecycle";
 import { supabaseAdmin } from "@/lib/supabase/server";
 
 /**
@@ -31,6 +33,7 @@ export async function POST(request: Request) {
   }
 
   const limit = deviceLimit(await entitlementFor(row.user_id));
+  const { data: known } = await db.from("devices").select("id").eq("user_id", row.user_id).eq("machine_hash", machine).is("revoked_at", null).maybeSingle();
   const refreshToken = makeRefreshToken();
   const { data: claim, error } = await db
     .rpc("claim_device", {
@@ -51,5 +54,6 @@ export async function POST(request: Request) {
     );
   }
 
+  if (!known) after(() => emailNewDevice(row.user_id, cleanDeviceName(body?.name)));
   return Response.json({ refreshToken, licence: await licenceFor(row.user_id, machine) });
 }

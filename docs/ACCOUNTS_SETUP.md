@@ -29,7 +29,7 @@ It prints two lines:
      3. **Clients → Create client → Web application**. Authorised JavaScript origins: `https://dslrsnap.com`. Authorised redirect URI: Supabase's callback, shown on the Google provider page in Supabase (`https://<project-ref>.supabase.co/auth/v1/callback`).
      4. Paste the client ID and secret into Supabase → Sign In / Providers → Google, and enable it.
      The app needs nothing extra: its Sign in opens the website, so Google works there too.
-5. **Authentication → Emails**: Supabase's built-in email sender is rate-limited. Before launch, set up custom SMTP (for example Resend or Postmark) so sign-up emails arrive reliably.
+5. **Branded sign-up and password emails** (Authentication → **Hooks** → Add hook → **Send Email hook** → HTTPS): URL `https://dslrsnap.com/api/auth/email-hook`, then **Generate secret** and put it in Vercel as `SEND_EMAIL_HOOK_SECRET`. Supabase then hands every auth email to the website, which sends it through Resend in DSLR Snap's design (`website/src/lib/email/`). Raise Authentication → **Rate Limits** → emails per hour to 100+.
 6. **Project Settings → API Keys**: copy the **publishable** key and a **secret** key.
 
 ## 3. Stripe (payments)

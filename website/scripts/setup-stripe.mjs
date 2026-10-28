@@ -45,6 +45,9 @@ const WEBHOOK_EVENTS = [
   "customer.subscription.deleted",
   "customer.subscription.paused",
   "customer.subscription.resumed",
+  // Emails only (src/lib/email/lifecycle.ts): failed payments and yearly renewal reminders.
+  "invoice.payment_failed",
+  "invoice.upcoming",
 ];
 
 const out = {};

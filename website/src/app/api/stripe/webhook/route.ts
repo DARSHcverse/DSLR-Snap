@@ -1,5 +1,6 @@
 import type Stripe from "stripe";
 import { stripeConfig } from "@/lib/config";
+import { emailsForStripeEvent } from "@/lib/email/lifecycle";
 import { stripe, syncSubscription } from "@/lib/stripe";
 
 // Events to enable on the Stripe webhook endpoint.
@@ -33,6 +34,8 @@ export async function POST(request: Request) {
         await syncSubscription(typeof session.subscription === "string" ? session.subscription : session.subscription.id);
       }
     }
+    // Customer and team emails; each is sent once per event, so Stripe's retries are safe.
+    await emailsForStripeEvent(event, stripe());
   } catch (e) {
     console.error(`stripe webhook ${event.type} ${event.id}:`, e);
     return Response.json({ error: "sync_failed" }, { status: 500 }); // Stripe retries

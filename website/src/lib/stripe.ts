@@ -11,7 +11,7 @@ export function stripe(): Stripe {
   return client;
 }
 
-function planForPrice(priceId: string | undefined): PlanId | null {
+export function planForPrice(priceId: string | undefined): PlanId | null {
   if (!stripeConfig || !priceId) return null;
   return (Object.entries(stripeConfig.prices).find(([, id]) => id === priceId)?.[0] as PlanId | undefined) ?? null;
 }

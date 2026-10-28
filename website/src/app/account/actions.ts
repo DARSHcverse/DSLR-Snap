@@ -1,10 +1,14 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { after } from "next/server";
 import { appUrl, stripeConfig } from "@/lib/config";
 import type { PlanId } from "@/lib/plans";
 import { deviceLimit } from "@/lib/appAuth";
 import { DELETE_CONFIRMATION, deleteAccount, devicesFor, entitlementFor } from "@/lib/account";
+import { emailAccountDeleted, emailExtraComputers } from "@/lib/email/lifecycle";
+import { setUpdatesForUser } from "@/lib/email/preferences";
+import { EXTRA_COMPUTER, MAX_DEVICES } from "@/lib/plans";
 import { customerFor, setExtraComputers, stripe } from "@/lib/stripe";
 import { getCurrentUser, supabaseAdmin, supabaseForRequest } from "@/lib/supabase/server";
 
@@ -81,6 +85,8 @@ export async function changeExtraComputers(form: FormData): Promise<void> {
   } catch {
     redirect("/account?error=computers");
   }
+  const extra = ent.extraDevices + delta;
+  after(() => emailExtraComputers(user.id, { extra, total: MAX_DEVICES + extra, priceEach: EXTRA_COMPUTER[ent.plan!] }));
   redirect("/account");
 }
 
@@ -94,6 +100,14 @@ export async function deleteMyAccount(form: FormData): Promise<void> {
     console.error(`delete account ${user.id}:`, e);
     redirect("/account?error=delete#delete");
   }
+  if (user.email) after(() => emailAccountDeleted(user.email));
   await (await supabaseForRequest()).auth.signOut().catch(() => {}); // the login is gone; just clear the cookie
   redirect("/goodbye");
+}
+
+/** "Email me about new versions and features" on the account page. */
+export async function setUpdateEmails(form: FormData): Promise<void> {
+  const user = await requireUser();
+  await setUpdatesForUser(user.id, form.get("on") === "1");
+  redirect("/account#emails");
 }

@@ -10,7 +10,8 @@ import { accountsEnabled, stripeConfig } from "@/lib/config";
 import { EXTRA_COMPUTER, MAX_DEVICES, OFFLINE_GRACE_DAYS, PLAN_INCLUDES, PLANS } from "@/lib/plans";
 import { getCurrentUser } from "@/lib/supabase/server";
 import { signOut } from "../(auth)/actions";
-import { changeExtraComputers, deleteMyAccount, openBillingPortal, removeDevice, startCheckout } from "./actions";
+import { changeExtraComputers, deleteMyAccount, openBillingPortal, removeDevice, setUpdateEmails, startCheckout } from "./actions";
+import { updatesOn } from "@/lib/email/preferences";
 
 export const metadata: Metadata = { title: "Your account", robots: { index: false } };
 
@@ -34,7 +35,7 @@ async function Account({ searchParams }: Pick<PageProps<"/account">, "searchPara
   const user = await getCurrentUser();
   if (!user) redirect("/login?next=/account");
   const sp = await searchParams;
-  const [ent, devices] = await Promise.all([entitlementFor(user.id), devicesFor(user.id)]);
+  const [ent, devices, updates] = await Promise.all([entitlementFor(user.id), devicesFor(user.id), updatesOn(user.id)]);
   const chosen = sp.plan === "monthly" || sp.plan === "yearly" ? sp.plan : "yearly";
   const limit = deviceLimit(ent);
   const canBuyExtra = ent.active && ent.plan && !!stripeConfig?.extraComputer[ent.plan];
@@ -138,6 +139,18 @@ async function Account({ searchParams }: Pick<PageProps<"/account">, "searchPara
         <p className="mt-4 text-sm text-muted">
           Each booth checks in when it&apos;s online and keeps working offline for {OFFLINE_GRACE_DAYS} days. Removing a computer frees its slot.
         </p>
+      </Card>
+
+      <Card>
+        <h2 id="emails" className="text-lg font-semibold">Emails</h2>
+        <p className="mt-2 text-muted">
+          {updates ? "We'll email you when a new version of DSLR Snap is out." : "You won't get emails about new versions."} Emails about your account,
+          payments and security always arrive.
+        </p>
+        <form action={setUpdateEmails} className="mt-4">
+          <input type="hidden" name="on" value={updates ? "0" : "1"} />
+          <button className={secondaryButton}>{updates ? "Stop update emails" : "Email me about updates"}</button>
+        </form>
       </Card>
 
       <form action={signOut}>

@@ -1,6 +1,8 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { after } from "next/server";
+import { welcomeIfNew } from "@/lib/email/lifecycle";
 import { safeNext } from "@/lib/appAuth";
 import { accountsEnabled, appUrl } from "@/lib/config";
 import { supabaseForRequest } from "@/lib/supabase/server";
@@ -25,7 +27,8 @@ export async function passwordAuth(_prev: AuthResult, form: FormData): Promise<A
     if (error) return { error: error.message };
     if (!data.session) return { message: `We've emailed a link to ${email}. Open it to finish creating your account.` };
   } else {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    if (data.user) after(() => welcomeIfNew(data.user)); // accounts confirmed before welcome emails existed
     if (error) return { error: error.code === "email_not_confirmed" ? "Confirm your email first: check your inbox for our link." : "Wrong email or password." };
   }
   redirect(next);
