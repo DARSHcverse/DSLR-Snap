@@ -29,6 +29,10 @@ extraResources:
   - from: native/CanonBridge/publish
     to: canon-bridge
     filter: ["**/*"]
+  # The Nikon bridge (native/NikonBridge, with Nikon's SDK files). Optional, like Canon's.
+  - from: native/NikonBridge/publish
+    to: nikon-bridge
+    filter: ["**/*"]
 # Harden the packaged app: no running it as plain Node, no debugger flags, and only the signed-off
 # app.asar is loaded (edits to it are detected at start-up).
 electronFuses:

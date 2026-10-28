@@ -6,7 +6,28 @@ import type { CameraAdapter } from './CameraAdapter'
 import { BRIDGE_PROP, decodeExposure, encodeOption, type RawExposure } from './canonCodes'
 
 /**
- * Talks to native/CanonBridge (a small .NET program wrapping Canon EDSDK) over stdin/stdout.
+ * How a bridge reports exposure. Canon's sends raw EDSDK codes the app decodes (canonCodes.ts);
+ * the Nikon bridge decodes Nikon's values itself and sends plain labels ("1/125", "5.6", "400").
+ */
+export interface ExposureCodec {
+  driver: CameraStatus['driver']
+  decode(raw: unknown): ExposureState
+  /** Arguments for the bridge's set_exposure, given the latest raw get_exposure answer. */
+  encode(key: ExposureKey, raw: unknown, value: string): Record<string, unknown>
+}
+
+export const CANON_CODEC: ExposureCodec = {
+  driver: 'canon-edsdk',
+  decode: (raw) => decodeExposure(raw as RawExposure),
+  encode: (key, raw, value) => {
+    const prop = BRIDGE_PROP[key]
+    return { prop, code: encodeOption(key, (raw as RawExposure)[prop].allowed, value) }
+  }
+}
+
+/**
+ * Talks to a camera bridge (a small .NET program wrapping a camera maker's SDK: native/CanonBridge,
+ * native/NikonBridge) over stdin/stdout. Both bridges speak the same protocol.
  *
  * Protocol: one JSON object per line.
  *   → {"id":1,"cmd":"capture","args":{"dir":"C:\\..."}}
@@ -18,17 +39,24 @@ import { BRIDGE_PROP, decodeExposure, encodeOption, type RawExposure } from './c
  * Running the SDK out-of-process means a Canon SDK crash can't take the booth UI down;
  * we simply restart the bridge and reconnect.
  */
-export class CanonBridgeCamera extends EventEmitter implements CameraAdapter {
-  readonly driver = 'canon-edsdk' as const
+export class BridgeCamera extends EventEmitter implements CameraAdapter {
+  readonly driver: CameraStatus['driver']
   private proc?: ChildProcessWithoutNullStreams
   private nextId = 1
   private pending = new Map<number, { resolve: (v: any) => void; reject: (e: Error) => void; timer: NodeJS.Timeout }>()
-  private status: CameraStatus = { driver: 'canon-edsdk', state: 'disconnected', liveViewSupported: false }
+  private status: CameraStatus
   private wantConnected = false
   private reconnectTimer?: NodeJS.Timeout
 
-  constructor(private exePath: string, private args: string[] = [], private timeouts = { default: 10_000, capture: 20_000 }) {
+  constructor(
+    private exePath: string,
+    private args: string[] = [],
+    private timeouts = { default: 10_000, capture: 20_000 },
+    private codec: ExposureCodec = CANON_CODEC
+  ) {
     super()
+    this.driver = codec.driver
+    this.status = { driver: codec.driver, state: 'disconnected', liveViewSupported: false }
   }
 
   getStatus(): CameraStatus {
@@ -166,14 +194,19 @@ export class CanonBridgeCamera extends EventEmitter implements CameraAdapter {
   }
 
   async getExposure(): Promise<ExposureState> {
-    return decodeExposure(await this.send<RawExposure>('get_exposure'))
+    return this.codec.decode(await this.send('get_exposure'))
   }
 
   async setExposure(key: ExposureKey, value: string): Promise<ExposureState> {
-    // Re-read the allowed codes: they change with the mode dial and the lens zoom.
-    const raw = await this.send<RawExposure>('get_exposure')
-    const prop = BRIDGE_PROP[key]
-    const code = encodeOption(key, raw[prop].allowed, value)
-    return decodeExposure(await this.send<RawExposure>('set_exposure', { prop, code }))
+    // Re-read what's allowed: it changes with the mode dial and the lens zoom.
+    const raw = await this.send('get_exposure')
+    return this.codec.decode(await this.send('set_exposure', this.codec.encode(key, raw, value)))
+  }
+}
+
+/** Canon EOS over USB (native/CanonBridge). */
+export class CanonBridgeCamera extends BridgeCamera {
+  constructor(exePath: string, args: string[] = [], timeouts = { default: 10_000, capture: 20_000 }) {
+    super(exePath, args, timeouts, CANON_CODEC)
   }
 }

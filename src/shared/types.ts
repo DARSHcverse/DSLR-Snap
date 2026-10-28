@@ -213,7 +213,7 @@ export interface UploadJob {
 export type DeviceState = 'disconnected' | 'connecting' | 'ready' | 'busy' | 'error'
 
 export interface CameraStatus {
-  driver: 'mock' | 'canon-edsdk'
+  driver: 'mock' | 'canon-edsdk' | 'nikon'
   state: DeviceState
   model?: string
   message?: string
@@ -239,8 +239,8 @@ export interface VideoResult {
 }
 
 export interface DeviceSettings {
-  /** 'auto' = Canon over USB on Windows, mock camera elsewhere. */
-  cameraDriver: 'auto' | 'mock' | 'canon-edsdk'
+  /** 'auto' = whichever Canon or Nikon is plugged in (Windows); mock camera elsewhere. */
+  cameraDriver: 'auto' | 'mock' | 'canon-edsdk' | 'nikon'
   /** 'auto' = Windows driver on Windows, mock printer elsewhere. */
   printerDriver: 'auto' | 'mock' | 'windows-driver'
   /** Windows printer queue whose default preferences are 4x6 (no cut). Empty = detect the DNP printer. */

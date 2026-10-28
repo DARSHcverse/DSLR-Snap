@@ -10,6 +10,9 @@ dist/
 native/CanonBridge/EDSDK/
 # Nikon SDK files and documentation: confidential under Nikon's licence (section 6), never commit
 native/NikonBridge/NikonSDK/
+native/NikonBridge/bin/
+native/NikonBridge/obj/
+native/NikonBridge/publish/
 S-SDK*-ALLIN/
 native/CanonBridge/bin/
 native/CanonBridge/obj/

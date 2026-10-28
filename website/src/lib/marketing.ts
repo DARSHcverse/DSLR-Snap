@@ -7,7 +7,7 @@ export const FEATURES: { icon: IconName; title: string; body: string }[] = [
   {
     icon: "camera",
     title: "Real DSLR quality",
-    body: "Live view on screen, a countdown, then a proper shot from your Canon. Set ISO, aperture, shutter and white balance, take test shots, and save it all per event.",
+    body: "Live view on screen, a countdown, then a proper shot from your Canon or Nikon. Set ISO, aperture, shutter and white balance, take test shots, and save it all per event.",
   },
   {
     icon: "printer",
@@ -73,7 +73,7 @@ export const FAQ = [
   },
   {
     q: "Which cameras does DSLR Snap support?",
-    a: "For photos, Canon DSLR and mirrorless cameras through Canon's official SDK, starting with the EOS R100. For 360 videos, a GoPro HERO9 to HERO12 over USB. For the video guestbook, any USB webcam or a GoPro in webcam mode. Nikon and Sony are on the roadmap.",
+    a: "For photos, Canon DSLR and mirrorless cameras through Canon's official SDK, and Nikon (in beta) through Nikon's: the Z series (Z 30, Z 50, Z fc, Z 5, Z 6, Z 7, Z 8, Z 9, Zf and their II/III versions) and the D750, D780, D810, D850, D610, D7500, D7200, D5600 and D5300. Plug either in and DSLR Snap finds it. For 360 videos, a GoPro HERO9 to HERO12; for the video guestbook, any USB webcam. Sony is on the roadmap.",
   },
   {
     q: "Which printers work?",

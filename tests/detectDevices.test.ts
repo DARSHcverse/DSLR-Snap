@@ -55,10 +55,14 @@ describe('choosePrinters', () => {
 
 describe('automatic device drivers', () => {
   it('uses the Canon camera on Windows when the bridge is installed, mock otherwise', () => {
-    expect(resolveCameraDriver('auto', { platform: 'win32', bridgeInstalled: true })).toBe('canon-edsdk')
-    expect(resolveCameraDriver('auto', { platform: 'win32', bridgeInstalled: false })).toBe('mock')
-    expect(resolveCameraDriver('auto', { platform: 'darwin', bridgeInstalled: false })).toBe('mock')
-    expect(resolveCameraDriver('mock', { platform: 'win32', bridgeInstalled: true })).toBe('mock')
+    const win = (canonInstalled: boolean, nikonInstalled: boolean) => ({ platform: 'win32' as const, canonInstalled, nikonInstalled })
+    expect(resolveCameraDriver('auto', win(true, true))).toBe('any') // Canon or Nikon, whichever is plugged in
+    expect(resolveCameraDriver('auto', win(true, false))).toBe('canon-edsdk')
+    expect(resolveCameraDriver('auto', win(false, true))).toBe('nikon')
+    expect(resolveCameraDriver('auto', win(false, false))).toBe('mock')
+    expect(resolveCameraDriver('auto', { platform: 'darwin', canonInstalled: false, nikonInstalled: false })).toBe('mock')
+    expect(resolveCameraDriver('mock', win(true, true))).toBe('mock')
+    expect(resolveCameraDriver('nikon', win(true, true))).toBe('nikon')
   })
 
   it('uses the Windows printer driver on Windows, mock elsewhere', () => {

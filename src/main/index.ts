@@ -21,7 +21,9 @@ import { thumbPathFor } from './sessionFiles'
 import { analyzeShot } from './camera/analyzeShot'
 import { applyExposure, readExposure, withFlashSafeShutters } from './camera/applyExposure'
 import type { CameraAdapter } from './camera/CameraAdapter'
-import { CanonBridgeCamera } from './camera/CanonBridgeCamera'
+import { BridgeCamera, CanonBridgeCamera } from './camera/CanonBridgeCamera'
+import { AnyCamera } from './camera/AnyCamera'
+import { NIKON_CODEC } from './camera/nikonCodec'
 import { MockCamera } from './camera/MockCamera'
 import { type CloudGallery, galleryFromEnv } from './cloud/CloudGallery'
 import { HostedGallery } from './cloud/HostedGallery'
@@ -102,9 +104,23 @@ function bridgePath(): string {
     : join(app.getAppPath(), 'native', 'CanonBridge', 'publish', 'CanonBridge.exe')
 }
 
+/** The Nikon bridge (native/NikonBridge), built like the Canon one; optional. */
+function nikonBridgePath(): string {
+  return app.isPackaged
+    ? join(process.resourcesPath, 'nikon-bridge', 'NikonBridge.exe')
+    : join(app.getAppPath(), 'native', 'NikonBridge', 'publish', 'NikonBridge.exe')
+}
+
 function makeCamera(s: DeviceSettings): CameraAdapter {
-  const driver = resolveCameraDriver(s.cameraDriver, { platform: process.platform, bridgeInstalled: existsSync(bridgePath()) })
-  const cam: CameraAdapter = driver === 'canon-edsdk' ? new CanonBridgeCamera(bridgePath()) : new MockCamera()
+  const driver = resolveCameraDriver(s.cameraDriver, {
+    platform: process.platform,
+    canonInstalled: existsSync(bridgePath()),
+    nikonInstalled: existsSync(nikonBridgePath())
+  })
+  const canon = () => new CanonBridgeCamera(bridgePath())
+  const nikon = () => new BridgeCamera(nikonBridgePath(), [], undefined, NIKON_CODEC)
+  const cam: CameraAdapter =
+    driver === 'any' ? new AnyCamera([canon(), nikon()]) : driver === 'canon-edsdk' ? canon() : driver === 'nikon' ? nikon() : new MockCamera()
   cam.on('status', () => void broadcastDevices())
   cam.on('log', (m: string) => void log('info', `camera: ${m.trim()}`))
   cam.on('exposure', () => win?.webContents.send('booth:exposure'))

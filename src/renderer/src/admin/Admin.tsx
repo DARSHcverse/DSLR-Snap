@@ -155,8 +155,9 @@ function DevicesTab({ devices }: { devices: DeviceSnapshot | null }) {
         <p className="muted">{devices?.camera.model ?? '—'} · {devices?.camera.state}{devices?.camera.message ? ` · ${devices.camera.message}` : ''}</p>
         <label>Driver
           <select value={s.cameraDriver} onChange={(e) => save({ ...s, cameraDriver: e.target.value as DeviceSettings['cameraDriver'] })}>
-            <option value="auto">Automatic (Canon over USB)</option>
-            <option value="canon-edsdk">Canon EOS via USB (EDSDK)</option>
+            <option value="auto">Automatic (Canon or Nikon over USB)</option>
+            <option value="canon-edsdk">Canon EOS via USB</option>
+            <option value="nikon">Nikon via USB (beta)</option>
             <option value="mock">Mock camera (testing)</option>
           </select>
         </label>
