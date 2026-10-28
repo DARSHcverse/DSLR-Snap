@@ -10,6 +10,9 @@ dist/
 native/CanonBridge/EDSDK/
 # Nikon SDK files and documentation: confidential under Nikon's licence (section 6), never commit
 native/NikonBridge/NikonSDK/
+# TEMPORARY: the whole Nikon bridge stays out of git until the GitHub repo is private
+# (its source names Nikon's confidential API). Delete this line once it is.
+native/NikonBridge/
 native/NikonBridge/bin/
 native/NikonBridge/obj/
 native/NikonBridge/publish/
