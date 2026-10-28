@@ -21,7 +21,9 @@ None of these exist yet; the app and website switch each feature on once its set
 - [ ] **Business details** in `website/src/lib/site.ts` → `business`: legal name, company number, VAT number (when registered), address; confirm country and governing law. They fill the footer, Terms and Privacy automatically
 - [ ] **Solicitor review** of the Terms, Privacy and Refund pages. They're drafted to match how the product really handles data, but they aren't legal advice. Also confirm the refund promise (14 days on a first yearly payment)
 - [ ] **ICO registration** (UK data protection fee). Required for businesses handling personal data, and the cloud gallery stores guests' photos
+- [ ] **Make the GitHub repo private** (Settings → Danger Zone → Change visibility). Nikon's and Canon's SDK terms treat their APIs and documentation as confidential, and it's also your product's source code
 - [ ] **Canon EDSDK redistribution**: confirm the licence lets you ship EDSDK.dll and EdsImage.dll inside a paid installer
+- [ ] **Nikon SDK (accepted 28 Oct 2026)**: shipping Nikon's files inside DSLR Snap is allowed (2.1). The Terms of service must pass on Nikon's restrictions, warranty disclaimers and liability limits, naming Nikon as a third-party beneficiary. Add that clause, and have the solicitor check it along with the indemnity (clause 5)
 - [ ] **Trademark check** on "DSLR Snap" before spending on branding
 - [ ] **Code-signing certificate** for the Windows installer (e.g. Azure Trusted Signing, ~$10/month). Without it, Windows shows "unknown publisher" warnings
 - [ ] **VAT**: watch the registration threshold; Stripe Tax can collect it once registered
@@ -60,7 +62,8 @@ Full checklist with tick boxes: [HARDWARE_SETUP.md](HARDWARE_SETUP.md) (34 open 
 - [x] **2-inch cut button**: opens Windows' Printing Preferences for the right printer and comes back to the app (built). Still open: set up a second "2x6 cut" printer entry automatically, after the printer-info output
 - [ ] **Founding-member banner** on the pricing section (if you want the offer)
 - [ ] **Account deletion** button on the website (today: by email, as the privacy policy says)
-- [ ] **More cameras and printers**: other Canon bodies need testing; Nikon, Sony, Mitsubishi and Citizen are on the roadmap only
+- [ ] **Nikon bridge** (MAID3; one bridge for the Z-series v2.1.0 and the D750/D780/D850/D810/D610/D7500/D7200/D5600/D5300 modules). Starts once the repo is private; final test needs a Nikon camera
+- [ ] **More cameras and printers**: other Canon bodies need testing; Sony, Mitsubishi and Citizen are on the roadmap only
 - [ ] **360 auto-start** when the arm moves (needs a sensor), and the green-screen key tuned on real footage
 - [ ] **Rate limiting** on the website's API routes and contact form (today: one-time codes, PKCE and a honeypot)
 - [ ] Look into the one flaky test (the GIF test once hung during a full parallel run)

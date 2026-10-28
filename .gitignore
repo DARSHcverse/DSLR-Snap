@@ -8,6 +8,9 @@ dist/
 
 # Canon bridge build output, and Canon's licensed SDK DLLs (never commit them)
 native/CanonBridge/EDSDK/
+# Nikon SDK files and documentation: confidential under Nikon's licence (section 6), never commit
+native/NikonBridge/NikonSDK/
+S-SDK*-ALLIN/
 native/CanonBridge/bin/
 native/CanonBridge/obj/
 native/CanonBridge/publish/
