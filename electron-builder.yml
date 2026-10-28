@@ -48,11 +48,15 @@ protocols:
     schemes: [dslrsnap]
 win:
   target: [{ target: nsis, arch: [x64] }]
+  # Made by scripts/make-icons.mjs: 16–256 px, with a simpler mark at 16–32 px for the taskbar.
+  icon: resources/icon.ico
   # Authenticode signing: set CSC_LINK / CSC_KEY_PASSWORD env vars in CI to avoid SmartScreen warnings.
 nsis:
   # Versioned file names: each release is a new file, so caches and half-finished downloads never mix versions.
   artifactName: DSLR-Snap-Setup-${version}.${ext}
   oneClick: false
+  installerIcon: resources/icon.ico
+  uninstallerIcon: resources/icon.ico
   allowToChangeInstallationDirectory: true
   createDesktopShortcut: true
 # Updates and the website's download page read from this folder (Cloudflare R2, public, via

@@ -762,9 +762,13 @@ if (!app.isPackaged && process.env.DSLR_SNAP_FAKE_MEDIA === '1') {
 }
 
 function createWindow(): void {
+  // Installed builds take their icon from the .exe (resources/icon.ico); development shows the PNG.
+  const devIcon = app.isPackaged ? undefined : join(app.getAppPath(), 'resources', 'icon.png')
+  if (devIcon && process.platform === 'darwin') app.dock?.setIcon(devIcon)
   win = new BrowserWindow({
     width: 1280,
     height: 800,
+    icon: devIcon,
     fullscreen: app.isPackaged, // kiosk-like on the Surface; windowed while developing
     autoHideMenuBar: true,
     backgroundColor: '#0b0b0f',
