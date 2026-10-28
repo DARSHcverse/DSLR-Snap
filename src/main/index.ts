@@ -601,7 +601,9 @@ function registerIpc(): void {
   handle('accountRedeemCode', (code: string) => account.redeemCode(String(code)))
   handle('accountRefresh', () => account.refresh())
   handle('accountSignOut', () => account.signOut())
-  handle('openAccountWebsite', (page: 'account' | 'pricing') => shell.openExternal(page === 'pricing' ? `${ACCOUNT_URL}/#pricing` : `${ACCOUNT_URL}/account`))
+  handle('openAccountWebsite', (page: 'account' | 'pricing' | 'support') =>
+    shell.openExternal(page === 'pricing' ? `${ACCOUNT_URL}/#pricing` : page === 'support' ? `${ACCOUNT_URL}/account/support` : `${ACCOUNT_URL}/account`)
+  )
   handle('newPaperRoll', async (capacity: number) => {
     const paper = db.newPaperRoll(Number(capacity))
     await broadcastDevices()

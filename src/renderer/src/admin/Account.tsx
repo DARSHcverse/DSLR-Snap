@@ -101,6 +101,13 @@ export default function AccountTab() {
         {msg && <p className="muted" style={{ color: 'var(--bad)' }}>{msg}</p>}
       </div>
       <div className="card">
+        <h3>Need help?</h3>
+        <p className="muted small">Chat with the DSLR Snap team. We reply by email too, so you don't need to keep the page open.</p>
+        <div className="row">
+          <button className="btn" onClick={() => window.booth.openAccountWebsite('support')}>Help & chat</button>
+        </div>
+      </div>
+      <div className="card">
         <h3>How licensing works</h3>
         <p className="muted small">
           One plan covers 2 booth computers. The booth checks your plan whenever it's online and keeps working offline for 14 days, so venue Wi-Fi never stops an event.

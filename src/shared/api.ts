@@ -152,7 +152,8 @@ export interface BoothApi {
   accountRedeemCode(code: string): Promise<AccountState>
   accountRefresh(): Promise<AccountState>
   accountSignOut(): Promise<AccountState>
-  openAccountWebsite(page: 'account' | 'pricing'): Promise<void>
+  /** Opens dslrsnap.com: the account page, pricing, or the support chat. */
+  openAccountWebsite(page: 'account' | 'pricing' | 'support'): Promise<void>
   onAccount(cb: (s: AccountState) => void): () => void
   /** Sign-in finished in the browser but the website refused it (e.g. both computers already in use). */
   onAccountError(cb: (message: string) => void): () => void
