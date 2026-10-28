@@ -17,7 +17,7 @@ It prints two lines:
 ## 2. Supabase (accounts + database)
 
 1. Create a project at supabase.com. Pick a region near you (London for the UK).
-2. **SQL editor** → run the three files in `website/supabase/migrations/` in order: `0001_accounts.sql`, `0002_extra_computers.sql`, `0003_gallery.sql`. The last one also creates the private `galleries` storage bucket.
+2. **SQL editor** → run the four files in `website/supabase/migrations/` in order (`0001` to `0004`). `0003` also creates the private `galleries` storage bucket.
 3. **Authentication → URL configuration**:
    - Site URL: `https://dslrsnap.com`
    - Redirect URLs: add `https://dslrsnap.com/auth/callback`, `http://localhost:3000/auth/callback` and your Vercel preview URL pattern (`https://*-<your-team>.vercel.app/auth/callback`)
@@ -30,6 +30,9 @@ It prints two lines:
 ## 3. Stripe (payments)
 
 1. Create an account at stripe.com. Stay in **Test mode**.
+
+**Shortcut:** put a test secret key (`sk_test_…`) in `website/.env.local` and run `node scripts/setup-stripe.mjs` from `website/`. It does steps 2–4 below and saves the ids and webhook secret into `.env.local`. Run it again with a live key and `--live` when going live.
+
 2. **Product catalog → Add product** "DSLR Snap" with two recurring prices:
    - $30.00 USD every month
    - $168.00 USD every year (shown on the site as $14/month)
