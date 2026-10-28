@@ -54,7 +54,7 @@ export default function AccountTab() {
           <p className="muted small">
             Signed in as {state.email}
             {state.plan ? ` · ${PLAN[state.plan]}` : ''}
-            {state.offlineUntil ? ` · works offline until ${new Date(state.offlineUntil).toLocaleDateString()}` : ''}
+            {state.offlineUntil ? ` · works offline until ${new Date(state.offlineUntil).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}` : ''}
           </p>
         )}
 
@@ -87,13 +87,16 @@ export default function AccountTab() {
         )}
 
         {state.signedIn && (
-          <div className="row">
-            <button className="btn" onClick={() => run(() => window.booth.accountRefresh())}>Check again</button>
-            <button className="btn" onClick={() => window.booth.openAccountWebsite('account')}>Manage plan & computers</button>
-            <button className="btn ghost danger" onClick={() => confirm('Sign this computer out? Photos will carry the trial watermark until you sign in again.') && run(() => window.booth.accountSignOut())}>
-              Sign out
+          <>
+            <div className="row">
+              <button className="btn" onClick={() => run(() => window.booth.accountRefresh())}>Check again</button>
+              <button className="btn" onClick={() => window.booth.openAccountWebsite('account')}>Manage plan & computers</button>
+            </div>
+            {/* Rarely needed, so it sits apart from the everyday buttons instead of wrapping onto its own row. */}
+            <button className="btn ghost danger small sign-out" onClick={() => confirm('Sign this computer out? Photos will carry the trial watermark until you sign in again.') && run(() => window.booth.accountSignOut())}>
+              Sign this computer out
             </button>
-          </div>
+          </>
         )}
         {msg && <p className="muted" style={{ color: 'var(--bad)' }}>{msg}</p>}
       </div>

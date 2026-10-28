@@ -54,6 +54,7 @@ img { -webkit-user-drag: none; }
 .btn.ghost { background: transparent; }
 .btn.danger { color: var(--bad); }
 .btn.small { padding: 7px 14px; font-size: 14px; }
+.btn.sign-out { margin-top: 14px; padding-left: 0; border-color: transparent; }
 .btn.huge { font-size: 32px; padding: 26px 72px; min-width: 320px; }
 
 .spinner { width: 54px; height: 54px; border-radius: 50%; border: 5px solid var(--line); border-top-color: var(--accent); animation: spin 0.9s linear infinite; }
