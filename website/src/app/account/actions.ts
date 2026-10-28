@@ -28,6 +28,8 @@ export async function startCheckout(form: FormData): Promise<void> {
     line_items: [{ price: stripeConfig.prices[plan], quantity: 1 }],
     subscription_data: { metadata: { user_id: user.id } },
     allow_promotion_codes: true,
+    // Charge the advertised USD price; Adaptive Pricing would switch to local currency plus a ~4% fee.
+    adaptive_pricing: { enabled: false },
     automatic_tax: { enabled: stripeConfig.automaticTax },
     ...(stripeConfig.automaticTax ? { customer_update: { address: "auto" as const } } : {}),
     success_url: `${appUrl}/account?checkout=done`,

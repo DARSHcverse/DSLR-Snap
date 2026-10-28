@@ -39,7 +39,14 @@ export const isSignInCode = (s: unknown): s is string => typeof s === "string" &
 
 /** Computer names come from the app; keep them printable and short. */
 export function cleanDeviceName(s: unknown): string {
-  const name = typeof s === "string" ? s.replace(/[^\p{L}\p{N} ._'-]/gu, "").trim().slice(0, 64) : "";
+  const name =
+    typeof s === "string"
+      ? s
+          .replace(/[^\p{L}\p{N} ._'-]/gu, "")
+          .replace(/\.(local|localdomain|lan|home|internal)$/i, "") // the network suffix macOS and routers add
+          .trim()
+          .slice(0, 64)
+      : "";
   return name || "Booth computer";
 }
 

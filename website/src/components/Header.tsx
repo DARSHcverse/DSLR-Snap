@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { accountsEnabled } from "@/lib/config";
 import { earlyAccessHref } from "@/lib/site";
+import { AccountLinks } from "./AccountLinks";
 import { Logo } from "./Logo";
 
 const NAV = [
@@ -45,17 +46,7 @@ export function Header() {
           </nav>
         </details>
         {accountsEnabled ? (
-          <div className="flex items-center gap-1">
-            <Link href="/account" className="rounded-[10px] px-3.5 py-2 text-sm text-muted transition-colors hover:bg-surface-2 hover:text-fg">
-              Sign in
-            </Link>
-            <Link
-              href="/signup"
-              className="hidden rounded-full bg-accent px-4 py-2 sm:inline-flex text-sm font-semibold text-accent-ink transition-transform active:scale-[0.97]"
-            >
-              Start free
-            </Link>
-          </div>
+          <AccountLinks />
         ) : (
           <a
             href={earlyAccessHref}

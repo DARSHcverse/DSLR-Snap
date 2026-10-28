@@ -102,4 +102,13 @@ describe("sign-in helpers", () => {
     expect(cleanDeviceName("DESKTOP-7Q2<script>")).toBe("DESKTOP-7Q2script");
     expect(cleanDeviceName("")).toBe("Booth computer");
   });
+
+  it("drops local network endings from computer names", () => {
+    expect(cleanDeviceName("Darshans-MacBook-Pro-2.local")).toBe("Darshans-MacBook-Pro-2");
+    expect(cleanDeviceName("BOOTH-PC.lan")).toBe("BOOTH-PC");
+    expect(cleanDeviceName("surface.home")).toBe("surface");
+    expect(cleanDeviceName("Surface.localdomain")).toBe("Surface");
+    expect(cleanDeviceName("Studio v2.5")).toBe("Studio v2.5"); // a real dot in a name stays
+    expect(cleanDeviceName(".local")).toBe("Booth computer");
+  });
 });
