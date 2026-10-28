@@ -41,6 +41,13 @@ export default function TermsPage() {
           <li>Gallery photos and videos are kept for one year, then deleted. Keep your own copies: the app saves everything in the event folder on your computer.</li>
         </ul>
 
+        <h2>Camera makers&apos; software</h2>
+        <ul>
+          <li>The app includes software from Canon and Nikon so it can control their cameras. You may use it only as part of DSLR Snap, and you may not copy it, reverse engineer it or use it on its own.</li>
+          <li>That software is provided by its makers &quot;as is&quot;, without any warranty from them, and they aren&apos;t liable for any loss arising from its use.</li>
+          <li>Nikon Corporation is a third-party beneficiary of this section and may enforce it directly.</li>
+        </ul>
+
         <h2>Availability and liability</h2>
         <ul>
           <li>We work hard to keep DSLR Snap reliable, and it&apos;s designed to keep working offline, but we can&apos;t promise it will be uninterrupted or error-free. Always test your setup before an event.</li>

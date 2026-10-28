@@ -41,6 +41,25 @@ Exposure controls (app → Operator → **Camera**, camera dial on **M**, flash 
 - [ ] Test shot at **1/200**: no dark band at the top/bottom of the frame. If there is one, the R100's flash sync is slower than assumed — lower `FLASH_SYNC_SECONDS` in `src/shared/exposure.ts`
 - [ ] "Too dark / too bright / looks good" agrees with what you see on the test shot; set exposure for the venue, unplug and replug the camera → settings come back
 
+## 1b. Camera — Nikon Z series over USB (beta, never run on a real camera)
+
+1. Copy everything in `S-SDKZ-210BF-ALLIN\Module\Win\BinaryFile` except `TestApp.exe` into `native\NikonBridge\NikonSDK\` (confidential: never commit).
+2. With the .NET 8 SDK:
+   ```powershell
+   cd native\NikonBridge
+   dotnet publish -c Release -o publish
+   .\publish\NikonBridge.exe --selftest C:\NikonTest
+   ```
+3. Camera: **JPEG only**, auto power off disabled, dial on **M**; close Nikon NX Tether and Webcam Utility.
+4. In the app: Operator → Printer & devices → Camera → "Automatic" (or "Nikon via USB (beta)").
+
+Gate checks:
+- [ ] Selftest prints the model, exposure counts above 0, a live-view frame and three shots, then `PASS`
+- [ ] If live view prints "frame is not a JPEG": the live-view struct offset (`LiveViewImagePointerOffset` in `NikonSdk.cs`) is wrong; send the output
+- [ ] ISO, aperture and shutter in the app match the camera, and ◀ ▶ changes them; white balance is set on the camera in this beta
+- [ ] Unplug and replug → the app reconnects
+- [ ] With both a Canon and a Nikon plugged in, "Automatic" uses whichever is ready
+
 If the selftest crashes or errors on struct/stack issues: compare `Edsdk.cs` signatures with `EDSDK.h` / `EDSDKTypes.h` from your SDK version (EDSDK 13.x uses 64-bit sizes).
 
 ## 2. Printer — DNP DS-RX1HS over USB
