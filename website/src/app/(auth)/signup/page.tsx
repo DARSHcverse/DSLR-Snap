@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { NotReady, PageShell } from "@/components/PageShell";
@@ -7,7 +8,12 @@ import { accountsEnabled } from "@/lib/config";
 import { getCurrentUser } from "@/lib/supabase/server";
 import { AuthForm } from "../AuthForm";
 
-export const metadata: Metadata = { title: "Create your account", description: "Start DSLR Snap free: every feature works, with a small watermark until you choose a plan.", alternates: { canonical: "/signup" } };
+export const metadata: Metadata = pageMetadata({
+  title: "Create your account",
+  description:
+    "Start DSLR Snap free: every feature works, with a small watermark until you choose a plan.",
+  path: "/signup",
+});
 
 export default function SignupPage({ searchParams }: PageProps<"/signup">) {
   return (

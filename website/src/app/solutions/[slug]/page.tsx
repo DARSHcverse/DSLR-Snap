@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import { notFound } from "next/navigation";
 import { ContentPage, JsonLd } from "@/components/ContentPage";
 import { Icon } from "@/components/Icon";
@@ -13,7 +14,7 @@ export function generateStaticParams() {
 export async function generateMetadata({ params }: PageProps<"/solutions/[slug]">): Promise<Metadata> {
   const { slug } = await params;
   const s = SOLUTIONS.find((x) => x.slug === slug);
-  return s ? { title: s.title, description: s.description, alternates: { canonical: `/solutions/${s.slug}` } } : {};
+  return s ? pageMetadata({ title: s.title, description: s.description, path: `/solutions/${s.slug}` }) : {};
 }
 
 /** Landing pages for what operators search for ("360 photo booth software", …). */

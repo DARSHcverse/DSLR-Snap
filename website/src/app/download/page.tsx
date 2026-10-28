@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
 import { ContentPage, JsonLd } from "@/components/ContentPage";
 import { Icon } from "@/components/Icon";
@@ -6,12 +7,12 @@ import { primaryButton, secondaryButton } from "@/components/ui";
 import { latestRelease } from "@/lib/downloads";
 import { site, siteUrl } from "@/lib/site";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "Download DSLR Snap for Windows",
   description:
     "Download DSLR Snap free for Windows 10 and 11, on Surface Pro, tablets, touch PCs and laptops. Every feature works in the trial, with a small watermark until you choose a plan.",
-  alternates: { canonical: "/download" },
-};
+  path: "/download",
+});
 
 const STEPS = [
   { title: "Install", body: "Run the installer. If Windows shows \"Windows protected your PC\", choose More info → Run anyway." },

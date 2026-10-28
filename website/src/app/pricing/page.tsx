@@ -1,14 +1,16 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
 import { ContentPage, JsonLd } from "@/components/ContentPage";
 import { PricingCards } from "@/components/Pricing";
 import { site, siteUrl } from "@/lib/site";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "Pricing",
-  description: "DSLR Snap pricing: $14/month billed yearly or $30 monthly, every feature included, 2 booth computers, free trial with no time limit.",
-  alternates: { canonical: "/pricing" },
-};
+  description:
+    "DSLR Snap pricing: $14/month billed yearly or $30 monthly, every feature included, 2 booth computers, free trial with no time limit.",
+  path: "/pricing",
+});
 
 export default function PricingPage() {
   return (

@@ -1,9 +1,15 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import { ContentPage, Prose } from "@/components/ContentPage";
 import { LAST_UPDATED } from "@/components/Legal";
 import { site } from "@/lib/site";
 
-export const metadata: Metadata = { title: "Refund policy", alternates: { canonical: "/refunds" } };
+export const metadata: Metadata = pageMetadata({
+  title: "Refund policy",
+  description:
+    "DSLR Snap's refund policy: monthly and yearly plans, extra booth computers and how to cancel.",
+  path: "/refunds",
+});
 
 export default function RefundsPage() {
   return (

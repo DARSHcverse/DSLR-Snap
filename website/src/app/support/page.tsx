@@ -1,14 +1,16 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import { ContentPage, JsonLd } from "@/components/ContentPage";
 import { FAQ } from "@/lib/marketing";
 import { site } from "@/lib/site";
 import { ContactForm } from "./ContactForm";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "Support",
-  description: "DSLR Snap help: getting started, cameras, printers, 360 with GoPro, green screen, licences and contact.",
-  alternates: { canonical: "/support" },
-};
+  description:
+    "DSLR Snap help: getting started, cameras, printers, 360 with GoPro, green screen, licences and contact.",
+  path: "/support",
+});
 
 const GUIDES: { title: string; steps: string[] }[] = [
   {

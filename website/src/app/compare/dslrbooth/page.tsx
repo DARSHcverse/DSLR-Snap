@@ -1,13 +1,15 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import { ContentPage } from "@/components/ContentPage";
 import { Icon } from "@/components/Icon";
 import { COMPARISON } from "@/lib/marketing";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "DSLR Snap vs dslrBooth (LumaBooth for Windows)",
-  description: "Comparing DSLR Snap with dslrBooth: monthly and yearly prices, computers included, phone remote, cloud gallery and free trial.",
-  alternates: { canonical: "/compare/dslrbooth" },
-};
+  description:
+    "Comparing DSLR Snap with dslrBooth: monthly and yearly prices, computers included, phone remote, cloud gallery and free trial.",
+  path: "/compare/dslrbooth",
+});
 
 export default function CompareDslrBooth() {
   return (

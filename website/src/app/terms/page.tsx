@@ -1,10 +1,16 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import { ContentPage, Prose } from "@/components/ContentPage";
 import { LAST_UPDATED, WhoWeAre } from "@/components/Legal";
 import { MAX_DEVICES, OFFLINE_GRACE_DAYS } from "@/lib/plans";
 import { site } from "@/lib/site";
 
-export const metadata: Metadata = { title: "Terms of service", alternates: { canonical: "/terms" } };
+export const metadata: Metadata = pageMetadata({
+  title: "Terms of service",
+  description:
+    "The terms for using DSLR Snap: plans, licences, booth computers, photos and galleries, the camera makers' software, liability and ending the service.",
+  path: "/terms",
+});
 
 export default function TermsPage() {
   return (

@@ -1,14 +1,16 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
 import { ContentPage } from "@/components/ContentPage";
 import { Icon } from "@/components/Icon";
 import { FEATURES, SOLUTIONS } from "@/lib/marketing";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "Features",
-  description: "Everything DSLR Snap does: DSLR photo booth, prints, glam B&W, green screen and AI backgrounds, 360 with GoPro, video guestbook, boomerangs, QR sharing and an offline-first design.",
-  alternates: { canonical: "/features" },
-};
+  description:
+    "Everything DSLR Snap does: DSLR photo booth, prints, glam B&W, green screen and AI backgrounds, 360 with GoPro, video guestbook, boomerangs, QR sharing and an offline-first design.",
+  path: "/features",
+});
 
 export default function FeaturesPage() {
   return (

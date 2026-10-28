@@ -1,9 +1,15 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import { ContentPage, Prose } from "@/components/ContentPage";
 import { LAST_UPDATED, WhoWeAre } from "@/components/Legal";
 import { site } from "@/lib/site";
 
-export const metadata: Metadata = { title: "Privacy policy", alternates: { canonical: "/privacy" } };
+export const metadata: Metadata = pageMetadata({
+  title: "Privacy policy",
+  description:
+    "What DSLR Snap stores about operators and guests, where it's kept, for how long, and how to get a copy or delete your account.",
+  path: "/privacy",
+});
 
 export default function PrivacyPage() {
   return (
