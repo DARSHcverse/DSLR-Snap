@@ -69,8 +69,8 @@ Full checklist with tick boxes: [HARDWARE_SETUP.md](HARDWARE_SETUP.md) (34 open 
 - [x] **2-inch cut button**: opens Windows' Printing Preferences for the right printer and comes back to the app (built). Still open: set up a second "2x6 cut" printer entry automatically, after the printer-info output
 - [ ] **Founding-member banner** on the pricing section (if you want the offer)
 - [x] **Account deletion** on the Account page: cancels the subscription, deletes gallery files and the login (tested against Supabase and Stripe test mode)
-- [x] **Nikon Z-series bridge** (built, untested: no camera yet). Kept out of git in `native/NikonBridge/` until the repo is private; then delete the temporary line in `.gitignore` and commit it. Test steps in HARDWARE_SETUP.md section 1b
-- [ ] **Nikon D-series bridge** (D750/D780/D850/D810/D610/D7500/D7200/D5600/D5300): Nikon's older MAID3 modules, a separate bridge. The website says "coming next"
+- [x] **Nikon Z-series bridge** (built, compiles; 3 struct-packing bugs and the live-view offset fixed on 29 Oct; untested on a camera). Kept out of git in `native/NikonBridge/` until the repo is private; then delete the temporary line in `.gitignore` and commit it. Test steps in HARDWARE_SETUP.md section 1b
+- [x] **Nikon D-series** built into the same NikonBridge (MAID3, one module per model, picked automatically). Compiles; struct layouts checked against Nikon's headers; untested on a camera. The website still says D-series "coming next" until a real test passes
 - [ ] **More cameras and printers**: other Canon bodies need testing; Sony, Mitsubishi and Citizen are on the roadmap only
 - [ ] **360 auto-start** when the arm moves (needs a sensor), and the green-screen key tuned on real footage
 - [x] **Rate limiting** per IP on the app API, sign-in, password reset, contact form and app sign-in approval (migration 0008)

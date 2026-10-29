@@ -41,9 +41,9 @@ Exposure controls (app → Operator → **Camera**, camera dial on **M**, flash 
 - [ ] Test shot at **1/200**: no dark band at the top/bottom of the frame. If there is one, the R100's flash sync is slower than assumed — lower `FLASH_SYNC_SECONDS` in `src/shared/exposure.ts`
 - [ ] "Too dark / too bright / looks good" agrees with what you see on the test shot; set exposure for the venue, unplug and replug the camera → settings come back
 
-## 1b. Camera — Nikon Z series over USB (beta, never run on a real camera)
+## 1b. Camera — Nikon (Z series and D-series DSLRs) over USB (beta, never run on a real camera)
 
-1. Copy everything in `S-SDKZ-210BF-ALLIN\Module\Win\BinaryFile` except `TestApp.exe` into `native\NikonBridge\NikonSDK\` (confidential: never commit).
+1. Unzip `DSLR-Snap-camera-sdks.zip` (made on the Mac) at the repo root: it holds `native\NikonBridge\` with the Z SDK in `NikonSDK\` and one folder per DSLR in `NikonSDK-D\` (D750, D780, D810, D850, D610, D7500, D7200, D5600, D5300), plus Canon's EDSDK DLLs. Confidential: never commit.
 2. With the .NET 8 SDK:
    ```powershell
    cd native\NikonBridge
@@ -59,6 +59,7 @@ Gate checks:
 - [ ] ISO, aperture and shutter in the app match the camera, and ◀ ▶ changes them; white balance is set on the camera in this beta
 - [ ] Unplug and replug → the app reconnects
 - [ ] With both a Canon and a Nikon plugged in, "Automatic" uses whichever is ready
+- [ ] D-series: the self-test finds the camera (first run tries each model's module, about a second each); photos arrive with no card in the camera
 
 If the selftest crashes or errors on struct/stack issues: compare `Edsdk.cs` signatures with `EDSDK.h` / `EDSDKTypes.h` from your SDK version (EDSDK 13.x uses 64-bit sizes).
 
