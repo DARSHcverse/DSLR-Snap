@@ -87,9 +87,9 @@ Full checklist with tick boxes: [HARDWARE_SETUP.md](HARDWARE_SETUP.md) (34 open 
 ## 5c. DSLR Snap Cloud (built 29 October)
 
 - [x] **Phase 1**: Your events (dashboard), event page with settings (name, date, link on/off, password, guests see everyone, download all, website), share link + QR, hide/show/delete/cover, download all as zip, delete event; thumbnails from the booth; R2 storage ready (off until GALLERY_R2_* is set)
-- [ ] **Phase 2** (next): Edit Design (colours, banner, logo, background), live slideshow for a venue TV, upload photos by hand
+- [x] **Phase 2**: Edit Design (presets, colours, font, banner, logo, background, default look for new events, live preview), live slideshow for a venue TV (new photos first, hidden ones drop out, QR corner), add photos by hand
 - [ ] **Phase 3**: your branded homepage with all events (embeddable), per-event analytics, albums
-- [ ] **You (optional)**: switch gallery storage to R2: API token for the private `dslrsnap-photos` bucket, then GALLERY_R2_* in Vercel (it's an EU bucket: GALLERY_R2_JURISDICTION=eu)
+- [ ] **You (optional)**: switch gallery storage to R2: API token for the private `dslrsnap-photos` bucket, GALLERY_R2_* in Vercel (EU bucket: GALLERY_R2_JURISDICTION=eu), and the CORS rule in ACCOUNTS_SETUP.md
 
 ## 6. Already done and working without credentials
 

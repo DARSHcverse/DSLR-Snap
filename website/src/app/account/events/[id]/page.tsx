@@ -7,12 +7,15 @@ import { NotReady } from "@/components/PageShell";
 import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
 import { inputClass } from "@/components/ui";
+import { designForEvent } from "@/lib/cloudDesign";
 import { getEvent, sessionsForOwner } from "@/lib/cloudEvents";
 import { accountsEnabled, appUrl } from "@/lib/config";
 import { isUuid } from "@/lib/gallery";
 import { getCurrentUser } from "@/lib/supabase/server";
 import { deleteWholeEvent, replaceLink, saveEventSettings } from "./actions";
 import { CopyLink } from "./CopyLink";
+import { DesignEditor } from "./DesignEditor";
+import { PhotoUpload } from "./PhotoUpload";
 import { SessionGrid } from "./SessionGrid";
 
 export const metadata: Metadata = { title: "Event", robots: { index: false } };
@@ -57,6 +60,8 @@ async function Event({ params, searchParams }: PageProps<"/account/events/[id]">
   const link = `${appUrl}/e/${event.shareToken}`;
   const qr = await QRCode.toDataURL(link, { margin: 1, width: 360, color: { dark: "#16161d", light: "#ffffff" } });
   const hidden = sessions.filter((s) => s.hidden).length;
+  const look = await designForEvent(user.id, event.design);
+  const { tab } = await searchParams;
   const field = "flex flex-col gap-1 text-sm text-muted";
 
   return (
@@ -72,11 +77,27 @@ async function Event({ params, searchParams }: PageProps<"/account/events/[id]">
         </div>
         <div className="flex flex-wrap gap-2">
           <a href={link} target="_blank" rel="noopener" className="rounded-full border border-line px-4 py-2 text-sm font-semibold hover:bg-surface-2">View gallery ↗</a>
+          <a href={`/e/${event.shareToken}/slideshow`} target="_blank" rel="noopener" className="rounded-full border border-line px-4 py-2 text-sm font-semibold hover:bg-surface-2">Slideshow ↗</a>
           <CopyLink url={link} />
+          <PhotoUpload eventId={event.id} />
           {sessions.length > 0 && <a href={`/account/events/${event.id}/download`} className="rounded-full bg-accent px-4 py-2 text-sm font-semibold text-accent-ink">Download all (zip)</a>}
         </div>
       </div>
       {typeof done === "string" && <p className="rounded-xl border border-ok/40 bg-ok/10 px-4 py-3 text-sm">{done}</p>}
+
+      <details id="design" open={tab === "design"} className="rounded-card border border-line bg-surface p-5">
+        <summary className="cursor-pointer font-semibold">Edit design <span className="font-normal text-muted">· colours, font, banner, logo and background for this gallery</span></summary>
+        <div className="mt-5">
+          <DesignEditor
+            eventId={event.id}
+            eventName={event.name}
+            initial={look.design}
+            images={look.images}
+            samples={sessions.filter((s) => !s.hidden).slice(0, 6).map((s) => s.photo)}
+            custom={!!event.design}
+          />
+        </div>
+      </details>
 
       <div className="grid items-start gap-6 lg:grid-cols-[300px_1fr]">
         <aside className="flex flex-col gap-5 lg:sticky lg:top-20">

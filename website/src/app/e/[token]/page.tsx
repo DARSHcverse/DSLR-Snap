@@ -5,6 +5,7 @@ import { GalleryNotice, GalleryShell } from "@/components/gallery/GalleryShell";
 import { secondaryButton } from "@/components/ui";
 import { accountsEnabled } from "@/lib/config";
 import { isShareToken } from "@/lib/gallery";
+import { designForEvent } from "@/lib/cloudDesign";
 import { eventSessions, publicEventByToken } from "@/lib/galleryServer";
 import { hasAccess } from "./access";
 import { Unlock } from "./Unlock";
@@ -14,26 +15,27 @@ export const metadata: Metadata = { title: "Event photos", robots: { index: fals
 /** The host's page: every photo from the event, newest first. Each opens the session page to download. */
 export default function EventGalleryPage({ params }: PageProps<"/e/[token]">) {
   return (
-    <GalleryShell>
-      <Suspense fallback={<p className="py-16 text-center text-muted">Loading the gallery…</p>}>
-        <EventGallery params={params} />
-      </Suspense>
-    </GalleryShell>
+    <Suspense fallback={<GalleryShell><p className="py-16 text-center text-muted">Loading the gallery…</p></GalleryShell>}>
+      <EventGallery params={params} />
+    </Suspense>
   );
 }
 
 async function EventGallery({ params }: Pick<PageProps<"/e/[token]">, "params">) {
   const { token } = await params;
   const event = accountsEnabled && isShareToken(token) ? await publicEventByToken(token) : null;
-  if (!event) return <GalleryNotice title="Gallery not found" body="Check the link with your photo booth company." />;
-  if (!event.linkEnabled) return <GalleryNotice title="This gallery is private" body="The photo booth company has turned this link off. Ask them if you need the photos." />;
+  if (!event) return <GalleryShell><GalleryNotice title="Gallery not found" body="Check the link with your photo booth company." /></GalleryShell>;
+  if (!event.linkEnabled) return <GalleryShell><GalleryNotice title="This gallery is private" body="The photo booth company has turned this link off. Ask them if you need the photos." /></GalleryShell>;
+  const look = await designForEvent(event.userId, event.design);
   if (!(await hasAccess(event))) {
     return (
+      <GalleryShell look={look}>
       <div className="py-12 text-center">
         <h1 className="font-display text-3xl font-bold tracking-tight">{event.name}</h1>
         <p className="mt-2 text-muted">This gallery has a password. You&apos;ll find it with the link you were sent.</p>
         <Unlock token={token} />
       </div>
+      </GalleryShell>
     );
   }
 
@@ -41,13 +43,13 @@ async function EventGallery({ params }: Pick<PageProps<"/e/[token]">, "params">)
   const date = event.date && event.showDate ? new Date(`${event.date}T12:00:00Z`).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" }) : null;
   const n = sessions.length;
   return (
-    <>
+    <GalleryShell look={look}>
       <header className="text-center">
         <p className="text-sm font-semibold tracking-[0.2em] text-accent uppercase">Photo booth gallery</p>
         <h1 className="mt-2 font-display text-3xl font-bold tracking-[-0.02em] text-balance sm:text-5xl">{event.name}</h1>
         <p className="mt-2 text-muted">{[date, `${n} session${n === 1 ? "" : "s"}`].filter(Boolean).join(" · ")}</p>
         <div className="mt-5 flex flex-wrap justify-center gap-2">
-          {event.allowDownloadAll && n > 0 && <a href={`/e/${token}/download`} className={secondaryButton}>Download all</a>}
+          {event.allowDownloadAll && n > 0 && <a href={`/e/${token}/download`} className="rounded-full bg-accent px-5 py-2.5 font-semibold text-accent-ink transition-transform active:scale-[0.97]">Download all</a>}
           {event.website && <a href={event.website} target="_blank" rel="noopener" className={secondaryButton}>Photo booth by {new URL(event.website).hostname.replace(/^www\./, "")}</a>}
         </div>
       </header>
@@ -64,6 +66,6 @@ async function EventGallery({ params }: Pick<PageProps<"/e/[token]">, "params">)
       ) : (
         <p className="mt-10 text-center text-muted">No photos yet. They appear here as guests use the booth.</p>
       )}
-    </>
+    </GalleryShell>
   );
 }

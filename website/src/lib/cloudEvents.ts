@@ -2,7 +2,7 @@ import "server-only";
 import { hashPassword } from "./admin/crypto";
 import { type GalleryFile, makeShareToken, RETENTION_DAYS } from "./gallery";
 import { eventSessions, previewPath } from "./galleryServer";
-import { removeFiles, viewUrls } from "./storage";
+import { removeFiles, uploadUrl, viewUrls } from "./storage";
 import { supabaseAdmin } from "./supabase/server";
 
 /**
@@ -76,12 +76,14 @@ export interface CloudEvent {
   showDate: boolean;
   website: string | null;
   coverSessionId: string | null;
+  /** The event's own design, or null when it uses the account default. */
+  design: unknown;
 }
 
 export async function getEvent(userId: string, id: string): Promise<CloudEvent | null> {
   const { data: e } = await supabaseAdmin()
     .from("gallery_events")
-    .select("id, name, event_date, share_token, link_enabled, password_hash, guest_access, allow_download_all, show_date, website_url, cover_session_id")
+    .select("id, name, event_date, share_token, link_enabled, password_hash, guest_access, allow_download_all, show_date, website_url, cover_session_id, design")
     .eq("id", id)
     .eq("user_id", userId)
     .maybeSingle();
@@ -98,6 +100,7 @@ export async function getEvent(userId: string, id: string): Promise<CloudEvent |
     showDate: e.show_date,
     website: e.website_url,
     coverSessionId: e.cover_session_id,
+    design: e.design,
   };
 }
 
@@ -170,4 +173,42 @@ export async function deleteEvent(userId: string, eventId: string): Promise<void
   if (!(await getEvent(userId, eventId))) return;
   await deleteSessions(userId, eventId);
   await supabaseAdmin().from("gallery_events").delete().eq("id", eventId).eq("user_id", userId);
+}
+
+// ---------- Photos added by hand (e.g. the photographer's edits) ----------
+
+export const MAX_MANUAL_FILES = 20;
+const MAX_MANUAL_BYTES = 25 * 1024 * 1024;
+
+/** One new session per photo, not yet ready, with a one-time upload link for each. */
+export async function startManualUploads(userId: string, eventId: string, files: { type: string; size: number }[]): Promise<{ sessionId: string; url: string; headers: Record<string, string> }[]> {
+  if (!(await getEvent(userId, eventId))) throw new Error("Event not found.");
+  if (!files.length || files.length > MAX_MANUAL_FILES) throw new Error(`Add between 1 and ${MAX_MANUAL_FILES} photos at a time.`);
+  for (const f of files) {
+    if (f.type !== "image/jpeg") throw new Error("Photos must be JPEG (.jpg).");
+    if (!(f.size > 0 && f.size <= MAX_MANUAL_BYTES)) throw new Error("Each photo can be up to 25 MB.");
+  }
+  const db = supabaseAdmin();
+  const out = [];
+  for (let i = 0; i < files.length; i++) {
+    const sessionId = crypto.randomUUID();
+    const path = `${userId}/${eventId}/${sessionId}/photo.jpg`;
+    const { error } = await db.from("gallery_sessions").insert({ id: sessionId, user_id: userId, event_id: eventId, files: [{ kind: "photo", path, contentType: "image/jpeg" }], ready_at: null });
+    if (error) throw new Error(error.message);
+    out.push({ sessionId, ...(await uploadUrl(path, "image/jpeg")) });
+  }
+  return out;
+}
+
+/** Marks the uploaded photos ready, so they show in the gallery. */
+export async function finishManualUploads(userId: string, eventId: string, sessionIds: string[]): Promise<number> {
+  const { data } = await supabaseAdmin()
+    .from("gallery_sessions")
+    .update({ ready_at: new Date().toISOString() })
+    .eq("event_id", eventId)
+    .eq("user_id", userId)
+    .is("ready_at", null)
+    .in("id", sessionIds)
+    .select("id");
+  return data?.length ?? 0;
 }

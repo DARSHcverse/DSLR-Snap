@@ -2,7 +2,7 @@ import "server-only";
 import { type Entitlement, entitlementFrom, type SubscriptionRow, withComplimentary } from "./appAuth";
 import { stripeConfig } from "./config";
 import { type GalleryFile } from "./gallery";
-import { removeFiles } from "./storage";
+import { listFiles, removeFiles } from "./storage";
 import { stripe } from "./stripe";
 import { supabaseAdmin } from "./supabase/server";
 
@@ -72,6 +72,8 @@ export async function deleteAccount(userId: string): Promise<void> {
     paths.push(...(data ?? []).flatMap((r) => (r.files as GalleryFile[]).map((f) => f.path)));
     if (!data || data.length < 1000) break;
   }
+  // The operator's brand images (gallery banners, logos, backgrounds) go too.
+  paths.push(...(await listFiles(`${userId}/brand`)));
   await removeFiles(paths).catch((e: Error) => {
     throw new Error(`Could not delete gallery files: ${e.message}`);
   });

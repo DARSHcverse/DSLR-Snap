@@ -2,6 +2,7 @@ import "server-only";
 import { createHmac } from "node:crypto";
 import { describeFiles, type GalleryFile, type GalleryFileKind, isExpired, isVideo, makeShareToken, RETENTION_DAYS } from "./gallery";
 import { licencePrivateKey } from "./config";
+import { designForEvent, type ResolvedDesign } from "./cloudDesign";
 import { viewUrls } from "./storage";
 import { supabaseAdmin } from "./supabase/server";
 
@@ -46,6 +47,7 @@ export type SessionGallery =
       /** The whole event's page, when the operator lets guests browse everyone's photos. */
       eventUrl: string | null;
       website: string | null;
+      look: ResolvedDesign;
       items: { kind: GalleryFileKind; label: string; video: boolean; view?: string; download?: string }[];
     };
 
@@ -54,7 +56,7 @@ export async function loadSessionGallery(id: string): Promise<SessionGallery> {
   const db = supabaseAdmin();
   const { data } = await db
     .from("gallery_sessions")
-    .select("files, ready_at, created_at, gallery_events(name, share_token, guest_access, link_enabled, website_url)")
+    .select("files, ready_at, created_at, user_id, gallery_events(name, share_token, guest_access, link_enabled, website_url, design)")
     .eq("id", id)
     .maybeSingle();
   // The QR appears before the upload finishes (even offline), so "not there yet" is normal.
@@ -66,12 +68,14 @@ export async function loadSessionGallery(id: string): Promise<SessionGallery> {
   const pathOf = (kind: GalleryFileKind) => files.find((f) => f.kind === kind)!.path;
   const filename = new Map(shown.map((d) => [pathOf(d.kind), d.filename]));
   const [view, download] = await Promise.all([viewUrls(shown.map((d) => pathOf(d.kind))), viewUrls(shown.map((d) => pathOf(d.kind)), (p) => filename.get(p)!)]);
-  const event = data.gallery_events as unknown as { name: string; share_token: string; guest_access: string; link_enabled: boolean; website_url: string | null } | null;
+  const event = data.gallery_events as unknown as { name: string; share_token: string; guest_access: string; link_enabled: boolean; website_url: string | null; design: unknown } | null;
+  const look = await designForEvent(data.user_id, event?.design ?? null);
   return {
     state: "ready",
     eventName: event?.name ?? null,
     eventUrl: event && event.guest_access === "all" && event.link_enabled ? `/e/${event.share_token}` : null,
     website: event?.website_url ?? null,
+    look,
     items: shown.map((d) => ({ kind: d.kind, label: d.label, video: isVideo(d.kind), view: view.get(pathOf(d.kind)), download: download.get(pathOf(d.kind)) })),
   };
 }
@@ -86,6 +90,8 @@ export const passCookieName = (eventId: string) => `dsg_${eventId.replace(/-/g, 
 
 export interface PublicEvent {
   id: string;
+  userId: string;
+  design: unknown;
   name: string;
   date: string | null;
   showDate: boolean;
@@ -98,15 +104,16 @@ export interface PublicEvent {
 export async function publicEventByToken(token: string): Promise<PublicEvent | null> {
   const { data: e } = await supabaseAdmin()
     .from("gallery_events")
-    .select("id, name, event_date, show_date, website_url, allow_download_all, password_hash, link_enabled")
+    .select("id, user_id, design, name, event_date, show_date, website_url, allow_download_all, password_hash, link_enabled")
     .eq("share_token", token)
     .maybeSingle();
   if (!e) return null;
-  return { id: e.id, name: e.name, date: e.event_date, showDate: e.show_date, website: e.website_url, allowDownloadAll: e.allow_download_all, passwordHash: e.password_hash, linkEnabled: e.link_enabled };
+  return { id: e.id, userId: e.user_id, design: e.design, name: e.name, date: e.event_date, showDate: e.show_date, website: e.website_url, allowDownloadAll: e.allow_download_all, passwordHash: e.password_hash, linkEnabled: e.link_enabled };
 }
 
 /** The event's visible sessions, newest first, with a preview link for each. */
-export async function eventSessions(eventId: string, opts: { includeHidden?: boolean; limit?: number } = {}) {
+/** `full` uses the full photo (slideshows on a TV) instead of the small preview (grids). */
+export async function eventSessions(eventId: string, opts: { includeHidden?: boolean; limit?: number; full?: boolean } = {}) {
   const db = supabaseAdmin();
   let q = db
     .from("gallery_sessions")
@@ -119,7 +126,7 @@ export async function eventSessions(eventId: string, opts: { includeHidden?: boo
   if (!opts.includeHidden) q = q.is("hidden_at", null);
   const { data: rows } = await q;
   const list = ((rows ?? []) as { id: string; files: GalleryFile[]; created_at: string; hidden_at: string | null }[]).flatMap((s) => {
-    const preview = previewPath(s.files);
+    const preview = opts.full ? s.files.find((f) => f.kind === "photo")?.path : previewPath(s.files);
     return preview
       ? [{ id: s.id, preview, createdAt: s.created_at, hidden: !!s.hidden_at, video: s.files.some((f) => f.kind === "video"), gif: s.files.some((f) => f.kind === "gif" || f.kind === "boomerang" || f.kind === "boomerangVideo") }]
       : [];

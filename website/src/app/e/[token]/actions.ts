@@ -14,8 +14,9 @@ export async function unlockGallery(_prev: UnlockResult, form: FormData): Promis
   const token = String(form.get("token") ?? "");
   if (!isShareToken(token)) return { error: "This link isn't valid." };
   if (await overLimitHere("login")) return { error: "Too many attempts. Wait a few minutes." };
+  const back = form.get("next") === "slideshow" ? `/e/${token}/slideshow` : `/e/${token}`;
   const event = await publicEventByToken(token);
-  if (!event?.passwordHash || !event.linkEnabled) redirect(`/e/${token}`);
+  if (!event?.passwordHash || !event.linkEnabled) redirect(back);
   if (!verifyPassword(String(form.get("password") ?? ""), event.passwordHash)) return { error: "That password isn't right." };
   (await cookies()).set(passCookieName(event.id), passwordPass(event.id, event.passwordHash), {
     httpOnly: true,
@@ -24,5 +25,5 @@ export async function unlockGallery(_prev: UnlockResult, form: FormData): Promis
     path: `/e/${token}`,
     maxAge: 30 * 86_400,
   });
-  redirect(`/e/${token}`);
+  redirect(back);
 }

@@ -12,34 +12,34 @@ export const metadata: Metadata = { title: "Your photos", robots: { index: false
 /** A guest's photos from one booth session: the link in the QR code. */
 export default function SessionPage({ params }: PageProps<"/s/[id]">) {
   return (
-    <GalleryShell>
-      <Suspense fallback={<p className="py-16 text-center text-muted">Loading your photos…</p>}>
-        <Session params={params} />
-      </Suspense>
-    </GalleryShell>
+    <Suspense fallback={<GalleryShell><p className="py-16 text-center text-muted">Loading your photos…</p></GalleryShell>}>
+      <Session params={params} />
+    </Suspense>
   );
 }
 
 async function Session({ params }: Pick<PageProps<"/s/[id]">, "params">) {
   const { id } = await params;
   if (!accountsEnabled || !isUuid(id)) {
-    return <GalleryNotice title="Photos not found" body="Check the link, or scan the QR code at the booth again." />;
+    return <GalleryShell><GalleryNotice title="Photos not found" body="Check the link, or scan the QR code at the booth again." /></GalleryShell>;
   }
   const gallery = await loadSessionGallery(id);
   if (gallery.state === "waiting") {
     return (
-      <GalleryNotice title="Your photos are on their way" body="The booth is uploading them now. Keep this page open, or come back to the link later.">
-        <RefreshWhileWaiting />
-      </GalleryNotice>
+      <GalleryShell>
+        <GalleryNotice title="Your photos are on their way" body="The booth is uploading them now. Keep this page open, or come back to the link later.">
+          <RefreshWhileWaiting />
+        </GalleryNotice>
+      </GalleryShell>
     );
   }
   if (gallery.state === "expired") {
-    return <GalleryNotice title="These photos have expired" body="Booth photos stay online for a year. Ask the photo booth company if you need a copy." />;
+    return <GalleryShell><GalleryNotice title="These photos have expired" body="Booth photos stay online for a year. Ask the photo booth company if you need a copy." /></GalleryShell>;
   }
 
   const items = gallery.items.filter((i) => i.view);
   return (
-    <>
+    <GalleryShell look={gallery.look}>
       <header className="text-center">
         <p className="text-sm font-semibold tracking-[0.2em] text-accent uppercase">{gallery.eventName ?? "Photo booth"}</p>
         <h1 className="mt-2 font-display text-3xl font-bold tracking-[-0.02em] sm:text-4xl">Your photos</h1>
@@ -82,6 +82,6 @@ async function Session({ params }: Pick<PageProps<"/s/[id]">, "params">) {
           )}
         </div>
       )}
-    </>
+    </GalleryShell>
   );
 }

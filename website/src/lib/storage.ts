@@ -1,5 +1,5 @@
 import "server-only";
-import { DeleteObjectsCommand, GetObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { DeleteObjectsCommand, GetObjectCommand, ListObjectsV2Command, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { supabaseConfig } from "./config";
 import { GALLERY_BUCKET } from "./gallery";
@@ -94,5 +94,27 @@ export async function removeFiles(paths: string[]): Promise<void> {
       const { error } = await supabaseAdmin().storage.from(GALLERY_BUCKET).remove(chunk);
       if (error) throw new Error(`delete: ${error.message}`);
     }
+  }
+}
+
+/** Every file under a folder ("<userId>/brand"), e.g. to clean up when an account is deleted. */
+export async function listFiles(prefix: string): Promise<string[]> {
+  const folder = prefix.replace(/\/+$/, "");
+  if (r2) {
+    const out: string[] = [];
+    let token: string | undefined;
+    do {
+      const res = await r2.client.send(new ListObjectsV2Command({ Bucket: r2.bucket, Prefix: `${folder}/`, ContinuationToken: token }));
+      out.push(...(res.Contents ?? []).flatMap((o) => (o.Key ? [o.Key] : [])));
+      token = res.IsTruncated ? res.NextContinuationToken : undefined;
+    } while (token);
+    return out;
+  }
+  const out: string[] = [];
+  for (let offset = 0; ; offset += 1000) {
+    const { data, error } = await supabaseAdmin().storage.from(GALLERY_BUCKET).list(folder, { limit: 1000, offset });
+    if (error) throw new Error(`list: ${error.message}`);
+    out.push(...(data ?? []).filter((f) => f.id).map((f) => `${folder}/${f.name}`));
+    if ((data ?? []).length < 1000) return out;
   }
 }

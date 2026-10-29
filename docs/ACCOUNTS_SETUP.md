@@ -124,3 +124,15 @@ Customers can answer a support email by just replying, and you can answer a "new
 4. Vercel: `INBOUND_REPLY_DOMAIN=reply.dslrsnap.com`, `RESEND_INBOUND_WEBHOOK_SECRET`, `RESEND_RECEIVING_API_KEY`, and optionally `INBOUND_TEAM_SENDERS` (your own Gmail, if you reply from it). Redeploy.
 
 Until this is set up, emails keep Reply-To: support@ and replies arrive in that inbox as before.
+
+## Gallery storage on Cloudflare R2 (optional, recommended before launch)
+
+Photos default to Supabase Storage. To use R2 (free downloads):
+
+1. R2 → Manage API tokens → Create: **Object Read & Write**, only the private bucket `dslrsnap-photos`.
+2. Vercel: `GALLERY_R2_ACCOUNT_ID`, `GALLERY_R2_ACCESS_KEY_ID`, `GALLERY_R2_SECRET_ACCESS_KEY`, `GALLERY_R2_BUCKET=dslrsnap-photos`, `GALLERY_R2_JURISDICTION=eu` (EU bucket). Redeploy.
+3. **CORS** (so operators can upload banners, logos and photos from the browser): R2 → `dslrsnap-photos` → Settings → CORS policy → Add:
+   ```json
+   [{ "AllowedOrigins": ["https://dslrsnap.com"], "AllowedMethods": ["PUT"], "AllowedHeaders": ["content-type", "x-upsert"], "MaxAgeSeconds": 3600 }]
+   ```
+   The booth app doesn't need it (it isn't a browser).
