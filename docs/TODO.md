@@ -82,7 +82,7 @@ Full checklist with tick boxes: [HARDWARE_SETUP.md](HARDWARE_SETUP.md) (34 open 
 - [x] Admin at a private address: dashboard, customers, free access, password help, support inbox, update announcements, activity log
 - [x] Support chat for customers (website and the app's Help & chat button); the contact form opens a conversation too
 - [ ] **You**: add `SEND_EMAIL_HOOK_SECRET` and the five `ADMIN_*` values in Vercel; turn on the Supabase Send Email hook (ACCOUNTS_SETUP.md); paste the Gmail signatures (docs/email-signature.html)
-- [ ] Later: replies to emails land in support@, not in the chat; reading them into the chat needs inbound email (Resend inbound)
+- [x] Email replies into the chat (built and tested locally). **You**: Resend receiving domain `reply.dslrsnap.com`, webhook and a full-access key (ACCOUNTS_SETUP.md)
 
 ## 6. Already done and working without credentials
 

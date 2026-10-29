@@ -1,5 +1,6 @@
 import "server-only";
 import { adminHref } from "./admin/server";
+import { replyToFor } from "./email/inboundConfig";
 import { sendEmail, TEAM_EMAIL } from "./email/send";
 import { supportReply, teamNotice } from "./email/templates";
 import { productionUrl } from "./site";
@@ -35,7 +36,8 @@ const clean = (s: string, max: number) => s.replace(/\r\n/g, "\n").trim().slice(
 async function notifyTeam(thread: Thread, body: string, isNew: boolean) {
   await sendEmail({
     to: TEAM_EMAIL,
-    replyTo: thread.email,
+    // Replying to this notice answers the customer through the chat (or straight to them if receiving is off).
+    replyTo: replyToFor(thread.id, "admin", thread.email),
     email: teamNotice({
       title: isNew ? `New message: ${thread.subject}` : `Reply from ${thread.email}`,
       facts: [["From", thread.name ? `${thread.name} (${thread.email})` : thread.email], ["Subject", thread.subject]],
@@ -150,9 +152,31 @@ export async function adminReply(id: string, text: string): Promise<void> {
     to: thread.email,
     email: supportReply({ reply: body, url: thread.user_id ? `${productionUrl}/account/support?t=${id}` : null }),
     template: "support-reply",
+    replyTo: replyToFor(id, "customer", TEAM_EMAIL),
   });
 }
 
 export async function setThreadStatus(id: string, status: "open" | "closed"): Promise<void> {
   await supabaseAdmin().from("support_threads").update({ status }).eq("id", id);
+}
+
+/**
+ * A reply that arrived by email (see /api/email/inbound). Customers may only post into their own
+ * conversation from the address it belongs to; the team only from its own addresses.
+ */
+export async function addEmailReply(o: { thread: string; role: "customer" | "admin"; from: string; body: string; teamSender: boolean }): Promise<"added" | "ignored"> {
+  const db = supabaseAdmin();
+  const { data: thread } = await db.from("support_threads").select("*").eq("id", o.thread).maybeSingle<Thread>();
+  if (!thread || !o.body.trim()) return "ignored";
+  if (o.role === "admin") {
+    if (!o.teamSender) return "ignored";
+    await adminReply(thread.id, o.body);
+    return "added";
+  }
+  if (o.from.trim().toLowerCase() !== thread.email.toLowerCase()) return "ignored";
+  const body = clean(o.body, 4000);
+  await db.from("support_messages").insert({ thread_id: thread.id, from_admin: false, body });
+  await db.from("support_threads").update({ status: "open", unread_by_admin: true, last_message_at: new Date().toISOString() }).eq("id", thread.id);
+  await notifyTeam(thread, body, false);
+  return "added";
 }

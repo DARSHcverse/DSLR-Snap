@@ -113,3 +113,14 @@ The admin lives at a private address, never written in the code (the repository 
 
 To change the password, run step 1 again and replace the values in Vercel (every admin session signs out).
 Inside: dashboard, customers (reset links, temporary passwords, free access, cancel, sign out computers, delete), support chat inbox, update announcements and an activity log.
+
+## Email replies into the support chat (optional)
+
+Customers can answer a support email by just replying, and you can answer a "new message" notice from your inbox; both land in the chat.
+
+1. Resend → **Domains → Add domain** `reply.dslrsnap.com` with **receiving** on, and add the MX record it shows in Cloudflare DNS (it only covers the `reply.` subdomain, so hello@ and support@ keep working).
+2. Resend → **Webhooks → Add endpoint** `https://dslrsnap.com/api/email/inbound`, event `email.received`; copy the signing secret.
+3. Resend → **API Keys → Create** with **Full access** (reading received mail needs it).
+4. Vercel: `INBOUND_REPLY_DOMAIN=reply.dslrsnap.com`, `RESEND_INBOUND_WEBHOOK_SECRET`, `RESEND_RECEIVING_API_KEY`, and optionally `INBOUND_TEAM_SENDERS` (your own Gmail, if you reply from it). Redeploy.
+
+Until this is set up, emails keep Reply-To: support@ and replies arrive in that inbox as before.
