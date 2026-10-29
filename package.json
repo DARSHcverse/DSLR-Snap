@@ -16,7 +16,8 @@
     "postinstall": "electron-builder install-app-deps",
     "dist:win": "npm run fetch-models && npm run build && electron-builder --win --x64",
     "release": "node scripts/publish-release.mjs",
-    "fetch-models": "node scripts/fetch-models.mjs"
+    "fetch-models": "node scripts/fetch-models.mjs",
+    "mirror-deps": "node scripts/mirror-deps.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.118.0",
