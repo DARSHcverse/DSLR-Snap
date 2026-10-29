@@ -3,15 +3,17 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { HostedGallery } from '../src/main/cloud/HostedGallery'
+import { thumbPathFor } from '../src/main/sessionFiles'
 
 const SESSION = '6f1c2a4e-8a0b-4c7e-9d3f-1b2c3d4e5f60'
 
-function setup(opts: { colour?: boolean; gif?: boolean; refuse?: boolean } = {}) {
+function setup(opts: { colour?: boolean; gif?: boolean; thumb?: boolean; refuse?: boolean } = {}) {
   const dir = mkdtempSync(join(tmpdir(), 'hosted-'))
   const final = join(dir, 'final.jpg')
   writeFileSync(final, 'jpeg-bytes')
   if (opts.colour) writeFileSync(join(dir, 'final-colour.jpg'), 'colour-bytes')
   if (opts.gif) writeFileSync(join(dir, 'animation.gif'), 'gif-bytes')
+  if (opts.thumb) writeFileSync(thumbPathFor(final), 'thumb')
 
   const calls: { url: string; method: string; body: unknown }[] = []
   const fetchFn = (async (url: string, init: RequestInit) => {
@@ -63,6 +65,12 @@ describe('HostedGallery', () => {
       ['https://storage.test/gif?token=t', 'gif-bytes']
     ])
     expect(calls.at(-1)?.url).toBe('https://dslrsnap.test/api/app/uploads/complete')
+  })
+
+  it('sends the small thumbnail too, for the cloud dashboard grids', async () => {
+    const { gallery, calls, final } = setup({ thumb: true })
+    await gallery.upload(SESSION, 'ev1', final)
+    expect((calls[0].body as { files: { kind: string }[] }).files.map((f) => f.kind)).toEqual(['photo', 'thumb'])
   })
 
   it('only sends the files that exist', async () => {

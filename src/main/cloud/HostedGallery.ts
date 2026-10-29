@@ -1,9 +1,9 @@
 import { existsSync } from 'node:fs'
 import { readFile } from 'node:fs/promises'
-import { boomerangPathFor, boomerangVideoPathFor, colourPathFor, gifPathFor, videoPathFor } from '../sessionFiles'
+import { boomerangPathFor, boomerangVideoPathFor, colourPathFor, gifPathFor, thumbPathFor, videoPathFor } from '../sessionFiles'
 import type { CloudGallery } from './CloudGallery'
 
-export type GalleryFileKind = 'photo' | 'colour' | 'gif' | 'boomerang' | 'boomerangVideo' | 'video'
+export type GalleryFileKind = 'photo' | 'colour' | 'gif' | 'boomerang' | 'boomerangVideo' | 'video' | 'thumb'
 
 export interface HostedGalleryDeps {
   /** e.g. https://dslrsnap.com */
@@ -36,6 +36,8 @@ export class HostedGallery implements CloudGallery {
     const event = this.deps.event(eventId)
     if (!event) throw new Error('Event not found')
     const files: { kind: GalleryFileKind; path: string; contentType: string }[] = [{ kind: 'photo', path: filePath, contentType: 'image/jpeg' }]
+    // The small preview the booth already made: the cloud dashboard's grids load these, not full prints.
+    if (existsSync(thumbPathFor(filePath))) files.push({ kind: 'thumb', path: thumbPathFor(filePath), contentType: 'image/jpeg' })
     if (existsSync(colourPathFor(filePath))) files.push({ kind: 'colour', path: colourPathFor(filePath), contentType: 'image/jpeg' })
     if (existsSync(gifPathFor(filePath))) files.push({ kind: 'gif', path: gifPathFor(filePath), contentType: 'image/gif' })
     if (existsSync(boomerangPathFor(filePath))) files.push({ kind: 'boomerang', path: boomerangPathFor(filePath), contentType: 'image/gif' })
