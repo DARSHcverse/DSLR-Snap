@@ -42,6 +42,7 @@ import { MockPrinter } from './printer/MockPrinter'
 import type { PrinterAdapter } from './printer/PrinterAdapter'
 import { WindowsPrinter } from './printer/WindowsPrinter'
 import { preferencesTarget, printerPreferencesCommand } from './printer/printerPreferences'
+import { setupStripQueue } from './printer/stripQueue'
 import { PrintQueue } from './queue/PrintQueue'
 import { Updates } from './updates'
 import { installBlocker } from '../shared/updates'
@@ -542,19 +543,23 @@ function registerIpc(): void {
     if (process.platform !== 'win32') throw new Error('Printer settings open on the Windows booth computer.')
     const target = preferencesTarget(await printer.detect(), format === '2x6' ? '2x6' : '4x6')
     if (!target) throw new Error('No DNP printer found. Connect it by USB and switch it on.')
-    const { file, args } = printerPreferencesCommand(target.printer)
-    await new Promise<void>((resolve) => execFile(file, args, { windowsHide: false }, () => resolve()))
-    if (win && !win.isDestroyed()) {
-      if (win.isMinimized()) win.restore()
-      // Windows won't let an app grab focus outright; briefly going on top brings it forward.
-      win.setAlwaysOnTop(true)
-      win.show()
-      win.focus()
-      win.setAlwaysOnTop(false)
-    }
-    if (printer instanceof WindowsPrinter) printer.refresh()
-    await broadcastDevices()
+    await openPreferencesAndReturn(target.printer)
     return target
+  })
+  // One-time: a second printer entry for strips with the cut on, so 2x6 cuts and 4x6 doesn't, by itself.
+  handle('setupStripCutting', async () => {
+    if (process.platform !== 'win32') throw new Error('Printer setup runs on the Windows booth computer.')
+    const found = await printer.detect()
+    if (!found.queue4x6) throw new Error('No DNP printer found. Connect it by USB and switch it on.')
+    const result = await setupStripQueue(found.queue4x6, found.installed)
+    // The driver keeps the cut private: the operator ticks it once in the new entry's preferences.
+    if (result.status === 'manual') await openPreferencesAndReturn(result.printer)
+    else {
+      if (printer instanceof WindowsPrinter) printer.refresh()
+      await broadcastDevices()
+    }
+    await log('info', `2x6 cut queue "${result.printer}" set up (${result.status})`)
+    return result
   })
   handle('reconnectCamera', async () => {
     await camera.disconnect().catch(() => undefined)
@@ -671,6 +676,22 @@ function lanAddress(): string | undefined {
     for (const a of list ?? []) if (a.family === 'IPv4' && !a.internal) return a.address
   }
   return undefined
+}
+
+/** Opens Windows' Printing Preferences for a printer, waits for OK/Cancel, then brings the app back. */
+async function openPreferencesAndReturn(printerName: string): Promise<void> {
+  const { file, args } = printerPreferencesCommand(printerName)
+  await new Promise<void>((resolve) => execFile(file, args, { windowsHide: false }, () => resolve()))
+  if (win && !win.isDestroyed()) {
+    if (win.isMinimized()) win.restore()
+    // Windows won't let an app grab focus outright; briefly going on top brings it forward.
+    win.setAlwaysOnTop(true)
+    win.show()
+    win.focus()
+    win.setAlwaysOnTop(false)
+  }
+  if (printer instanceof WindowsPrinter) printer.refresh()
+  await broadcastDevices()
 }
 
 function setPaused(paused: boolean): void {

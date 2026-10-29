@@ -49,7 +49,7 @@ Full checklist with tick boxes: [HARDWARE_SETUP.md](HARDWARE_SETUP.md) (34 open 
 
 - [ ] Pull, `npm install`, `npm run fetch-models` (AI model and Windows ffmpeg)
 - [ ] **Printer auto-detection**: rename the DNP printer back to its original name and confirm "Automatic" finds it; test print 4×6 and 2×6
-- [ ] **2×6 strip cutting**: run `powershell -ExecutionPolicy Bypass -File scripts\printer-info.ps1` and send `dnp-printer-info.txt`, so the app can set up the cut queue itself
+- [ ] **2×6 strip cutting**: press **Set up automatic 2×6 cutting** and test both prints (HARDWARE_SETUP section 2, step 3); send `dnp-printer-info.txt`
 - [ ] **Nikon Z camera** (borrow or rent one): run the NikonBridge self-test, HARDWARE_SETUP.md section 1b
 - [ ] **Camera**: shutter not on Bulb; unplug/replug reconnect test; confirm shots get renamed "20.14.05 1.jpg" in the event's Photos folder
 - [ ] **Green screen** with your real backdrop and lighting; **AI backgrounds** speed and quality with real guests on the Surface
@@ -66,7 +66,7 @@ Full checklist with tick boxes: [HARDWARE_SETUP.md](HARDWARE_SETUP.md) (34 open 
 - [x] **Auto-updates** that never install during an event (built; first real test needs two released versions). Releases: `npm run dist:win` then `npm run release`
 - [x] **Download page** (public /download) reading the newest release from R2. R2 is set up and tested (keys in the root `.env`, public on `downloads.dslrsnap.com`); shows the button after the first `npm run release`
 - [x] **ffmpeg and the AI model mirrored** to downloads.dslrsnap.com/deps (`npm run mirror-deps`); `fetch-models` uses the mirror first, upstream second, checksum-verified
-- [x] **2-inch cut button**: opens Windows' Printing Preferences for the right printer and comes back to the app (built). Still open: set up a second "2x6 cut" printer entry automatically, after the printer-info output
+- [x] **2×6 cutting set up automatically**: adds a "(2x6 cut)" printer entry for the same DNP printer and switches its cut on through the driver's print settings where exposed (else opens its preferences once); also switches the cut off on the 4×6 entry
 - [ ] **Founding-member banner** on the pricing section (if you want the offer)
 - [x] **Account deletion** on the Account page: cancels the subscription, deletes gallery files and the login (tested against Supabase and Stripe test mode)
 - [x] **Nikon Z-series bridge** (built, compiles; 3 struct-packing bugs and the live-view offset fixed on 29 Oct; untested on a camera). Kept out of git in `native/NikonBridge/` until the repo is private; then delete the temporary line in `.gitignore` and commit it. Test steps in HARDWARE_SETUP.md section 1b

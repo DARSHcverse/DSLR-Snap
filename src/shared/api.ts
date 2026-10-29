@@ -119,6 +119,8 @@ export interface BoothApi {
   detectPrinters(): Promise<PrinterDetection>
   /** Windows' Printing Preferences for the printer `format` uses (2-inch cut); resolves when closed. */
   openPrinterPreferences(format: '4x6' | '2x6'): Promise<{ printer: string; cut: 'on' | 'off'; sharedQueue: boolean }>
+  /** Adds a "(2x6 cut)" printer entry with the cut on; "manual" means its preferences were opened for the operator. */
+  setupStripCutting(): Promise<{ status: 'done'; printer: string; fourBySixUncut: boolean } | { status: 'manual'; printer: string }>
   reconnectCamera(): Promise<void>
   getDevices(): Promise<DeviceSnapshot>
   onDevices(cb: (d: DeviceSnapshot) => void): () => void

@@ -296,6 +296,7 @@ function PhoneRemoteCard() {
  */
 function CutSettings({ found, onChanged }: { found: PrinterDetection | null; onChanged: () => void }) {
   const [format, setFormat] = useState<'4x6' | '2x6' | null>(null)
+  const [settingUp, setSettingUp] = useState(false)
   const [msg, setMsg] = useState<string | null>(null)
   const [eventFormat, setEventFormat] = useState<'4x6' | '2x6' | null>(null)
   useEffect(() => void window.booth.getActiveEvent().then((a) => setEventFormat(a?.template.format ?? null)).catch(() => undefined), [])
@@ -316,10 +317,33 @@ function CutSettings({ found, onChanged }: { found: PrinterDetection | null; onC
     }
   }
 
+  const setUp = async () => {
+    setSettingUp(true)
+    setMsg(null)
+    try {
+      const r = await window.booth.setupStripCutting()
+      setMsg(
+        r.status === 'done'
+          ? `Done: "${r.printer}" cuts 2×6 strips${r.fourBySixUncut ? ' and 4×6 prints stay uncut' : ''}. Press "Test print 2×6" to check${r.fourBySixUncut ? '' : ', and make sure 4×6 has the cut OFF'}.`
+          : `Added "${r.printer}". If you ticked 2inch cut ON and pressed OK, strips now cut by themselves. Press "Test print 2×6" to check.`
+      )
+      onChanged()
+    } catch (e) {
+      setMsg(message(e))
+    } finally {
+      setSettingUp(false)
+    }
+  }
+
   return (
     <div className="field cut-settings">
       <span className="field-label">2-inch cut (strips)</span>
-      {format ? (
+      {settingUp ? (
+        <p className="busy-note">
+          Setting up a second printer entry for strips… If Windows asks for permission, press <strong>Yes</strong>. If the printer settings open, set{' '}
+          <strong>2inch cut</strong> to <strong>ON</strong> and press <strong>OK</strong>.
+        </p>
+      ) : format ? (
         <p className="busy-note">
           Printer settings are open: find <strong>2inch cut</strong> (usually under Advanced or Options), set it to{' '}
           <strong>{format === '2x6' ? 'ON' : 'OFF'}</strong>, then press <strong>OK</strong>. You&apos;ll come straight back here.
@@ -335,8 +359,14 @@ function CutSettings({ found, onChanged }: { found: PrinterDetection | null; onC
       ) : (
         <>
           <div className="row">
-            <button className={`btn ${eventFormat === '2x6' ? 'primary' : ''}`} onClick={() => open('2x6')}>Turn cut ON (for 2×6 strips)</button>
-            <button className={`btn ${eventFormat === '4x6' ? 'primary' : ''}`} onClick={() => open('4x6')}>Turn cut OFF (for 4×6 prints)</button>
+            <button className="btn primary" onClick={setUp}>Set up automatic 2×6 cutting</button>
+          </div>
+          <p className="muted small">
+            Recommended, once: adds a second printer entry for strips with the cut on, so strips cut and 4×6 prints don&apos;t, without changing settings between events.
+          </p>
+          <div className="row">
+            <button className="btn" onClick={() => open('2x6')}>Turn cut ON (for 2×6 strips)</button>
+            <button className="btn" onClick={() => open('4x6')}>Turn cut OFF (for 4×6 prints)</button>
           </div>
           <p className="muted small">
             One printer entry, so it cuts or doesn&apos;t for every print. {eventFormat ? `The active event prints ${eventFormat === '2x6' ? '2×6 strips: cut ON' : '4×6: cut OFF'}. ` : ''}
