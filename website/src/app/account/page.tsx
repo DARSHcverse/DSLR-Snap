@@ -45,6 +45,14 @@ async function Account({ searchParams }: Pick<PageProps<"/account">, "searchPara
     <div className="flex flex-col gap-6">
       <p className="text-muted">Signed in as {user.email}</p>
 
+      <Link href="/account/events" className="flex items-center justify-between gap-4 rounded-card border border-line bg-surface p-5 transition-colors hover:border-accent">
+        <span>
+          <span className="block text-lg font-semibold">Your events</span>
+          <span className="block text-sm text-muted">Every event in the cloud: galleries, sharing, privacy and download all</span>
+        </span>
+        <span className="text-xl text-accent" aria-hidden>→</span>
+      </Link>
+
       {sp.checkout === "done" && !ent.active && (
         <p className="rounded-xl border border-ok/40 bg-ok/10 px-4 py-3">Payment received. Your plan shows here within a minute; refresh if it doesn&apos;t.</p>
       )}

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { Suspense } from "react";
 import { GalleryNotice, GalleryShell } from "@/components/gallery/GalleryShell";
 import { RefreshWhileWaiting } from "@/components/gallery/RefreshWhileWaiting";
@@ -67,6 +68,20 @@ async function Session({ params }: Pick<PageProps<"/s/[id]">, "params">) {
           </figure>
         ))}
       </div>
+      {(gallery.eventUrl || gallery.website) && (
+        <div className="mt-10 flex flex-wrap justify-center gap-2">
+          {gallery.eventUrl && (
+            <Link href={gallery.eventUrl} className="rounded-full border border-line px-5 py-2.5 text-sm font-semibold hover:bg-surface-2">
+              See everyone&apos;s photos
+            </Link>
+          )}
+          {gallery.website && (
+            <a href={gallery.website} target="_blank" rel="noopener" className="rounded-full border border-line px-5 py-2.5 text-sm font-semibold hover:bg-surface-2">
+              Photo booth by {new URL(gallery.website).hostname.replace(/^www\./, "")}
+            </a>
+          )}
+        </div>
+      )}
     </>
   );
 }

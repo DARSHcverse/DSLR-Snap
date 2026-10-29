@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import { SOLUTIONS } from "@/lib/marketing";
 import { site, tradingName } from "@/lib/site";
 import { ChatButton } from "./AccountLinks";
@@ -19,6 +20,7 @@ const COLUMNS: { title: string; links: { href: string; label: string }[] }[] = [
       { href: "/download", label: "Download" },
       { href: "/compare/dslrbooth", label: "vs dslrBooth" },
       { href: "/account", label: "Your account" },
+      { href: "/account/events", label: "Your events" },
     ],
   },
   {
@@ -43,7 +45,10 @@ export function Footer() {
   const socials = (Object.keys(site.social) as (keyof typeof site.social)[]).filter((k) => site.social[k]);
   return (
     <footer className="border-t border-line">
-      <ChatButton />
+      {/* It reads the address; on pages whose address is only known per request that needs a boundary. */}
+      <Suspense fallback={null}>
+        <ChatButton />
+      </Suspense>
       <div className="mx-auto grid max-w-6xl gap-10 px-4 py-12 sm:px-6 md:grid-cols-[1.3fr_repeat(3,1fr)]">
         <div className="flex flex-col gap-3">
           <Logo />

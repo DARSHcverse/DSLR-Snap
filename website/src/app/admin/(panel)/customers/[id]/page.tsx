@@ -139,6 +139,16 @@ async function Customer({ params, searchParams }: PageProps<"/admin/customers/[i
             <p className="mt-2 text-sm text-muted">None signed in.</p>
           )}
           <p className="mt-3 text-sm text-muted">Cloud galleries: {d.galleries.events} events, {d.galleries.sessions} guest sessions.</p>
+          {d.events.length > 0 && (
+            <ul className="mt-2 text-sm">
+              {d.events.map((e) => (
+                <li key={e.id} className="flex justify-between gap-3 border-t border-line/60 py-1.5">
+                  <span className="truncate">{e.name}{e.date ? <span className="text-muted"> · {day(e.date)}</span> : null}</span>
+                  {e.linkEnabled ? <a href={`/e/${e.token}`} target="_blank" rel="noreferrer" className="shrink-0 text-accent hover:underline">Gallery ↗</a> : <span className="shrink-0 text-muted">link off</span>}
+                </li>
+              ))}
+            </ul>
+          )}
         </section>
 
         <section className={card}>

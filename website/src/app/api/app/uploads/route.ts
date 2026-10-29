@@ -1,8 +1,9 @@
 import { ipFrom, overLimit, tooMany } from "@/lib/rateLimit";
 import { entitlementFor } from "@/lib/account";
 import { deviceFromRequest, fail, notConfigured, readJson, signedOut } from "@/lib/appApi";
-import { appUrl, supabaseConfig } from "@/lib/config";
-import { GALLERY_BUCKET, type GalleryFile, parseUploadRequest, storagePath } from "@/lib/gallery";
+import { appUrl } from "@/lib/config";
+import { type GalleryFile, parseUploadRequest, storagePath } from "@/lib/gallery";
+import { uploadUrl } from "@/lib/storage";
 import { galleryEventFor } from "@/lib/galleryServer";
 import { supabaseAdmin } from "@/lib/supabase/server";
 
@@ -36,10 +37,11 @@ export async function POST(request: Request) {
 
   const uploads = [];
   for (const f of files) {
-    const { data, error: urlError } = await db.storage.from(GALLERY_BUCKET).createSignedUploadUrl(f.path, { upsert: true });
-    if (urlError || !data) return fail(500, "server_error", "Couldn't start the upload. It will retry.");
-    // The publishable key is public; storage's gateway may ask for it alongside the signed token.
-    uploads.push({ kind: f.kind, url: data.signedUrl, headers: { apikey: supabaseConfig!.publishableKey } });
+    try {
+      uploads.push({ kind: f.kind, ...(await uploadUrl(f.path, f.contentType)) });
+    } catch {
+      return fail(500, "server_error", "Couldn't start the upload. It will retry.");
+    }
   }
   return Response.json({ uploads, pageUrl: `${appUrl}/s/${req.sessionId}` });
 }

@@ -106,6 +106,7 @@ export interface CustomerDetail {
   row: CustomerRow;
   devices: { id: string; name: string; created_at: string; last_seen_at: string | null }[];
   galleries: { events: number; sessions: number };
+  events: { id: string; name: string; date: string | null; token: string; linkEnabled: boolean }[];
   invoices: { id: string; date: number; amount: number; currency: string; status: string; url: string | null }[];
   subscriptionId: string | null;
   audit: { at: string; action: string; detail: Record<string, unknown> }[];
@@ -131,6 +132,7 @@ export async function customerDetail(id: string): Promise<CustomerDetail | null>
     row,
     devices: devices.data ?? [],
     galleries: { events: events.count ?? 0, sessions: sessions.count ?? 0 },
+    events: ((await db.from("gallery_events").select("id, name, event_date, share_token, link_enabled").eq("user_id", id).order("created_at", { ascending: false }).limit(50)).data ?? []).map((e) => ({ id: e.id, name: e.name, date: e.event_date, token: e.share_token, linkEnabled: e.link_enabled })),
     invoices,
     subscriptionId: sub.data?.id ?? null,
     audit: (audit.data ?? []) as CustomerDetail["audit"],

@@ -1,7 +1,8 @@
 import "server-only";
 import { type Entitlement, entitlementFrom, type SubscriptionRow, withComplimentary } from "./appAuth";
 import { stripeConfig } from "./config";
-import { GALLERY_BUCKET, type GalleryFile } from "./gallery";
+import { type GalleryFile } from "./gallery";
+import { removeFiles } from "./storage";
 import { stripe } from "./stripe";
 import { supabaseAdmin } from "./supabase/server";
 
@@ -71,10 +72,9 @@ export async function deleteAccount(userId: string): Promise<void> {
     paths.push(...(data ?? []).flatMap((r) => (r.files as GalleryFile[]).map((f) => f.path)));
     if (!data || data.length < 1000) break;
   }
-  for (let i = 0; i < paths.length; i += 1000) {
-    const { error } = await db.storage.from(GALLERY_BUCKET).remove(paths.slice(i, i + 1000));
-    if (error) throw new Error(`Could not delete gallery files: ${error.message}`);
-  }
+  await removeFiles(paths).catch((e: Error) => {
+    throw new Error(`Could not delete gallery files: ${e.message}`);
+  });
 
   const { error } = await db.auth.admin.deleteUser(userId);
   if (error) throw new Error(`Could not delete the login: ${error.message}`);

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { describeFiles, isExpired, isShareToken, makeShareToken, parseUploadRequest, storagePath } from "./gallery";
+import { cleanWebsite, describeFiles, isExpired, isShareToken, makeShareToken, parseUploadRequest, storagePath } from "./gallery";
 
 const SESSION = "6f1c2a4e-8a0b-4c7e-9d3f-1b2c3d4e5f60";
 const EVENT = "0b9a8c7d-6e5f-4a3b-8c2d-1e0f9a8b7c6d";
@@ -68,5 +68,29 @@ describe("gallery helpers", () => {
     expect(describeFiles([f("photo"), f("video" as never)]).map((d) => [d.kind, d.label])).toEqual([["video", "Your video message"]]);
     // With the MP4 boomerang, the GIF copy isn't offered twice.
     expect(describeFiles([f("photo"), f("boomerang"), f("boomerangVideo" as never)]).map((d) => d.kind)).toEqual(["photo", "boomerangVideo"]);
+    // The small preview only feeds galleries; guests never get it as a download.
+    expect(describeFiles([f("photo"), f("thumb" as never)]).map((d) => d.kind)).toEqual(["photo"]);
+  });
+});
+
+describe("thumbnails", () => {
+  it("are accepted as an optional small JPEG", () => {
+    const base = { sessionId: "6f1c2a4e-8a0b-4c7e-9d3f-1b2c3d4e5f60", event: { id: "6f1c2a4e-8a0b-4c7e-9d3f-1b2c3d4e5f61", name: "E" } };
+    const ok = parseUploadRequest({ ...base, files: [{ kind: "photo", contentType: "image/jpeg", bytes: 10 }, { kind: "thumb", contentType: "image/jpeg", bytes: 5 }] });
+    expect("error" in ok ? ok.error : ok.files.map((x) => x.kind)).toEqual(["photo", "thumb"]);
+    expect(storagePath("u", "e", "s", "thumb" as never)).toBe("u/e/s/thumb.jpg");
+  });
+});
+
+describe("operator website link", () => {
+  it("accepts real sites, adding https when missing", () => {
+    expect(cleanWebsite("photoboothhireswansea.co.uk")).toBe("https://photoboothhireswansea.co.uk/");
+    expect(cleanWebsite("http://example.com/book")).toBe("http://example.com/book");
+    expect(cleanWebsite("  ")).toBeNull();
+  });
+  it("never lets a script or odd scheme onto a gallery", () => {
+    expect(cleanWebsite("javascript:alert(1)")).toBeNull();
+    expect(cleanWebsite("data:text/html,hi")).toBeNull();
+    expect(cleanWebsite("localhost")).toBeNull();
   });
 });

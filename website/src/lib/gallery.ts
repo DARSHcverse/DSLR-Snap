@@ -7,7 +7,7 @@ export const RETENTION_DAYS = 365;
 export const MAX_FILE_BYTES = 25 * 1024 * 1024;
 export const MAX_VIDEO_BYTES = 120 * 1024 * 1024;
 
-export type GalleryFileKind = "photo" | "colour" | "gif" | "boomerang" | "boomerangVideo" | "video";
+export type GalleryFileKind = "photo" | "colour" | "gif" | "boomerang" | "boomerangVideo" | "video" | "thumb";
 export interface GalleryFile {
   kind: GalleryFileKind;
   path: string;
@@ -22,6 +22,8 @@ const KINDS: Record<GalleryFileKind, { contentType: string; ext: string }> = {
   boomerangVideo: { contentType: "video/mp4", ext: "mp4" },
   // Video guestbook message; "photo" is then its poster frame.
   video: { contentType: "video/mp4", ext: "mp4" },
+  // Small preview for gallery grids (the booth already makes one); never offered as a download.
+  thumb: { contentType: "image/jpeg", ext: "jpg" },
 };
 
 export const isVideo = (kind: GalleryFileKind) => KINDS[kind].contentType.startsWith("video/");
@@ -82,7 +84,7 @@ export function describeFiles(files: GalleryFile[]): { kind: GalleryFileKind; la
   const hasBoomerangVideo = files.some((f) => f.kind === "boomerangVideo");
   // A video message's "photo" is just its poster frame.
   const hasVideo = files.some((f) => f.kind === "video");
-  const order: GalleryFileKind[] = ["video", "photo", "colour", "boomerangVideo", "boomerang", "gif"];
+  const order: Exclude<GalleryFileKind, "thumb">[] = ["video", "photo", "colour", "boomerangVideo", "boomerang", "gif"];
   return order
     .filter((k) => files.some((f) => f.kind === k) && !(k === "boomerang" && hasBoomerangVideo) && !(k === "photo" && hasVideo))
     .map((kind) => ({
@@ -90,4 +92,16 @@ export function describeFiles(files: GalleryFile[]): { kind: GalleryFileKind; la
       label: { photo: hasColour ? "Black & white" : "Your photo strip", colour: "Colour", boomerang: "Boomerang", boomerangVideo: "Boomerang", video: "Your video message", gif: "Animated GIF" }[kind],
       filename: { photo: "dslr-snap.jpg", colour: "dslr-snap-colour.jpg", boomerang: "dslr-snap-boomerang.gif", boomerangVideo: "dslr-snap-boomerang.mp4", video: "dslr-snap-message.mp4", gif: "dslr-snap.gif" }[kind],
     }));
+}
+
+/** Only http(s) links to a real host, so a gallery can never carry a javascript: link. */
+export function cleanWebsite(raw: string): string | null {
+  const s = raw.trim();
+  if (!s) return null;
+  try {
+    const u = new URL(/^https?:\/\//i.test(s) ? s : `https://${s}`);
+    return (u.protocol === "https:" || u.protocol === "http:") && u.hostname.includes(".") ? u.toString() : null;
+  } catch {
+    return null;
+  }
 }

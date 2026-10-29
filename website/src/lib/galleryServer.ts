@@ -1,5 +1,8 @@
 import "server-only";
-import { describeFiles, GALLERY_BUCKET, type GalleryFile, type GalleryFileKind, isExpired, isVideo, makeShareToken, RETENTION_DAYS } from "./gallery";
+import { createHmac } from "node:crypto";
+import { describeFiles, type GalleryFile, type GalleryFileKind, isExpired, isVideo, makeShareToken, RETENTION_DAYS } from "./gallery";
+import { licencePrivateKey } from "./config";
+import { viewUrls } from "./storage";
 import { supabaseAdmin } from "./supabase/server";
 
 /** The account's gallery record for a booth event, created on first use (with the host's share token). */
@@ -10,12 +13,13 @@ export async function galleryEventFor(
   const db = supabaseAdmin();
   const { data: existing } = await db
     .from("gallery_events")
-    .select("id, share_token")
+    .select("id, share_token, edited_at")
     .eq("user_id", userId)
     .eq("app_event_id", event.id)
     .maybeSingle();
   if (existing) {
-    await db.from("gallery_events").update({ name: event.name, event_date: event.date }).eq("id", existing.id);
+    // Once the operator renames the event in the cloud, the booth's name and date no longer overwrite it.
+    if (!existing.edited_at) await db.from("gallery_events").update({ name: event.name, event_date: event.date }).eq("id", existing.id);
     return existing;
   }
   const { data, error } = await db
@@ -30,19 +34,27 @@ export async function galleryEventFor(
   return data;
 }
 
-const LINK_SECONDS = 60 * 60;
+/** The small preview when the booth sent one, else the full photo. */
+export const previewPath = (files: GalleryFile[]) => files.find((f) => f.kind === "thumb")?.path ?? files.find((f) => f.kind === "photo")?.path;
 
 export type SessionGallery =
   | { state: "waiting" }
   | { state: "expired" }
-  | { state: "ready"; eventName: string | null; items: { kind: GalleryFileKind; label: string; video: boolean; view?: string; download?: string }[] };
+  | {
+      state: "ready";
+      eventName: string | null;
+      /** The whole event's page, when the operator lets guests browse everyone's photos. */
+      eventUrl: string | null;
+      website: string | null;
+      items: { kind: GalleryFileKind; label: string; video: boolean; view?: string; download?: string }[];
+    };
 
-/** A guest session's photos with short-lived view and download links. */
+/** A guest session's photos with short-lived view and download links. Always reachable from its own QR. */
 export async function loadSessionGallery(id: string): Promise<SessionGallery> {
   const db = supabaseAdmin();
   const { data } = await db
     .from("gallery_sessions")
-    .select("files, ready_at, created_at, gallery_events(name)")
+    .select("files, ready_at, created_at, gallery_events(name, share_token, guest_access, link_enabled, website_url)")
     .eq("id", id)
     .maybeSingle();
   // The QR appears before the upload finishes (even offline), so "not there yet" is normal.
@@ -50,47 +62,68 @@ export async function loadSessionGallery(id: string): Promise<SessionGallery> {
   if (isExpired(data.created_at, Date.now())) return { state: "expired" };
 
   const files = data.files as GalleryFile[];
-  const bucket = db.storage.from(GALLERY_BUCKET);
-  const items = await Promise.all(
-    describeFiles(files).map(async (d) => {
-      const path = files.find((f) => f.kind === d.kind)!.path;
-      const [view, download] = await Promise.all([
-        bucket.createSignedUrl(path, LINK_SECONDS),
-        bucket.createSignedUrl(path, LINK_SECONDS, { download: d.filename }),
-      ]);
-      return { kind: d.kind, label: d.label, video: isVideo(d.kind), view: view.data?.signedUrl, download: download.data?.signedUrl };
-    }),
-  );
-  const event = data.gallery_events as unknown as { name: string } | null;
-  return { state: "ready", eventName: event?.name ?? null, items };
+  const shown = describeFiles(files);
+  const pathOf = (kind: GalleryFileKind) => files.find((f) => f.kind === kind)!.path;
+  const filename = new Map(shown.map((d) => [pathOf(d.kind), d.filename]));
+  const [view, download] = await Promise.all([viewUrls(shown.map((d) => pathOf(d.kind))), viewUrls(shown.map((d) => pathOf(d.kind)), (p) => filename.get(p)!)]);
+  const event = data.gallery_events as unknown as { name: string; share_token: string; guest_access: string; link_enabled: boolean; website_url: string | null } | null;
+  return {
+    state: "ready",
+    eventName: event?.name ?? null,
+    eventUrl: event && event.guest_access === "all" && event.link_enabled ? `/e/${event.share_token}` : null,
+    website: event?.website_url ?? null,
+    items: shown.map((d) => ({ kind: d.kind, label: d.label, video: isVideo(d.kind), view: view.get(pathOf(d.kind)), download: download.get(pathOf(d.kind)) })),
+  };
 }
 
-/** The host's event page: newest sessions first, each with a signed link to its photo. */
-export async function loadEventGallery(
-  token: string,
-  limit = 500,
-): Promise<{ name: string; date: string | null; sessions: { id: string; photo: string; video: boolean }[] } | null> {
+// ---------- The host's event page (/e/…) ----------
+
+/** Proof, kept in a cookie, that this browser entered the event's password (changes when the password does). */
+export function passwordPass(eventId: string, passwordHash: string): string {
+  return createHmac("sha256", `gallery-pass:${licencePrivateKey}`).update(`${eventId}:${passwordHash}`).digest("base64url");
+}
+export const passCookieName = (eventId: string) => `dsg_${eventId.replace(/-/g, "").slice(0, 16)}`;
+
+export interface PublicEvent {
+  id: string;
+  name: string;
+  date: string | null;
+  showDate: boolean;
+  website: string | null;
+  allowDownloadAll: boolean;
+  passwordHash: string | null;
+  linkEnabled: boolean;
+}
+
+export async function publicEventByToken(token: string): Promise<PublicEvent | null> {
+  const { data: e } = await supabaseAdmin()
+    .from("gallery_events")
+    .select("id, name, event_date, show_date, website_url, allow_download_all, password_hash, link_enabled")
+    .eq("share_token", token)
+    .maybeSingle();
+  if (!e) return null;
+  return { id: e.id, name: e.name, date: e.event_date, showDate: e.show_date, website: e.website_url, allowDownloadAll: e.allow_download_all, passwordHash: e.password_hash, linkEnabled: e.link_enabled };
+}
+
+/** The event's visible sessions, newest first, with a preview link for each. */
+export async function eventSessions(eventId: string, opts: { includeHidden?: boolean; limit?: number } = {}) {
   const db = supabaseAdmin();
-  const { data: event } = await db.from("gallery_events").select("id, name, event_date").eq("share_token", token).maybeSingle();
-  if (!event) return null;
-  const { data: rows } = await db
+  let q = db
     .from("gallery_sessions")
-    .select("id, files")
-    .eq("event_id", event.id)
+    .select("id, files, created_at, hidden_at")
+    .eq("event_id", eventId)
     .not("ready_at", "is", null)
     .gt("created_at", new Date(Date.now() - RETENTION_DAYS * 86_400_000).toISOString())
     .order("created_at", { ascending: false })
-    .limit(limit);
-  const list = ((rows ?? []) as { id: string; files: GalleryFile[] }[])
-    .map((s) => ({ id: s.id, path: s.files.find((f) => f.kind === "photo")?.path, video: s.files.some((f) => f.kind === "video") }))
-    .filter((s): s is { id: string; path: string; video: boolean } => !!s.path);
-  const { data: signed } = list.length
-    ? await db.storage.from(GALLERY_BUCKET).createSignedUrls(list.map((s) => s.path), LINK_SECONDS)
-    : { data: [] };
-  const urlFor = new Map((signed ?? []).map((s) => [s.path, s.signedUrl]));
-  return {
-    name: event.name,
-    date: event.event_date,
-    sessions: list.flatMap((s) => (urlFor.get(s.path) ? [{ id: s.id, photo: urlFor.get(s.path)!, video: s.video }] : [])),
-  };
+    .limit(opts.limit ?? 2000);
+  if (!opts.includeHidden) q = q.is("hidden_at", null);
+  const { data: rows } = await q;
+  const list = ((rows ?? []) as { id: string; files: GalleryFile[]; created_at: string; hidden_at: string | null }[]).flatMap((s) => {
+    const preview = previewPath(s.files);
+    return preview
+      ? [{ id: s.id, preview, createdAt: s.created_at, hidden: !!s.hidden_at, video: s.files.some((f) => f.kind === "video"), gif: s.files.some((f) => f.kind === "gif" || f.kind === "boomerang" || f.kind === "boomerangVideo") }]
+      : [];
+  });
+  const urls = await viewUrls(list.map((s) => s.preview));
+  return list.flatMap(({ preview, ...s }) => (urls.get(preview) ? [{ ...s, photo: urls.get(preview)! }] : []));
 }

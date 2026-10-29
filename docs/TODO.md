@@ -84,6 +84,13 @@ Full checklist with tick boxes: [HARDWARE_SETUP.md](HARDWARE_SETUP.md) (34 open 
 - [ ] **You**: add `SEND_EMAIL_HOOK_SECRET` and the five `ADMIN_*` values in Vercel; turn on the Supabase Send Email hook (ACCOUNTS_SETUP.md); paste the Gmail signatures (docs/email-signature.html)
 - [x] Email replies into the chat (built and tested locally). **You**: Resend receiving domain `reply.dslrsnap.com`, webhook and a full-access key (ACCOUNTS_SETUP.md)
 
+## 5c. DSLR Snap Cloud (built 29 October)
+
+- [x] **Phase 1**: Your events (dashboard), event page with settings (name, date, link on/off, password, guests see everyone, download all, website), share link + QR, hide/show/delete/cover, download all as zip, delete event; thumbnails from the booth; R2 storage ready (off until GALLERY_R2_* is set)
+- [ ] **Phase 2** (next): Edit Design (colours, banner, logo, background), live slideshow for a venue TV, upload photos by hand
+- [ ] **Phase 3**: your branded homepage with all events (embeddable), per-event analytics, albums
+- [ ] **You (optional)**: switch gallery storage to R2: API token for the private `dslrsnap-photos` bucket, then GALLERY_R2_* in Vercel (it's an EU bucket: GALLERY_R2_JURISDICTION=eu)
+
 ## 6. Already done and working without credentials
 
 Everything else from the plan is built and tested with simulated hardware or locally:

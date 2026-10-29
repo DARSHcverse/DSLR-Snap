@@ -1,6 +1,7 @@
 import { timingSafeEqual } from "node:crypto";
 import { accountsEnabled } from "@/lib/config";
-import { GALLERY_BUCKET, type GalleryFile, RETENTION_DAYS } from "@/lib/gallery";
+import { type GalleryFile, RETENTION_DAYS } from "@/lib/gallery";
+import { removeFiles } from "@/lib/storage";
 import { supabaseAdmin } from "@/lib/supabase/server";
 
 const BATCH = 200;
@@ -25,8 +26,11 @@ export async function GET(request: Request) {
   if (!rows.length) return Response.json({ deleted: 0 });
 
   const paths = rows.flatMap((r) => r.files.map((f) => f.path));
-  const { error } = await db.storage.from(GALLERY_BUCKET).remove(paths);
-  if (error) return Response.json({ error: error.message }, { status: 500 }); // rows stay; retried tomorrow
+  try {
+    await removeFiles(paths);
+  } catch (e) {
+    return Response.json({ error: e instanceof Error ? e.message : "delete failed" }, { status: 500 }); // rows stay; retried tomorrow
+  }
   await db.from("gallery_sessions").delete().in("id", rows.map((r) => r.id));
   return Response.json({ deleted: rows.length, more: rows.length === BATCH });
 }
