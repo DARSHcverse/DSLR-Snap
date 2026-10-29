@@ -1,9 +1,11 @@
+import { ipFrom, overLimit, tooMany } from "@/lib/rateLimit";
 import { deviceFromRequest, fail, notConfigured, readJson, signedOut } from "@/lib/appApi";
 import { isUuid } from "@/lib/gallery";
 import { supabaseAdmin } from "@/lib/supabase/server";
 
 /** Step 2: every file is up, so the guest page can show the photos. */
 export async function POST(request: Request) {
+  if (await overLimit("appUploads", ipFrom(request.headers))) return tooMany();
   const off = notConfigured();
   if (off) return off;
   const body = await readJson(request);

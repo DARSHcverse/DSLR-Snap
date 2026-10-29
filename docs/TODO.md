@@ -73,7 +73,7 @@ Full checklist with tick boxes: [HARDWARE_SETUP.md](HARDWARE_SETUP.md) (34 open 
 - [ ] **Nikon D-series bridge** (D750/D780/D850/D810/D610/D7500/D7200/D5600/D5300): Nikon's older MAID3 modules, a separate bridge. The website says "coming next"
 - [ ] **More cameras and printers**: other Canon bodies need testing; Sony, Mitsubishi and Citizen are on the roadmap only
 - [ ] **360 auto-start** when the arm moves (needs a sensor), and the green-screen key tuned on real footage
-- [ ] **Rate limiting** on the website's API routes and contact form (today: one-time codes, PKCE and a honeypot)
+- [x] **Rate limiting** per IP on the app API, sign-in, password reset, contact form and app sign-in approval (migration 0008)
 - [ ] Look into the one flaky test (the GIF test once hung during a full parallel run)
 
 ## 5b. Built on 28 October (emails, admin, chat)

@@ -1,9 +1,11 @@
+import { ipFrom, overLimit, tooMany } from "@/lib/rateLimit";
 import { isMachineHash } from "@/lib/appAuth";
 import { deviceFromRequest, fail, licenceFor, notConfigured, readJson, signedOut } from "@/lib/appApi";
 import { supabaseAdmin } from "@/lib/supabase/server";
 
 /** The app asks for a fresh licence when it starts and every few hours while online. */
 export async function POST(request: Request) {
+  if (await overLimit("appLicence", ipFrom(request.headers))) return tooMany();
   const off = notConfigured();
   if (off) return off;
   const body = await readJson(request);

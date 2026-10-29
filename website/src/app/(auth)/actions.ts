@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { after } from "next/server";
 import { welcomeIfNew } from "@/lib/email/lifecycle";
+import { overLimitHere, TOO_MANY } from "@/lib/rateLimit";
 import { safeNext } from "@/lib/appAuth";
 import { accountsEnabled, appUrl } from "@/lib/config";
 import { supabaseForRequest } from "@/lib/supabase/server";
@@ -19,6 +20,7 @@ export async function passwordAuth(_prev: AuthResult, form: FormData): Promise<A
   const password = String(form.get("password") ?? "");
   const next = safeNext(form.get("next"));
   if (!EMAIL.test(email)) return { error: "Enter a valid email address." };
+  if (await overLimitHere("login")) return { error: TOO_MANY };
   if (mode === "signup" && password.length < 8) return { error: "Use at least 8 characters for your password." };
 
   const supabase = await supabaseForRequest();
@@ -48,6 +50,7 @@ export async function requestPasswordReset(_prev: AuthResult, form: FormData): P
   if (!accountsEnabled) return { error: "Accounts aren't open yet." };
   const email = String(form.get("email") ?? "").trim().toLowerCase();
   if (!EMAIL.test(email)) return { error: "Enter a valid email address." };
+  if (await overLimitHere("passwordReset")) return { error: TOO_MANY };
   const supabase = await supabaseForRequest();
   await supabase.auth.resetPasswordForEmail(email, { redirectTo: callback("/reset?step=new") });
   // Same answer whether or not the account exists, so this can't be used to find customers.

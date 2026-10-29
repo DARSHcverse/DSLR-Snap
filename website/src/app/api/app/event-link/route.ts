@@ -1,3 +1,4 @@
+import { ipFrom, overLimit, tooMany } from "@/lib/rateLimit";
 import { entitlementFor } from "@/lib/account";
 import { deviceFromRequest, fail, notConfigured, readJson, signedOut } from "@/lib/appApi";
 import { appUrl } from "@/lib/config";
@@ -6,6 +7,7 @@ import { galleryEventFor } from "@/lib/galleryServer";
 
 /** The host's link for an event: every photo on one page. */
 export async function POST(request: Request) {
+  if (await overLimit("appOther", ipFrom(request.headers))) return tooMany();
   const off = notConfigured();
   if (off) return off;
   const body = await readJson(request);

@@ -1,3 +1,4 @@
+import { ipFrom, overLimit, tooMany } from "@/lib/rateLimit";
 import { entitlementFor } from "@/lib/account";
 import { deviceFromRequest, fail, notConfigured, readJson, signedOut } from "@/lib/appApi";
 import { appUrl, supabaseConfig } from "@/lib/config";
@@ -10,6 +11,7 @@ import { supabaseAdmin } from "@/lib/supabase/server";
  * files. The booth never holds a storage key, and nothing is accepted without an active plan.
  */
 export async function POST(request: Request) {
+  if (await overLimit("appUploads", ipFrom(request.headers))) return tooMany();
   const off = notConfigured();
   if (off) return off;
   const body = await readJson(request);

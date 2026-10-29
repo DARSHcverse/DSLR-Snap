@@ -2,6 +2,7 @@
 
 import { CODE_TTL_MS, hashSecret, isChallenge, isState, makeSignInCode } from "@/lib/appAuth";
 import { appSignInEnabled } from "@/lib/config";
+import { overLimitHere, TOO_MANY } from "@/lib/rateLimit";
 import { getCurrentUser, supabaseAdmin } from "@/lib/supabase/server";
 
 export type ApproveResult = { code: string; link: string } | { error: string } | null;
@@ -11,6 +12,7 @@ export async function approveAppSignIn(_prev: ApproveResult, form: FormData): Pr
   if (!appSignInEnabled) return { error: "Sign-in isn't switched on yet." };
   const user = await getCurrentUser();
   if (!user) return { error: "Your session ended. Reload this page and sign in." };
+  if (await overLimitHere("appSignIn")) return { error: TOO_MANY };
   const challenge = form.get("challenge");
   const state = form.get("state");
   if (!isChallenge(challenge) || !isState(state)) return { error: "This link is incomplete. Press Sign in in the app again." };

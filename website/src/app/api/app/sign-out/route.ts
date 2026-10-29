@@ -1,9 +1,11 @@
+import { ipFrom, overLimit, tooMany } from "@/lib/rateLimit";
 import { hashSecret } from "@/lib/appAuth";
 import { notConfigured, readJson } from "@/lib/appApi";
 import { supabaseAdmin } from "@/lib/supabase/server";
 
 /** Frees this computer's slot when the operator signs out in the app. */
 export async function POST(request: Request) {
+  if (await overLimit("appOther", ipFrom(request.headers))) return tooMany();
   const off = notConfigured();
   if (off) return off;
   const { refreshToken } = (await readJson(request)) ?? {};

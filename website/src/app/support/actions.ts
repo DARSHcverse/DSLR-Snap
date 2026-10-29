@@ -2,6 +2,7 @@
 
 import { sendEmail } from "@/lib/email/send";
 import { contactReceived } from "@/lib/email/templates";
+import { overLimitHere } from "@/lib/rateLimit";
 import { startThread } from "@/lib/support";
 import { site } from "@/lib/site";
 
@@ -22,6 +23,7 @@ export async function sendContact(_prev: ContactResult, form: FormData): Promise
   const message = String(form.get("message") ?? "").trim().slice(0, 5000);
   if (!name || !EMAIL.test(email) || message.length < 10) return { error: "Add your name, a valid email and a few words about what you need." };
 
+  if (await overLimitHere("contact")) return { error: `You've sent several messages already. We'll reply soon, or email ${site.supportEmail}.` };
   if (!process.env.RESEND_API_KEY) return { error: `The form isn't connected yet. Please email ${site.supportEmail}.` };
   // Opens a conversation in the admin inbox (which emails the team), then confirms to the sender.
   try {

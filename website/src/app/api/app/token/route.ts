@@ -1,3 +1,4 @@
+import { ipFrom, overLimit, tooMany } from "@/lib/rateLimit";
 import { cleanDeviceName, deviceLimit, hashSecret, isMachineHash, isSignInCode, isVerifier, makeRefreshToken, pkceMatches } from "@/lib/appAuth";
 import { fail, licenceFor, notConfigured, readJson } from "@/lib/appApi";
 import { entitlementFor } from "@/lib/account";
@@ -10,6 +11,7 @@ import { supabaseAdmin } from "@/lib/supabase/server";
  * plus its PKCE verifier for a refresh token and a signed licence for this computer.
  */
 export async function POST(request: Request) {
+  if (await overLimit("appToken", ipFrom(request.headers))) return tooMany();
   const off = notConfigured();
   if (off) return off;
   const body = await readJson(request);
