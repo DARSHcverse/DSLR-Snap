@@ -44,10 +44,13 @@ async function Events({ searchParams }: Pick<PageProps<"/account/events">, "sear
   }
   return (
     <div className="flex flex-col gap-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
       <form className="flex max-w-md gap-2">
         <input name="q" defaultValue={q} placeholder="Search events" className={inputClass} />
         <button className="rounded-xl border border-line px-4 text-sm font-semibold hover:bg-surface-2">Search</button>
       </form>
+      <Link href="/account/homepage" className="text-sm text-accent hover:underline">Your public homepage →</Link>
+      </div>
       <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {events.map((e) => (
           <li key={e.id}>

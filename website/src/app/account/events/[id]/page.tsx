@@ -7,12 +7,15 @@ import { NotReady } from "@/components/PageShell";
 import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
 import { inputClass } from "@/components/ui";
+import { BarChart } from "@/components/admin/BarChart";
 import { designForEvent } from "@/lib/cloudDesign";
+import { statsForEvent } from "@/lib/galleryStats";
+import { eventAlbums } from "@/lib/galleryServer";
 import { getEvent, sessionsForOwner } from "@/lib/cloudEvents";
 import { accountsEnabled, appUrl } from "@/lib/config";
 import { isUuid } from "@/lib/gallery";
 import { getCurrentUser } from "@/lib/supabase/server";
-import { deleteWholeEvent, replaceLink, saveEventSettings } from "./actions";
+import { addAlbum, changeAlbum, deleteWholeEvent, replaceLink, saveEventSettings } from "./actions";
 import { CopyLink } from "./CopyLink";
 import { DesignEditor } from "./DesignEditor";
 import { PhotoUpload } from "./PhotoUpload";
@@ -60,7 +63,10 @@ async function Event({ params, searchParams }: PageProps<"/account/events/[id]">
   const link = `${appUrl}/e/${event.shareToken}`;
   const qr = await QRCode.toDataURL(link, { margin: 1, width: 360, color: { dark: "#16161d", light: "#ffffff" } });
   const hidden = sessions.filter((s) => s.hidden).length;
-  const look = await designForEvent(user.id, event.design);
+  const [look, stats, albums] = await Promise.all([designForEvent(user.id, event.design), statsForEvent(event.id, 30), eventAlbums(event.id, { includeHidden: true })]);
+  const albumParam = (await searchParams).album;
+  const album = albums.find((a) => a.id === albumParam) ?? null;
+  const shown = album ? sessions.filter((s) => s.albumId === album.id) : sessions;
   const { tab } = await searchParams;
   const field = "flex flex-col gap-1 text-sm text-muted";
 
@@ -84,6 +90,35 @@ async function Event({ params, searchParams }: PageProps<"/account/events/[id]">
         </div>
       </div>
       {typeof done === "string" && <p className="rounded-xl border border-ok/40 bg-ok/10 px-4 py-3 text-sm">{done}</p>}
+
+      <details id="analytics" open={tab === "analytics"} className="rounded-card border border-line bg-surface p-5">
+        <summary className="cursor-pointer font-semibold">
+          Analytics <span className="font-normal text-muted">· {stats.totals.views + stats.totals.sessionViews} views, {stats.totals.visitors} visitors, {stats.totals.downloads + stats.totals.zips} downloads</span>
+        </summary>
+        <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+          {[
+            ["Gallery views", stats.totals.views],
+            ["Unique visitors", stats.totals.visitors],
+            ["Guest pages opened", stats.totals.sessionViews],
+            ["Photo downloads", stats.totals.downloads],
+            ["Download all (zip)", stats.totals.zips],
+            ["Slideshow opens", stats.totals.slideshows],
+          ].map(([label, n]) => (
+            <div key={label} className="rounded-xl border border-line p-4">
+              <p className="text-xs text-muted">{label}</p>
+              <p className="mt-1 font-display text-2xl font-bold">{n}</p>
+            </div>
+          ))}
+        </div>
+        <div className="mt-4">
+          <BarChart
+            title="Views per day (last 30 days)"
+            bars={stats.days.map((d) => ({ label: new Date(`${d.day}T12:00:00Z`).toLocaleDateString("en-GB", { day: "numeric", month: "short" }), value: d.views, display: `${d.views} views · ${d.visitors} visitors · ${d.downloads} downloads` }))}
+            empty="No visits yet. Views appear here once you share the gallery."
+          />
+        </div>
+        <p className="mt-3 text-xs text-muted">Counted without cookies; link previews and bots are left out. Visitors are counted once per day.</p>
+      </details>
 
       <details id="design" open={tab === "design"} className="rounded-card border border-line bg-surface p-5">
         <summary className="cursor-pointer font-semibold">Edit design <span className="font-normal text-muted">· colours, font, banner, logo and background for this gallery</span></summary>
@@ -150,7 +185,31 @@ async function Event({ params, searchParams }: PageProps<"/account/events/[id]">
           </details>
         </aside>
 
-        <SessionGrid eventId={event.id} sessions={sessions} coverId={event.coverSessionId} />
+        <div className="flex min-w-0 flex-col gap-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <Link href={`/account/events/${event.id}`} className={`rounded-full border px-3 py-1.5 text-sm ${!album ? "border-accent bg-accent/10" : "border-line text-muted hover:text-fg"}`}>All <span className="text-muted">{sessions.length}</span></Link>
+            {albums.map((a) => (
+              <Link key={a.id} href={`/account/events/${event.id}?album=${a.id}`} className={`rounded-full border px-3 py-1.5 text-sm ${album?.id === a.id ? "border-accent bg-accent/10" : "border-line text-muted hover:text-fg"}`}>
+                {a.name} <span className="text-muted">{a.count}</span>
+              </Link>
+            ))}
+            <form action={addAlbum} className="flex items-center gap-1">
+              <input type="hidden" name="event" value={event.id} />
+              <input name="name" placeholder="New album" maxLength={60} required className="w-32 rounded-full border border-line bg-bg px-3 py-1.5 text-sm" />
+              <button className="rounded-full border border-line px-3 py-1.5 text-sm font-semibold hover:bg-surface-2">Add</button>
+            </form>
+          </div>
+          {album && (
+            <form action={changeAlbum} className="flex flex-wrap items-center gap-2 text-sm">
+              <input type="hidden" name="event" value={event.id} />
+              <input type="hidden" name="album" value={album.id} />
+              <input name="name" defaultValue={album.name} maxLength={60} className="rounded-full border border-line bg-bg px-3 py-1.5" />
+              <button name="op" value="rename" className="rounded-full border border-line px-3 py-1.5 font-semibold hover:bg-surface-2">Rename</button>
+              <button name="op" value="delete" className="text-bad hover:underline">Delete album (photos stay in the event)</button>
+            </form>
+          )}
+          <SessionGrid eventId={event.id} sessions={shown} coverId={event.coverSessionId} albums={albums} />
+        </div>
       </div>
     </div>
   );

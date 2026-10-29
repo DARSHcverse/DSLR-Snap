@@ -88,7 +88,7 @@ Full checklist with tick boxes: [HARDWARE_SETUP.md](HARDWARE_SETUP.md) (34 open 
 
 - [x] **Phase 1**: Your events (dashboard), event page with settings (name, date, link on/off, password, guests see everyone, download all, website), share link + QR, hide/show/delete/cover, download all as zip, delete event; thumbnails from the booth; R2 storage ready (off until GALLERY_R2_* is set)
 - [x] **Phase 2**: Edit Design (presets, colours, font, banner, logo, background, default look for new events, live preview), live slideshow for a venue TV (new photos first, hidden ones drop out, QR corner), add photos by hand
-- [ ] **Phase 3**: your branded homepage with all events (embeddable), per-event analytics, albums
+- [x] **Phase 3**: public homepage at dslrsnap.com/b/<name> with chosen events, booking link and embed code; per-event analytics (views, visitors, downloads, zips, slideshows, no cookies); albums
 - [ ] **You (optional)**: switch gallery storage to R2: API token for the private `dslrsnap-photos` bucket, GALLERY_R2_* in Vercel (EU bucket: GALLERY_R2_JURISDICTION=eu), and the CORS rule in ACCOUNTS_SETUP.md
 
 ## 6. Already done and working without credentials

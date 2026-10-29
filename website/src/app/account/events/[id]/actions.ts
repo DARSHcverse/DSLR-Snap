@@ -1,7 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { deleteEvent, deleteSessions, getEvent, newShareLink, saveSettings, setCover, setHidden } from "@/lib/cloudEvents";
+import { createAlbum, deleteAlbum, deleteEvent, deleteSessions, getEvent, moveToAlbum, newShareLink, renameAlbum, saveSettings, setCover, setHidden } from "@/lib/cloudEvents";
 import { cleanWebsite, isUuid } from "@/lib/gallery";
 import { getCurrentUser } from "@/lib/supabase/server";
 
@@ -52,7 +52,11 @@ export async function sessionAction(form: FormData): Promise<void> {
   else if (op === "show") await setHidden(userId, id, ids, false);
   else if (op === "cover") await setCover(userId, id, ids[0]);
   else if (op === "delete") await deleteSessions(userId, id, ids);
-  back(id, { hide: `${ids.length} hidden from the gallery.`, show: `${ids.length} shown again.`, cover: "Cover photo set.", delete: `${ids.length} deleted.` }[op] ?? "Done.");
+  else if (op === "move") {
+    const album = String(form.get("album") ?? "");
+    await moveToAlbum(userId, id, ids, isUuid(album) ? album : null);
+  }
+  back(id, { hide: `${ids.length} hidden from the gallery.`, show: `${ids.length} shown again.`, cover: "Cover photo set.", delete: `${ids.length} deleted.`, move: `${ids.length} moved.` }[op] ?? "Done.");
 }
 
 export async function deleteWholeEvent(form: FormData): Promise<void> {
@@ -61,4 +65,26 @@ export async function deleteWholeEvent(form: FormData): Promise<void> {
   if (String(form.get("confirm") ?? "").trim().toLowerCase() !== event!.name.trim().toLowerCase()) back(id, "Type the event name exactly to delete it.");
   await deleteEvent(userId, id);
   redirect("/account/events");
+}
+
+export async function addAlbum(form: FormData): Promise<void> {
+  const { userId, id } = await owned(form);
+  try {
+    await createAlbum(userId, id, String(form.get("name") ?? ""));
+  } catch (e) {
+    back(id, e instanceof Error ? e.message : "Couldn't add the album.");
+  }
+  back(id, "Album added. Select photos, then Move to album.");
+}
+
+export async function changeAlbum(form: FormData): Promise<void> {
+  const { userId, id } = await owned(form);
+  const album = String(form.get("album") ?? "");
+  if (!isUuid(album)) back(id, "Album not found.");
+  if (form.get("op") === "delete") {
+    await deleteAlbum(userId, album);
+    redirect(`/account/events/${id}?done=${encodeURIComponent("Album deleted. Its photos are still in the event.")}`);
+  }
+  await renameAlbum(userId, album, String(form.get("name") ?? ""));
+  redirect(`/account/events/${id}?album=${album}&done=${encodeURIComponent("Album renamed.")}`);
 }

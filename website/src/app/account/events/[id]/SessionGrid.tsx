@@ -12,7 +12,7 @@ export interface GridSession {
 }
 
 /** The event's sessions with select, hide/show, delete and cover. Clicking a photo opens the guest's page. */
-export function SessionGrid({ eventId, sessions, coverId }: { eventId: string; sessions: GridSession[]; coverId: string | null }) {
+export function SessionGrid({ eventId, sessions, coverId, albums = [] }: { eventId: string; sessions: GridSession[]; coverId: string | null; albums?: { id: string; name: string }[] }) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const toggle = (id: string) => setSelected((s) => (s.has(id) ? new Set([...s].filter((x) => x !== id)) : new Set([...s, id])));
   const all = selected.size === sessions.length && sessions.length > 0;
@@ -28,6 +28,15 @@ export function SessionGrid({ eventId, sessions, coverId }: { eventId: string; s
         <button name="op" value="hide" disabled={!selected.size} className={btn}>Hide</button>
         <button name="op" value="show" disabled={!selected.size} className={btn}>Show</button>
         <button name="op" value="cover" disabled={selected.size !== 1} className={btn} title="Use as the event's cover photo">Set as cover</button>
+        {albums.length > 0 && (
+          <span className="flex items-center gap-1">
+            <select name="album" defaultValue="" className="rounded-full border border-line bg-bg px-3 py-1.5 text-sm" aria-label="Album">
+              <option value="">No album</option>
+              {albums.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+            </select>
+            <button name="op" value="move" disabled={!selected.size} className={btn}>Move to album</button>
+          </span>
+        )}
         <button
           name="op"
           value="delete"

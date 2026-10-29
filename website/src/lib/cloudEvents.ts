@@ -212,3 +212,34 @@ export async function finishManualUploads(userId: string, eventId: string, sessi
     .select("id");
   return data?.length ?? 0;
 }
+
+// ---------- Albums ----------
+
+export async function createAlbum(userId: string, eventId: string, name: string): Promise<void> {
+  if (!(await getEvent(userId, eventId))) return;
+  const clean = name.trim().slice(0, 60);
+  if (!clean) throw new Error("Give the album a name.");
+  const { count } = await supabaseAdmin().from("gallery_albums").select("id", { count: "exact", head: true }).eq("event_id", eventId);
+  if ((count ?? 0) >= 30) throw new Error("An event can have up to 30 albums.");
+  await supabaseAdmin().from("gallery_albums").insert({ event_id: eventId, user_id: userId, name: clean, position: count ?? 0 });
+}
+
+export async function renameAlbum(userId: string, albumId: string, name: string): Promise<void> {
+  const clean = name.trim().slice(0, 60);
+  if (clean) await supabaseAdmin().from("gallery_albums").update({ name: clean }).eq("id", albumId).eq("user_id", userId);
+}
+
+/** Deletes the album only; its photos stay in the event (they just leave the album). */
+export async function deleteAlbum(userId: string, albumId: string): Promise<void> {
+  await supabaseAdmin().from("gallery_albums").delete().eq("id", albumId).eq("user_id", userId);
+}
+
+/** Moves sessions into an album of the same event (or out of any album with null). */
+export async function moveToAlbum(userId: string, eventId: string, sessionIds: string[], albumId: string | null): Promise<void> {
+  if (!sessionIds.length) return;
+  if (albumId) {
+    const { data } = await supabaseAdmin().from("gallery_albums").select("id").eq("id", albumId).eq("event_id", eventId).eq("user_id", userId).maybeSingle();
+    if (!data) throw new Error("Album not found.");
+  }
+  await supabaseAdmin().from("gallery_sessions").update({ album_id: albumId }).eq("event_id", eventId).eq("user_id", userId).in("id", sessionIds);
+}

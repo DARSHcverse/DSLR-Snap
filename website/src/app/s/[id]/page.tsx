@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { after } from "next/server";
 import { Suspense } from "react";
+import { recordHit, visitor } from "@/lib/galleryStats";
 import { GalleryNotice, GalleryShell } from "@/components/gallery/GalleryShell";
 import { RefreshWhileWaiting } from "@/components/gallery/RefreshWhileWaiting";
 import { accountsEnabled } from "@/lib/config";
@@ -38,6 +40,8 @@ async function Session({ params }: Pick<PageProps<"/s/[id]">, "params">) {
   }
 
   const items = gallery.items.filter((i) => i.view);
+  const who = await visitor();
+  after(() => recordHit(gallery.eventId, "session_view", who));
   return (
     <GalleryShell look={gallery.look}>
       <header className="text-center">
@@ -61,7 +65,7 @@ async function Session({ params }: Pick<PageProps<"/s/[id]">, "params">) {
             )}
             <figcaption className="flex items-center justify-between gap-3">
               <span className="font-medium">{l.label}</span>
-              <a href={l.download} className="rounded-full bg-accent px-5 py-2.5 text-sm font-semibold text-accent-ink transition-transform active:scale-[0.97]">
+              <a href={`/s/${id}/get/${l.kind}`} className="rounded-full bg-accent px-5 py-2.5 text-sm font-semibold text-accent-ink transition-transform active:scale-[0.97]">
                 Download
               </a>
             </figcaption>

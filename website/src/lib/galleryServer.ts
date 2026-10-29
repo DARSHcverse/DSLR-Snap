@@ -43,12 +43,13 @@ export type SessionGallery =
   | { state: "expired" }
   | {
       state: "ready";
+      eventId: string;
       eventName: string | null;
       /** The whole event's page, when the operator lets guests browse everyone's photos. */
       eventUrl: string | null;
       website: string | null;
       look: ResolvedDesign;
-      items: { kind: GalleryFileKind; label: string; video: boolean; view?: string; download?: string }[];
+      items: { kind: GalleryFileKind; label: string; video: boolean; view?: string }[];
     };
 
 /** A guest session's photos with short-lived view and download links. Always reachable from its own QR. */
@@ -56,7 +57,7 @@ export async function loadSessionGallery(id: string): Promise<SessionGallery> {
   const db = supabaseAdmin();
   const { data } = await db
     .from("gallery_sessions")
-    .select("files, ready_at, created_at, user_id, gallery_events(name, share_token, guest_access, link_enabled, website_url, design)")
+    .select("files, ready_at, created_at, user_id, event_id, gallery_events(name, share_token, guest_access, link_enabled, website_url, design)")
     .eq("id", id)
     .maybeSingle();
   // The QR appears before the upload finishes (even offline), so "not there yet" is normal.
@@ -66,17 +67,18 @@ export async function loadSessionGallery(id: string): Promise<SessionGallery> {
   const files = data.files as GalleryFile[];
   const shown = describeFiles(files);
   const pathOf = (kind: GalleryFileKind) => files.find((f) => f.kind === kind)!.path;
-  const filename = new Map(shown.map((d) => [pathOf(d.kind), d.filename]));
-  const [view, download] = await Promise.all([viewUrls(shown.map((d) => pathOf(d.kind))), viewUrls(shown.map((d) => pathOf(d.kind)), (p) => filename.get(p)!)]);
+  // Downloads go through /s/<id>/get/<kind>, which counts them and signs the link on demand.
+  const view = await viewUrls(shown.map((d) => pathOf(d.kind)));
   const event = data.gallery_events as unknown as { name: string; share_token: string; guest_access: string; link_enabled: boolean; website_url: string | null; design: unknown } | null;
   const look = await designForEvent(data.user_id, event?.design ?? null);
   return {
     state: "ready",
+    eventId: data.event_id,
     eventName: event?.name ?? null,
     eventUrl: event && event.guest_access === "all" && event.link_enabled ? `/e/${event.share_token}` : null,
     website: event?.website_url ?? null,
     look,
-    items: shown.map((d) => ({ kind: d.kind, label: d.label, video: isVideo(d.kind), view: view.get(pathOf(d.kind)), download: download.get(pathOf(d.kind)) })),
+    items: shown.map((d) => ({ kind: d.kind, label: d.label, video: isVideo(d.kind), view: view.get(pathOf(d.kind)) })),
   };
 }
 
@@ -113,24 +115,47 @@ export async function publicEventByToken(token: string): Promise<PublicEvent | n
 
 /** The event's visible sessions, newest first, with a preview link for each. */
 /** `full` uses the full photo (slideshows on a TV) instead of the small preview (grids). */
-export async function eventSessions(eventId: string, opts: { includeHidden?: boolean; limit?: number; full?: boolean } = {}) {
+export async function eventSessions(eventId: string, opts: { includeHidden?: boolean; limit?: number; full?: boolean; album?: string } = {}) {
   const db = supabaseAdmin();
   let q = db
     .from("gallery_sessions")
-    .select("id, files, created_at, hidden_at")
+    .select("id, files, created_at, hidden_at, album_id")
     .eq("event_id", eventId)
     .not("ready_at", "is", null)
     .gt("created_at", new Date(Date.now() - RETENTION_DAYS * 86_400_000).toISOString())
     .order("created_at", { ascending: false })
     .limit(opts.limit ?? 2000);
   if (!opts.includeHidden) q = q.is("hidden_at", null);
+  if (opts.album) q = q.eq("album_id", opts.album);
   const { data: rows } = await q;
-  const list = ((rows ?? []) as { id: string; files: GalleryFile[]; created_at: string; hidden_at: string | null }[]).flatMap((s) => {
+  const list = ((rows ?? []) as { id: string; files: GalleryFile[]; created_at: string; hidden_at: string | null; album_id: string | null }[]).flatMap((s) => {
     const preview = opts.full ? s.files.find((f) => f.kind === "photo")?.path : previewPath(s.files);
     return preview
-      ? [{ id: s.id, preview, createdAt: s.created_at, hidden: !!s.hidden_at, video: s.files.some((f) => f.kind === "video"), gif: s.files.some((f) => f.kind === "gif" || f.kind === "boomerang" || f.kind === "boomerangVideo") }]
+      ? [{ id: s.id, preview, createdAt: s.created_at, hidden: !!s.hidden_at, albumId: s.album_id, video: s.files.some((f) => f.kind === "video"), gif: s.files.some((f) => f.kind === "gif" || f.kind === "boomerang" || f.kind === "boomerangVideo") }]
       : [];
   });
   const urls = await viewUrls(list.map((s) => s.preview));
   return list.flatMap(({ preview, ...s }) => (urls.get(preview) ? [{ ...s, photo: urls.get(preview)! }] : []));
+}
+
+export interface Album {
+  id: string;
+  name: string;
+  count: number;
+}
+
+/** An event's albums in order, with how many visible sessions each holds. */
+export async function eventAlbums(eventId: string, opts: { includeHidden?: boolean } = {}): Promise<Album[]> {
+  const db = supabaseAdmin();
+  const [{ data: albums }, { data: rows }] = await Promise.all([
+    db.from("gallery_albums").select("id, name").eq("event_id", eventId).order("position").order("created_at"),
+    (() => {
+      let q = db.from("gallery_sessions").select("album_id").eq("event_id", eventId).not("album_id", "is", null).not("ready_at", "is", null);
+      if (!opts.includeHidden) q = q.is("hidden_at", null);
+      return q;
+    })(),
+  ]);
+  const counts = new Map<string, number>();
+  for (const r of rows ?? []) counts.set(r.album_id as string, (counts.get(r.album_id as string) ?? 0) + 1);
+  return (albums ?? []).map((a) => ({ id: a.id, name: a.name, count: counts.get(a.id) ?? 0 }));
 }

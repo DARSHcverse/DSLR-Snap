@@ -52,6 +52,7 @@ async function Account({ searchParams }: Pick<PageProps<"/account">, "searchPara
         </span>
         <span className="text-xl text-accent" aria-hidden>→</span>
       </Link>
+      <Link href="/account/homepage" className="-mt-3 self-start text-sm text-muted hover:text-fg">Your public homepage, with your galleries and a Book now button →</Link>
 
       {sp.checkout === "done" && !ent.active && (
         <p className="rounded-xl border border-ok/40 bg-ok/10 px-4 py-3">Payment received. Your plan shows here within a minute; refresh if it doesn&apos;t.</p>

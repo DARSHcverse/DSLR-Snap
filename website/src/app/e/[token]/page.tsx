@@ -5,23 +5,25 @@ import { GalleryNotice, GalleryShell } from "@/components/gallery/GalleryShell";
 import { secondaryButton } from "@/components/ui";
 import { accountsEnabled } from "@/lib/config";
 import { isShareToken } from "@/lib/gallery";
+import { after } from "next/server";
 import { designForEvent } from "@/lib/cloudDesign";
-import { eventSessions, publicEventByToken } from "@/lib/galleryServer";
+import { recordHit, visitor } from "@/lib/galleryStats";
+import { eventAlbums, eventSessions, publicEventByToken } from "@/lib/galleryServer";
 import { hasAccess } from "./access";
 import { Unlock } from "./Unlock";
 
 export const metadata: Metadata = { title: "Event photos", robots: { index: false, follow: false } };
 
 /** The host's page: every photo from the event, newest first. Each opens the session page to download. */
-export default function EventGalleryPage({ params }: PageProps<"/e/[token]">) {
+export default function EventGalleryPage({ params, searchParams }: PageProps<"/e/[token]">) {
   return (
     <Suspense fallback={<GalleryShell><p className="py-16 text-center text-muted">Loading the gallery…</p></GalleryShell>}>
-      <EventGallery params={params} />
+      <EventGallery params={params} searchParams={searchParams} />
     </Suspense>
   );
 }
 
-async function EventGallery({ params }: Pick<PageProps<"/e/[token]">, "params">) {
+async function EventGallery({ params, searchParams }: PageProps<"/e/[token]">) {
   const { token } = await params;
   const event = accountsEnabled && isShareToken(token) ? await publicEventByToken(token) : null;
   if (!event) return <GalleryShell><GalleryNotice title="Gallery not found" body="Check the link with your photo booth company." /></GalleryShell>;
@@ -39,7 +41,12 @@ async function EventGallery({ params }: Pick<PageProps<"/e/[token]">, "params">)
     );
   }
 
-  const sessions = await eventSessions(event.id);
+  const albums = (await eventAlbums(event.id)).filter((a) => a.count > 0);
+  const albumParam = (await searchParams).album;
+  const album = albums.find((a) => a.id === albumParam) ?? null;
+  const sessions = await eventSessions(event.id, album ? { album: album.id } : {});
+  const who = await visitor();
+  after(() => recordHit(event.id, "view", who));
   const date = event.date && event.showDate ? new Date(`${event.date}T12:00:00Z`).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" }) : null;
   const n = sessions.length;
   return (
@@ -53,6 +60,16 @@ async function EventGallery({ params }: Pick<PageProps<"/e/[token]">, "params">)
           {event.website && <a href={event.website} target="_blank" rel="noopener" className={secondaryButton}>Photo booth by {new URL(event.website).hostname.replace(/^www\./, "")}</a>}
         </div>
       </header>
+      {albums.length > 0 && (
+        <nav className="mt-8 flex flex-wrap justify-center gap-2" aria-label="Albums">
+          <Link href={`/e/${token}`} className={`rounded-full border px-4 py-1.5 text-sm ${!album ? "border-accent bg-accent text-accent-ink" : "border-line text-muted hover:text-fg"}`}>All</Link>
+          {albums.map((a) => (
+            <Link key={a.id} href={`/e/${token}?album=${a.id}`} className={`rounded-full border px-4 py-1.5 text-sm ${album?.id === a.id ? "border-accent bg-accent text-accent-ink" : "border-line text-muted hover:text-fg"}`}>
+              {a.name}
+            </Link>
+          ))}
+        </nav>
+      )}
       {n ? (
         <div className="mt-10 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
           {sessions.map((s) => (

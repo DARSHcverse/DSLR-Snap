@@ -3,7 +3,9 @@ import QRCode from "qrcode";
 import type { CSSProperties } from "react";
 import { Suspense } from "react";
 import { GalleryNotice, GalleryShell } from "@/components/gallery/GalleryShell";
+import { after } from "next/server";
 import { designForEvent } from "@/lib/cloudDesign";
+import { recordHit, visitor } from "@/lib/galleryStats";
 import { appUrl, accountsEnabled } from "@/lib/config";
 import { designVars } from "@/lib/design";
 import { isShareToken } from "@/lib/gallery";
@@ -39,6 +41,8 @@ async function Show({ params }: Pick<PageProps<"/e/[token]/slideshow">, "params"
       </GalleryShell>
     );
   }
+  const who = await visitor();
+  after(() => recordHit(event.id, "slideshow", who));
   const galleryUrl = `${appUrl}/e/${token}`;
   const qr = await QRCode.toDataURL(galleryUrl, { margin: 1, width: 320, color: { dark: "#111111", light: "#ffffff" } });
   return (
