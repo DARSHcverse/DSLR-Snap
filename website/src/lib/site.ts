@@ -13,7 +13,7 @@ export const site = {
    * structured data only show the town.
    */
   business: {
-    owner: "", // TODO(business): the sole trader's full legal name, until there is a company
+    owner: "Darshan Subramaniam", // the sole trader, until there is a company
     legalName: "", // a company's registered name, once incorporated (e.g. "DSLR Snap Ltd")
     companyNumber: "", // Companies House number, if a company
     vatNumber: "", // once VAT-registered
