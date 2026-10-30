@@ -1,5 +1,6 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getEvent } from "@/lib/cloudEvents";
 import { isUuid } from "@/lib/gallery";
@@ -23,6 +24,7 @@ export async function saveHomepageSettings(form: FormData): Promise<void> {
     bookUrl: String(form.get("bookUrl") ?? ""),
     links,
   });
+  revalidatePath("/account", "layout");
   redirect(`/account/homepage?done=${encodeURIComponent(r.error ?? "Saved.")}`);
 }
 
