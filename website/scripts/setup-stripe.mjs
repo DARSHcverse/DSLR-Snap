@@ -1,18 +1,26 @@
-// Creates DSLR Snap's Stripe setup and writes the ids into .env.local. Safe to run again: it reuses
+// Creates DSLR Snap's Stripe setup and writes the ids into an env file. Safe to run again: it reuses
 // what already exists (prices are found by lookup key, the webhook by URL).
-//   node scripts/setup-stripe.mjs            → test mode (refuses a live key)
-//   node scripts/setup-stripe.mjs --live     → live mode, once you're ready to take real payments
-// Never prints secret values; the webhook signing secret goes straight into .env.local.
-import { readFileSync, writeFileSync } from "node:fs";
+//   node scripts/setup-stripe.mjs            → test mode, reads and writes .env.local (refuses a live key)
+//   node scripts/setup-stripe.mjs --live     → live mode, reads and writes .env.stripe-live, so the
+//                                              test setup in .env.local is left alone. Copy its values
+//                                              into Vercel (Production) afterwards.
+// Never prints secret values; the webhook signing secret goes straight into the env file.
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import Stripe from "stripe";
 
-const ENV_FILE = new URL("../.env.local", import.meta.url);
 const SITE = process.env.SETUP_SITE_URL || "https://dslrsnap.com";
 const live = process.argv.includes("--live");
+const ENV_NAME = live ? ".env.stripe-live" : ".env.local";
+const ENV_FILE = new URL(`../${ENV_NAME}`, import.meta.url);
 
+if (live && !existsSync(ENV_FILE)) {
+  writeFileSync(ENV_FILE, "# Live Stripe values for Vercel (Production). Never commit this file.\nSTRIPE_SECRET_KEY=\nSTRIPE_AUTOMATIC_TAX=0\n", { mode: 0o600 });
+  console.log(`Created website/${ENV_NAME}. Paste your live secret key (sk_live_…) after STRIPE_SECRET_KEY= and run this again.`);
+  process.exit(0);
+}
 const envText = readFileSync(ENV_FILE, "utf8");
 const key = envText.match(/^STRIPE_SECRET_KEY=(.*)$/m)?.[1].trim();
-if (!key) throw new Error("STRIPE_SECRET_KEY is empty in website/.env.local");
+if (!key) throw new Error(`STRIPE_SECRET_KEY is empty in website/${ENV_NAME}`);
 const isLive = /^(sk|rk)_live_/.test(key);
 if (isLive && !live) throw new Error("That's a live key (real payments). Use a test key (sk_test_), or pass --live on purpose.");
 if (!isLive && live) throw new Error("--live was passed with a test key.");
@@ -98,7 +106,7 @@ const portalFeatures = {
 };
 const portalSettings = {
   business_profile: { headline: "Manage your DSLR Snap plan", privacy_policy_url: `${SITE}/privacy`, terms_of_service_url: `${SITE}/terms` },
-  default_return_url: `${SITE}/account`,
+  default_return_url: `${SITE}/account/billing`,
   features: portalFeatures,
 };
 const portals = await stripe.billingPortal.configurations.list({ is_default: true, limit: 1 });
@@ -122,7 +130,7 @@ if (hooks.length && currentSecret) {
   for (const h of hooks) await stripe.webhookEndpoints.del(h.id);
   const hook = await stripe.webhookEndpoints.create({ url, enabled_events: WEBHOOK_EVENTS, description: "DSLR Snap website" });
   out.STRIPE_WEBHOOK_SECRET = hook.secret;
-  console.log(`Webhook created for ${url} (${hook.id}); signing secret saved to .env.local`);
+  console.log(`Webhook created for ${url} (${hook.id}); signing secret saved to ${ENV_NAME}`);
 }
 
 let next = envText;
@@ -130,4 +138,4 @@ for (const [name, value] of Object.entries(out)) {
   next = next.match(new RegExp(`^${name}=.*$`, "m")) ? next.replace(new RegExp(`^${name}=.*$`, "m"), `${name}=${value}`) : `${next}\n${name}=${value}\n`;
 }
 writeFileSync(ENV_FILE, next, { mode: 0o600 });
-console.log(`\nSaved to website/.env.local: ${Object.keys(out).join(", ")}`);
+console.log(`\nSaved to website/${ENV_NAME}: ${Object.keys(out).join(", ")}`);

@@ -4,6 +4,7 @@ import { Header } from "@/components/Header";
 import { Icon, type IconName } from "@/components/Icon";
 import { PrintMock } from "@/components/PrintMock";
 import { PLANS } from "@/lib/plans";
+import { accountsEnabled } from "@/lib/config";
 import { earlyAccessHref, site, siteUrl, tradingName } from "@/lib/site";
 import { FAQ, FEATURES } from "@/lib/marketing";
 import { PricingCards } from "@/components/Pricing";
@@ -72,6 +73,7 @@ const jsonLd = [
     url: siteUrl,
     logo: `${siteUrl}/icon.svg`,
     email: site.supportEmail,
+    address: { "@type": "PostalAddress", addressLocality: site.business.locality, addressCountry: "GB" },
     sameAs: Object.values(site.social).filter(Boolean),
   },
 ];
@@ -112,10 +114,10 @@ export default function Home() {
               </p>
               <div className="mt-9 flex flex-col items-center gap-3 sm:flex-row sm:justify-center lg:justify-start">
                 <a
-                  href={earlyAccessHref}
+                  href={accountsEnabled ? "/signup" : earlyAccessHref}
                   className="inline-flex items-center gap-2 rounded-full bg-accent px-7 py-3.5 font-semibold text-accent-ink transition-transform active:scale-[0.97]"
                 >
-                  Get early access
+                  {accountsEnabled ? "Start free" : "Get early access"}
                   <Icon name="arrow" className="size-4" />
                 </a>
                 <a
@@ -327,16 +329,24 @@ export default function Home() {
               Get your booth ready for the next event
             </h2>
             <p className="mx-auto mt-4 max-w-xl text-lg text-pretty text-muted">
-              DSLR Snap is in early access for photo booth operators. Tell us about your setup and
-              we&apos;ll get you started.
+              {accountsEnabled
+                ? "Every feature is free to try with your own camera and printer, with no time limit. Choose a plan when you're ready to drop the watermark."
+                : "DSLR Snap is in early access for photo booth operators. Tell us about your setup and we'll get you started."}
             </p>
-            <a
-              href={earlyAccessHref}
-              className="mt-9 inline-flex items-center gap-2 rounded-full bg-accent px-8 py-4 text-lg font-semibold text-accent-ink transition-transform active:scale-[0.97]"
-            >
-              Get early access
-              <Icon name="arrow" className="size-5" />
-            </a>
+            <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
+              <a
+                href={accountsEnabled ? "/signup" : earlyAccessHref}
+                className="inline-flex items-center gap-2 rounded-full bg-accent px-8 py-4 text-lg font-semibold text-accent-ink transition-transform active:scale-[0.97]"
+              >
+                {accountsEnabled ? "Start free" : "Get early access"}
+                <Icon name="arrow" className="size-5" />
+              </a>
+              {accountsEnabled && (
+                <a href="/download" className="rounded-full border border-line bg-surface-2 px-8 py-4 text-lg font-semibold transition-colors hover:border-muted">
+                  Download for Windows
+                </a>
+              )}
+            </div>
           </div>
         </section>
       </main>

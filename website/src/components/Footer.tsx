@@ -73,7 +73,7 @@ export function Footer() {
       </div>
       <div className="border-t border-line/60">
         <p className="mx-auto max-w-6xl px-4 py-6 text-xs text-muted sm:px-6">
-          © <CopyrightYear /> {tradingName}
+          © <CopyrightYear /> {tradingName} · {site.business.locality}, {site.business.country}
           {site.business.companyNumber ? ` · Company no. ${site.business.companyNumber}` : ""}
           {site.business.vatNumber ? ` · VAT ${site.business.vatNumber}` : ""}. Canon, Nikon, GoPro, DNP, Microsoft, Windows and Surface are trademarks of their respective owners.
         </p>

@@ -20,12 +20,12 @@ Set up in test mode on 28 October 2026 and checked end to end (sign-up, Google, 
 - [ ] **Google Search Console**: domain verified by DNS record; submit `https://dslrsnap.com/sitemap.xml`
 - [x] **End-to-end test**: sign up, Google, pay with the test card, sign the app in
 - [ ] **Still to test**: QR gallery and host gallery from a real session, Add a computer, cancel in the billing portal, Delete account in the browser
-- [ ] **Stripe live mode** (launch day): `node scripts/setup-stripe.mjs --live` with a live secret key, then put the live values in Vercel
+- [ ] **Stripe live mode** (launch day): paste the live secret key into `website/.env.stripe-live`, run `node scripts/setup-stripe.mjs --live`, then copy that file's values into Vercel (Production)
 
 ## 2. Business and legal (you)
 
-- [ ] **Business details** in `website/src/lib/site.ts` → `business`: legal name, company number, VAT number (when registered), address; confirm country and governing law. They fill the footer, Terms and Privacy automatically
-- [ ] **Solicitor review** of the Terms, Privacy and Refund pages. They're drafted to match how the product really handles data, but they aren't legal advice. Also confirm the refund promise (14 days on a first yearly payment)
+- [x] **Business details**: address, phone, England and Wales law (30 Oct). Still to add in `website/src/lib/site.ts` → `business`: `owner` (your full legal name, as a sole trader), `icoNumber` once registered, and company/VAT numbers if you incorporate
+- [ ] **Solicitor review** (optional, recommended once trading) of the Terms, Privacy and Refund pages, rewritten on 30 Oct to standard UK SaaS terms (consumer rights, Article 28 processing terms, liability split, indemnity). They're drafted to match how the product really handles data, but they aren't legal advice. Also confirm the refund promise (14 days on a first yearly payment)
 - [ ] **ICO registration** (UK data protection fee). Required for businesses handling personal data, and the cloud gallery stores guests' photos
 - [ ] **Make the GitHub repo private** (Settings → Danger Zone → Change visibility). Nikon's and Canon's SDK terms treat their APIs and documentation as confidential, and it's also your product's source code
 - [ ] **Canon EDSDK redistribution**: confirm the licence lets you ship EDSDK.dll and EdsImage.dll inside a paid installer
