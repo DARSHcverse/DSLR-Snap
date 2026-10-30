@@ -65,3 +65,14 @@ section[id] {
 .slideshow-in {
   animation: slideshow-in 1.2s ease both;
 }
+
+/* Sign-in screen: columns of prints drift slowly in opposite directions. */
+@keyframes auth-drift {
+  from { transform: translateY(0); }
+  to { transform: translateY(-12%); }
+}
+.auth-drift-up { animation: auth-drift 40s ease-in-out infinite alternate; }
+.auth-drift-down { animation: auth-drift 46s ease-in-out infinite alternate-reverse; }
+@media (prefers-reduced-motion: reduce) {
+  .auth-drift-up, .auth-drift-down { animation: none; }
+}

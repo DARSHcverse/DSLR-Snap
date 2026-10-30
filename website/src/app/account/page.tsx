@@ -1,207 +1,114 @@
+import { BarChart3, CalendarClock, CreditCard, Download, ExternalLink, Globe, Images, LifeBuoy, Monitor, Plus, Sparkles } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
-import { Icon } from "@/components/Icon";
-import { Card, NotReady, PageShell } from "@/components/PageShell";
-import { primaryButton, secondaryButton } from "@/components/ui";
-import { DELETE_CONFIRMATION, devicesFor, entitlementFor } from "@/lib/account";
+import { BarChart } from "@/components/admin/BarChart";
+import { EventCard, eventDay, isLive } from "@/components/dash/EventCard";
+import { ActionRow, btn, btnPrimary, EmptyState, Meter, PageHeader, Panel, Pill, StatCard } from "@/components/dash/ui";
+import { devicesFor } from "@/lib/account";
 import { deviceLimit } from "@/lib/appAuth";
-import { accountsEnabled, stripeConfig } from "@/lib/config";
-import { EXTRA_COMPUTER, MAX_DEVICES, OFFLINE_GRACE_DAYS, PLAN_INCLUDES, PLANS } from "@/lib/plans";
-import { getCurrentUser } from "@/lib/supabase/server";
-import { signOut } from "../(auth)/actions";
-import { changeExtraComputers, deleteMyAccount, openBillingPortal, removeDevice, setUpdateEmails, startCheckout } from "./actions";
-import { updatesOn } from "@/lib/email/preferences";
+import { listEvents } from "@/lib/cloudEvents";
+import { appUrl } from "@/lib/config";
+import { planLabel, requireDashboardUser } from "@/lib/dashboard";
+import { statsForUser } from "@/lib/galleryStats";
 
-export const metadata: Metadata = { title: "Your account", robots: { index: false } };
+export const metadata: Metadata = { title: "Overview" };
 
-const date = (ms: number | string) => new Date(ms).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
-
-export default function AccountPage({ searchParams }: PageProps<"/account">) {
+export default function OverviewPage({ searchParams }: PageProps<"/account">) {
   return (
-    <PageShell title="Your account" wide>
-      {accountsEnabled ? (
-        <Suspense fallback={<p className="text-muted">Loading your account…</p>}>
-          <Account searchParams={searchParams} />
-        </Suspense>
-      ) : (
-        <NotReady />
-      )}
-    </PageShell>
+    <Suspense>
+      <Overview searchParams={searchParams} />
+    </Suspense>
   );
 }
 
-async function Account({ searchParams }: Pick<PageProps<"/account">, "searchParams">) {
-  const user = await getCurrentUser();
-  if (!user) redirect("/login?next=/account");
+function greeting(): string {
+  const h = Number(new Date().toLocaleString("en-GB", { hour: "numeric", hour12: false, timeZone: "Europe/London" }));
+  return h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening";
+}
+
+async function Overview({ searchParams }: Pick<PageProps<"/account">, "searchParams">) {
+  const user = await requireDashboardUser("/account");
   const sp = await searchParams;
-  const [ent, devices, updates] = await Promise.all([entitlementFor(user.id), devicesFor(user.id), updatesOn(user.id)]);
-  const chosen = sp.plan === "monthly" || sp.plan === "yearly" ? sp.plan : "yearly";
-  const limit = deviceLimit(ent);
-  const canBuyExtra = ent.active && ent.plan && !!stripeConfig?.extraComputer[ent.plan];
+  // Old links (emails, the app) still point at /account for the plan; send them to its new page.
+  if (sp.checkout || sp.plan || sp.error) {
+    redirect(`/account/billing?${new URLSearchParams(Object.entries(sp).flatMap(([k, v]) => (typeof v === "string" ? [[k, v]] : [])))}`);
+  }
+  const [events, devices, stats] = await Promise.all([listEvents(user.id), devicesFor(user.id), statsForUser(user.id, 30)]);
+  const limit = deviceLimit(user.ent);
+  const live = events.filter((e) => isLive(e));
+  const sessions = events.reduce((n, e) => n + e.sessions, 0);
+  const recent = [...live, ...events.filter((e) => !live.includes(e))].slice(0, 4);
+  const homepageUrl = user.homepage?.enabled ? `${appUrl}/b/${user.homepage.slug}` : null;
 
   return (
-    <div className="flex flex-col gap-6">
-      <p className="text-muted">Signed in as {user.email}</p>
-
-      <Link href="/account/events" className="flex items-center justify-between gap-4 rounded-card border border-line bg-surface p-5 transition-colors hover:border-accent">
-        <span>
-          <span className="block text-lg font-semibold">Your events</span>
-          <span className="block text-sm text-muted">Every event in the cloud: galleries, sharing, privacy and download all</span>
-        </span>
-        <span className="text-xl text-accent" aria-hidden>→</span>
-      </Link>
-      <Link href="/account/homepage" className="-mt-3 self-start text-sm text-muted hover:text-fg">Your public homepage, with your galleries and a Book now button →</Link>
-
-      {sp.checkout === "done" && !ent.active && (
-        <p className="rounded-xl border border-ok/40 bg-ok/10 px-4 py-3">Payment received. Your plan shows here within a minute; refresh if it doesn&apos;t.</p>
-      )}
-      {sp.error === "billing" && <p className="rounded-xl border border-bad/40 bg-bad/10 px-4 py-3">Payments aren&apos;t switched on yet. Email us to subscribe.</p>}
-      {sp.error === "computers" && <p className="rounded-xl border border-bad/40 bg-bad/10 px-4 py-3">Couldn&apos;t change your computers. Try again, or email us.</p>}
-      {sp.error === "remove-computer-first" && (
-        <p className="rounded-xl border border-bad/40 bg-bad/10 px-4 py-3">All your computer slots are in use. Remove a computer below first, then remove the extra slot.</p>
-      )}
-
-      <Card>
-        <h2 className="text-lg font-semibold">Plan</h2>
-        {ent.complimentary ? (
-          <p className="mt-2">
-            <span className="font-semibold">Free access</span>
-            <span className="text-muted">
-              {" · "}
-              {ent.periodEnd ? `until ${date(ent.periodEnd)}` : "no end date"} · every feature, no watermark
-            </span>
-          </p>
-        ) : ent.active ? (
+    <>
+      <PageHeader
+        title={`${greeting()}, ${user.displayName}`}
+        intro="Your events, galleries and booths in one place."
+        actions={
           <>
-            <p className="mt-2">
-              <span className="font-semibold">{ent.plan === "monthly" ? "Monthly" : "Yearly"} plan</span>
-              <span className="text-muted">
-                {" · "}
-                {ent.cancelAtPeriodEnd ? "ends" : "renews"} on {date(ent.periodEnd!)}
-              </span>
-            </p>
-            <form action={openBillingPortal} className="mt-5">
-              <button className={secondaryButton}>Manage billing, invoices or cancel</button>
-            </form>
+            {homepageUrl && <a href={homepageUrl} target="_blank" rel="noopener" className={btn}><ExternalLink className="size-4" /> View homepage</a>}
+            <Link href="/account/events" className={btnPrimary}><Images className="size-4" /> All events</Link>
           </>
-        ) : (
-          <>
-            <p className="mt-2 text-muted">You&apos;re on the free trial: everything works, and photos carry a small watermark.</p>
-            <div className="mt-5 grid gap-3 sm:grid-cols-2">
-              {PLANS.map((plan) => (
-                <form key={plan.id} action={startCheckout} className={`rounded-xl border p-5 ${plan.id === chosen ? "border-accent bg-surface-2" : "border-line"}`}>
-                  <input type="hidden" name="plan" value={plan.id} />
-                  <p className="font-semibold">{plan.name}</p>
-                  <p className="mt-1">
-                    <span className="font-display text-3xl font-bold">{plan.price}</span>
-                    <span className="text-muted"> USD{plan.period}</span>
-                  </p>
-                  <p className="mt-1 text-sm text-muted">{plan.note}</p>
-                  <button disabled={!stripeConfig} className={`${primaryButton} mt-4`}>Choose {plan.name.toLowerCase()}</button>
-                </form>
-              ))}
-            </div>
-            <ul className="mt-5 grid gap-2 text-sm sm:grid-cols-2">
-              {PLAN_INCLUDES.map((item) => (
-                <li key={item} className="flex items-center gap-2">
-                  <Icon name="check" className="size-4 shrink-0 text-ok" />
-                  {item}
-                </li>
-              ))}
-            </ul>
-          </>
-        )}
-      </Card>
+        }
+      />
 
-      <Card>
-        <h2 className="text-lg font-semibold">
-          Booth computers <span className="text-muted">({devices.length} of {limit})</span>
-        </h2>
-        {devices.length ? (
-          <ul className="mt-3 divide-y divide-line">
-            {devices.map((d) => (
-              <li key={d.id} className="flex items-center justify-between gap-4 py-3">
-                <div>
-                  <p className="font-medium">{d.name}</p>
-                  <p className="text-sm text-muted">Last online {d.last_seen_at ? date(d.last_seen_at) : "never"}</p>
-                </div>
-                <form action={removeDevice}>
-                  <input type="hidden" name="id" value={d.id} />
-                  <button className="text-sm text-bad hover:underline">Remove</button>
-                </form>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="mt-2 text-muted">None yet. Open DSLR Snap on your booth computer and press Sign in under Account.</p>
-        )}
-        {canBuyExtra && (
-          <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-line pt-4">
-            <p className="mr-auto text-sm text-muted">
-              {MAX_DEVICES} included{ent.extraDevices ? ` + ${ent.extraDevices} extra` : ""} · extra computers {EXTRA_COMPUTER[ent.plan!]} each
-            </p>
-            {ent.extraDevices > 0 && (
-              <form action={changeExtraComputers}>
-                <input type="hidden" name="delta" value="-1" />
-                <button className="text-sm text-muted hover:text-fg">Remove an extra computer</button>
-              </form>
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
+        <StatCard icon={Images} label="Events in the cloud" value={events.length} sub={live.length ? <span className="text-ok">{live.length} happening now</span> : "None happening now"} href="/account/events" />
+        <StatCard icon={Sparkles} tone="violet" label="Guest sessions" value={sessions.toLocaleString("en-GB")} sub="Across every event" href="/account/events" />
+        <StatCard icon={BarChart3} tone="blue" label="Gallery views (30 days)" value={stats.views.toLocaleString("en-GB")} sub={`${stats.downloads.toLocaleString("en-GB")} downloads`} />
+        <StatCard icon={Monitor} tone="green" label="Booth computers" value={`${devices.length} of ${limit}`} href="/account/computers">
+          <Meter value={devices.length} max={limit} />
+        </StatCard>
+      </div>
+
+      <div className="mt-6 grid grid-cols-1 items-start gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
+        <div className="flex min-w-0 flex-col gap-6">
+          <Panel title="Recent events" action={events.length > 0 && <Link href="/account/events" className="text-sm font-semibold text-accent hover:underline">View all</Link>}>
+            {recent.length ? (
+              <ul className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+                {recent.map((e) => <li key={e.id}><EventCard e={e} live={live.includes(e)} /></li>)}
+              </ul>
+            ) : (
+              <EmptyState icon={Images} title="No events yet" action={<a href="/download" className={btnPrimary}><Download className="size-4" /> Download DSLR Snap</a>}>
+                Turn on QR downloads for an event in DSLR Snap. Photos upload as guests use the booth, and the event appears here.
+              </EmptyState>
             )}
-            <form action={changeExtraComputers}>
-              <input type="hidden" name="delta" value="1" />
-              <button className={secondaryButton}>Add a computer</button>
-            </form>
-          </div>
-        )}
-        <p className="mt-4 text-sm text-muted">
-          Each booth checks in when it&apos;s online and keeps working offline for {OFFLINE_GRACE_DAYS} days. Removing a computer frees its slot.
-        </p>
-      </Card>
-
-      <Card>
-        <h2 id="emails" className="text-lg font-semibold">Emails</h2>
-        <p className="mt-2 text-muted">
-          {updates ? "We'll email you when a new version of DSLR Snap is out." : "You won't get emails about new versions."} Emails about your account,
-          payments and security always arrive.
-        </p>
-        <form action={setUpdateEmails} className="mt-4">
-          <input type="hidden" name="on" value={updates ? "0" : "1"} />
-          <button className={secondaryButton}>{updates ? "Stop update emails" : "Email me about updates"}</button>
-        </form>
-      </Card>
-
-      <Card>
-        <h2 className="text-lg font-semibold">Need help?</h2>
-        <p className="mt-2 text-muted">Chat with us about setup, your booth or your plan. We email you when we reply.</p>
-        <Link href="/account/support" className={`${secondaryButton} mt-4`}>Chat with us</Link>
-      </Card>
-
-      <form action={signOut}>
-        <button className="text-sm text-muted hover:text-fg">Sign out of the website</button>
-      </form>
-
-      <details id="delete" className="rounded-card border border-bad/30 p-6" open={sp.error === "confirm-delete" || sp.error === "delete"}>
-        <summary className="cursor-pointer font-semibold text-bad">Delete your account</summary>
-        <div className="mt-3 flex flex-col gap-3 text-sm text-muted">
-          <p>This can&apos;t be undone. Straight away:</p>
-          <ul className="list-disc pl-5">
-            {ent.active && <li>Your plan ends now, with no refund for the time left. To stop renewing but keep using it until {ent.periodEnd ? date(ent.periodEnd) : "the end of the period"}, cancel under Manage billing instead.</li>}
-            <li>Every booth computer is signed out and drops to the free trial.</li>
-            <li>Every cloud gallery, QR link and host page stops working, and their photos and videos are deleted.</li>
-          </ul>
-          <p>Photos on your booth computers aren&apos;t touched. Stripe keeps your invoices, as the law requires.</p>
-          {sp.error === "confirm-delete" && <p className="text-bad">Type {DELETE_CONFIRMATION} in capitals to confirm.</p>}
-          {sp.error === "delete" && <p className="text-bad">Something went wrong and nothing was deleted. Try again, or email us.</p>}
-          <form action={deleteMyAccount} className="flex flex-wrap items-center gap-3">
-            <label className="flex flex-col gap-1">
-              <span>Type {DELETE_CONFIRMATION} to confirm</span>
-              <input name="confirm" autoComplete="off" required className="rounded-xl border border-line bg-bg px-3 py-2 text-fg" />
-            </label>
-            <button className="self-end rounded-full border border-bad/60 px-5 py-2.5 font-semibold text-bad hover:bg-bad/10">Delete my account</button>
-          </form>
+          </Panel>
+          <BarChart
+            title="Gallery views per day (last 30 days)"
+            bars={stats.days.map((d) => ({ label: new Date(`${d.day}T12:00:00Z`).toLocaleDateString("en-GB", { day: "numeric", month: "short" }), value: d.views, display: `${d.views} views` }))}
+            empty="No visits yet. Views appear here once you share a gallery."
+          />
         </div>
-      </details>
-    </div>
+
+        <div className="flex flex-col gap-6">
+          <Panel title="Your plan" action={<Pill tone={user.ent.active ? "ok" : "amber"}>{user.ent.active ? "Active" : "Trial"}</Pill>}>
+            <p className="font-display text-xl font-bold">{planLabel(user)}</p>
+            <p className="mt-1 flex items-center gap-1.5 text-sm text-muted">
+              <CalendarClock className="size-4" aria-hidden />
+              {user.ent.active
+                ? user.ent.periodEnd
+                  ? `${user.ent.cancelAtPeriodEnd ? "Ends" : "Renews"} on ${eventDay(user.ent.periodEnd)}`
+                  : "No end date"
+                : "Everything works, with a small watermark"}
+            </p>
+            <Link href="/account/billing" className={`${user.ent.active ? btn : btnPrimary} mt-4 w-full`}>
+              <CreditCard className="size-4" /> {user.ent.active ? "Manage plan" : "Choose a plan"}
+            </Link>
+          </Panel>
+
+          <div className="flex flex-col gap-3">
+            <h2 className="px-1 font-semibold">Quick actions</h2>
+            <ActionRow icon={Globe} tone="violet" title={user.homepage ? "Edit your homepage" : "Set up your homepage"} hint="Your galleries and a Book now button" href="/account/homepage" />
+            <ActionRow icon={Plus} tone="green" title="Add a booth computer" hint="Sign in from DSLR Snap on the booth" href="/account/computers" />
+            <ActionRow icon={Download} tone="blue" title="Download DSLR Snap" hint="For Windows laptops, Surface and touch screens" href="/download" external />
+            <ActionRow icon={LifeBuoy} title="Help & chat" hint={user.unread ? `${user.unread} new ${user.unread === 1 ? "reply" : "replies"}` : "We usually reply within a day"} href="/account/support" />
+          </div>
+        </div>
+      </div>
+    </>
   );
 }

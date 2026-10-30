@@ -64,3 +64,32 @@ export async function statsForEvent(eventId: string, days = 30): Promise<EventSt
     days: series,
   };
 }
+
+/** Every event of an account together, for the dashboard overview: the last `days` days per day. */
+export async function statsForUser(userId: string, days = 30): Promise<{ views: number; downloads: number; days: { day: string; views: number }[] }> {
+  const db = supabaseAdmin();
+  const { data: events } = await db.from("gallery_events").select("id").eq("user_id", userId);
+  const ids = (events ?? []).map((e) => e.id);
+  const today = new Date(new Date().toLocaleDateString("en-CA", { timeZone: "Europe/London" }) + "T12:00:00Z");
+  const first = new Date(today.getTime() - (days - 1) * 86_400_000).toISOString().slice(0, 10);
+  const { data: rows } = ids.length
+    ? await db.from("gallery_stats").select("day, views, session_views, downloads, zips").in("event_id", ids).gte("day", first)
+    : { data: [] };
+  const byDay = new Map<string, number>();
+  let views = 0;
+  let downloads = 0;
+  for (const r of rows ?? []) {
+    const v = (r.views as number) + (r.session_views as number);
+    byDay.set(r.day as string, (byDay.get(r.day as string) ?? 0) + v);
+    views += v;
+    downloads += (r.downloads as number) + (r.zips as number);
+  }
+  return {
+    views,
+    downloads,
+    days: Array.from({ length: days }, (_, i) => {
+      const d = new Date(today.getTime() - (days - 1 - i) * 86_400_000).toISOString().slice(0, 10);
+      return { day: d, views: byDay.get(d) ?? 0 };
+    }),
+  };
+}

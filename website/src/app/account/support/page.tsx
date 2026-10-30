@@ -1,14 +1,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { LiveRefresh } from "@/components/chat/LiveRefresh";
 import { Messages } from "@/components/chat/Messages";
 import { ReplyBox } from "@/components/chat/ReplyBox";
-import { Card, NotReady, PageShell } from "@/components/PageShell";
-import { accountsEnabled } from "@/lib/config";
+import { MessageSquarePlus } from "lucide-react";
+import { Card } from "@/components/PageShell";
+import { PageHeader } from "@/components/dash/ui";
+import { requireDashboardUser } from "@/lib/dashboard";
 import { threadForUser, threadsForUser } from "@/lib/support";
-import { getCurrentUser } from "@/lib/supabase/server";
 import { sendReply } from "./actions";
 import { NewConversation } from "./NewConversation";
 
@@ -16,27 +16,23 @@ export const metadata: Metadata = { title: "Chat with support", robots: { index:
 
 export default function SupportChatPage({ searchParams }: PageProps<"/account/support">) {
   return (
-    <PageShell title="Chat with us" intro="Ask anything about setting up, your booth or your plan. We usually reply within one working day, and we email you when we do." wide>
-      {accountsEnabled ? (
-        <Suspense fallback={<p className="text-muted">Loading…</p>}>
-          <Chat searchParams={searchParams} />
-        </Suspense>
-      ) : (
-        <NotReady />
-      )}
-    </PageShell>
+    <>
+      <PageHeader title="Help & chat" intro="Ask anything about setting up, your booth or your plan. We usually reply within one working day, and we email you when we do." />
+      <Suspense>
+        <Chat searchParams={searchParams} />
+      </Suspense>
+    </>
   );
 }
 
 async function Chat({ searchParams }: Pick<PageProps<"/account/support">, "searchParams">) {
-  const user = await getCurrentUser();
-  if (!user) redirect("/login?next=/account/support");
-  const { t } = await searchParams;
+  const user = await requireDashboardUser("/account/support");
+  const { t, topic } = await searchParams;
   const threads = await threadsForUser(user.id);
   const open = typeof t === "string" ? await threadForUser(user.id, t) : null;
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex max-w-4xl flex-col gap-5">
       {threads.length > 0 && (
         <nav className="flex flex-wrap gap-2">
           {threads.map((th) => (
@@ -69,8 +65,8 @@ async function Chat({ searchParams }: Pick<PageProps<"/account/support">, "searc
         </Card>
       ) : (
         <Card>
-          <h2 className="mb-4 font-semibold">New conversation</h2>
-          <NewConversation />
+          <h2 className="mb-4 flex items-center gap-2 font-semibold"><MessageSquarePlus className="size-5 text-accent" aria-hidden /> {topic === "feature" ? "Request a feature" : "New conversation"}</h2>
+          <NewConversation subject={topic === "feature" ? "Feature request" : undefined} />
         </Card>
       )}
       <p className="text-sm text-muted">

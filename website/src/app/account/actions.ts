@@ -1,5 +1,6 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { after } from "next/server";
 import { appUrl, stripeConfig } from "@/lib/config";
@@ -22,7 +23,7 @@ async function requireUser() {
 export async function startCheckout(form: FormData): Promise<void> {
   const user = await requireUser();
   const plan = form.get("plan") as PlanId;
-  if (!stripeConfig || (plan !== "monthly" && plan !== "yearly")) redirect("/account?error=billing");
+  if (!stripeConfig || (plan !== "monthly" && plan !== "yearly")) redirect("/account/billing?error=billing");
   if ((await entitlementFor(user.id)).active) return openBillingPortal();
 
   const session = await stripe().checkout.sessions.create({
@@ -36,17 +37,17 @@ export async function startCheckout(form: FormData): Promise<void> {
     adaptive_pricing: { enabled: false },
     automatic_tax: { enabled: stripeConfig.automaticTax },
     ...(stripeConfig.automaticTax ? { customer_update: { address: "auto" as const } } : {}),
-    success_url: `${appUrl}/account?checkout=done`,
-    cancel_url: `${appUrl}/account`,
+    success_url: `${appUrl}/account/billing?checkout=done`,
+    cancel_url: `${appUrl}/account/billing?tab=plan`,
   });
-  redirect(session.url ?? "/account?error=billing");
+  redirect(session.url ?? "/account/billing?error=billing");
 }
 
 /** Stripe's hosted page for card changes, invoices, switching plan and cancelling. */
 export async function openBillingPortal(): Promise<void> {
   const user = await requireUser();
-  if (!stripeConfig) redirect("/account?error=billing");
-  const portal = await stripe().billingPortal.sessions.create({ customer: await customerFor(user), return_url: `${appUrl}/account` });
+  if (!stripeConfig) redirect("/account/billing?error=billing");
+  const portal = await stripe().billingPortal.sessions.create({ customer: await customerFor(user), return_url: `${appUrl}/account/billing` });
   redirect(portal.url);
 }
 
@@ -59,7 +60,7 @@ export async function removeDevice(form: FormData): Promise<void> {
     .update({ revoked_at: new Date().toISOString(), refresh_token_hash: null })
     .eq("id", id)
     .eq("user_id", user.id); // only the owner's own computers
-  redirect("/account");
+  redirect("/account/computers");
 }
 
 /** Adds or removes one paid extra booth computer (+1 / -1). */
@@ -67,9 +68,9 @@ export async function changeExtraComputers(form: FormData): Promise<void> {
   const user = await requireUser();
   const delta = form.get("delta") === "-1" ? -1 : 1;
   const ent = await entitlementFor(user.id);
-  if (!ent.active || !ent.plan) redirect("/account");
+  if (!ent.active || !ent.plan) redirect("/account/billing");
   // Removing a paid slot that a signed-in computer is using would leave the account over its limit.
-  if (delta < 0 && (await devicesFor(user.id)).length > deviceLimit(ent) - 1) redirect("/account?error=remove-computer-first");
+  if (delta < 0 && (await devicesFor(user.id)).length > deviceLimit(ent) - 1) redirect("/account/billing?tab=plan&error=remove-computer-first");
 
   const { data } = await supabaseAdmin()
     .from("subscriptions")
@@ -79,26 +80,26 @@ export async function changeExtraComputers(form: FormData): Promise<void> {
     .order("current_period_end", { ascending: false })
     .limit(1)
     .maybeSingle();
-  if (!data) redirect("/account");
+  if (!data) redirect("/account/billing");
   try {
     await setExtraComputers(data.id, ent.plan, ent.extraDevices + delta);
   } catch {
-    redirect("/account?error=computers");
+    redirect("/account/billing?tab=plan&error=computers");
   }
   const extra = ent.extraDevices + delta;
   after(() => emailExtraComputers(user.id, { extra, total: MAX_DEVICES + extra, priceEach: EXTRA_COMPUTER[ent.plan!] }));
-  redirect("/account");
+  redirect("/account/billing?tab=plan");
 }
 
 /** Deletes the account for good after the person types DELETE. See deleteAccount for the order. */
 export async function deleteMyAccount(form: FormData): Promise<void> {
   const user = await requireUser();
-  if (String(form.get("confirm") ?? "").trim().toUpperCase() !== DELETE_CONFIRMATION) redirect("/account?error=confirm-delete#delete");
+  if (String(form.get("confirm") ?? "").trim().toUpperCase() !== DELETE_CONFIRMATION) redirect("/account/settings?error=confirm-delete#delete");
   try {
     await deleteAccount(user.id);
   } catch (e) {
     console.error(`delete account ${user.id}:`, e);
-    redirect("/account?error=delete#delete");
+    redirect("/account/settings?error=delete#delete");
   }
   if (user.email) after(() => emailAccountDeleted(user.email));
   await (await supabaseForRequest()).auth.signOut().catch(() => {}); // the login is gone; just clear the cookie
@@ -109,5 +110,14 @@ export async function deleteMyAccount(form: FormData): Promise<void> {
 export async function setUpdateEmails(form: FormData): Promise<void> {
   const user = await requireUser();
   await setUpdatesForUser(user.id, form.get("on") === "1");
-  redirect("/account#emails");
+  redirect("/account/settings?done=emails#emails");
+}
+
+/** The business name the dashboard, emails and the public homepage use. */
+export async function saveBusinessName(form: FormData): Promise<void> {
+  const user = await requireUser();
+  const name = String(form.get("name") ?? "").trim().slice(0, 80) || null;
+  await supabaseAdmin().from("customer_profiles").upsert({ user_id: user.id, business_name: name });
+  revalidatePath("/account", "layout");
+  redirect("/account/settings?done=profile");
 }

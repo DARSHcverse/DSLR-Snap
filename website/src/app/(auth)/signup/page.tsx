@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import { pageMetadata } from "@/lib/seo";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
-import { NotReady, PageShell } from "@/components/PageShell";
+import { AuthShell } from "@/components/AuthShell";
+import { NotReady } from "@/components/PageShell";
 import { safeNext } from "@/lib/appAuth";
 import { accountsEnabled, googleSignInEnabled } from "@/lib/config";
 import { getCurrentUser } from "@/lib/supabase/server";
@@ -17,7 +18,7 @@ export const metadata: Metadata = pageMetadata({
 
 export default function SignupPage({ searchParams }: PageProps<"/signup">) {
   return (
-    <PageShell
+    <AuthShell
       title="Create your account"
       intro="Try DSLR Snap free: everything works, with a small watermark on photos until you choose a plan."
     >
@@ -28,7 +29,7 @@ export default function SignupPage({ searchParams }: PageProps<"/signup">) {
       ) : (
         <NotReady />
       )}
-    </PageShell>
+    </AuthShell>
   );
 }
 

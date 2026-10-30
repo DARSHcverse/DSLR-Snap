@@ -10,13 +10,13 @@ const SESSION_COOKIE = /(?:^|;\s*)sb-[^=;]+-auth-token(?:\.\d+)?=/;
 const subscribe = () => () => {};
 const signedIn = () => SESSION_COOKIE.test(document.cookie);
 
-/** "Sign in · Start free" for visitors, "Your account" once signed in. */
+/** "Sign in · Start free" for visitors, "Dashboard" once signed in. */
 export function AccountLinks() {
   const known = useSyncExternalStore(subscribe, signedIn, () => false);
   if (known) {
     return (
       <Link href="/account" className="rounded-full border border-line px-4 py-2 text-sm font-semibold whitespace-nowrap transition-colors hover:bg-surface-2">
-        Your account
+        Dashboard
       </Link>
     );
   }

@@ -49,7 +49,7 @@ async function Approve({ searchParams }: Pick<PageProps<"/app/sign-in">, "search
       </p>
       {!ent.active && (
         <p className="mt-2 text-sm text-muted">
-          You don&apos;t have a plan yet, so the booth stays in trial mode until you <a href="/account" className="text-accent">choose one</a>.
+          You don&apos;t have a plan yet, so the booth stays in trial mode until you <a href="/account/billing?tab=plan" className="text-accent">choose one</a>.
         </p>
       )}
       <ApproveSignIn challenge={challenge} state={state} />

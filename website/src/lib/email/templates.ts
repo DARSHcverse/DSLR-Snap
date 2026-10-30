@@ -115,7 +115,7 @@ export const paymentFailed = (o: { amountCents: number; nextTry?: string | numbe
     blocks: [
       { p: `We couldn't take your payment of **${usd(o.amountCents)}**. This usually means the card expired or the bank declined it.` },
       { p: o.nextTry ? `We'll try again on ${date(o.nextTry)}. Updating your card now avoids any interruption.` : "Update your card to keep your plan running." },
-      { button: "Update payment method", url: `${base}/account` },
+      { button: "Update payment method", url: `${base}/account/billing` },
       { note: "Your booths keep working offline for up to 14 days, so nothing stops mid-event." },
     ],
   });
@@ -129,7 +129,7 @@ export const renewalReminder = (o: { amountCents: number; renewsAt: string | num
       { p: "Just a heads-up so there are no surprises." },
       { facts: [["Renews on", date(o.renewsAt)], ["Amount", usd(o.amountCents)]] },
       { p: "Nothing to do if you'd like to carry on. To change plan or cancel, use Manage billing on your account page." },
-      { button: "Manage billing", url: `${base}/account` },
+      { button: "Manage billing", url: `${base}/account/billing` },
     ],
   });
 
@@ -141,7 +141,7 @@ export const cancellationScheduled = (o: { endsAt: string | number }): RenderedE
     blocks: [
       { p: `Your plan won't renew. You keep everything until **${date(o.endsAt)}**, then your booths switch to the free trial with a watermark. Your photos and settings stay on your computers.` },
       { p: "Changed your mind? You can restart any time before then, and nothing is lost." },
-      { button: "Keep my plan", url: `${base}/account` },
+      { button: "Keep my plan", url: `${base}/account/billing` },
       { note: `We'd love to know why you're leaving. Just reply to this email.` },
     ],
   });
@@ -154,7 +154,7 @@ export const planEnded = (): RenderedEmail =>
     blocks: [
       { p: "Your booths now run on the free trial: everything still works, with a small watermark on photos." },
       { p: "Your events, templates and photos are safe on your computers. Pick a plan whenever you're ready." },
-      { button: "Choose a plan", url: `${base}/account` },
+      { button: "Choose a plan", url: `${base}/account/billing?tab=plan` },
     ],
   });
 
@@ -166,7 +166,7 @@ export const extraComputersChanged = (o: { extra: number; total: number; priceEa
     blocks: [
       { facts: [["Included", "2"], ["Extra", `${o.extra} × ${o.priceEach}`], ["Total", String(o.total)]] },
       { p: "Stripe adjusts your next invoice for the change." },
-      { button: "See your computers", url: `${base}/account` },
+      { button: "See your computers", url: `${base}/account/computers` },
     ],
   });
 
@@ -179,7 +179,7 @@ export const newDeviceSignedIn = (o: { device: string; at: string | number }): R
       { facts: [["Computer", o.device], ["When", new Date(o.at).toLocaleString("en-GB", { dateStyle: "long", timeStyle: "short", timeZone: "Europe/London" })]] },
       { p: "If this was you, there's nothing to do." },
       { p: "**Not you?** Remove the computer on your account page and change your password." },
-      { button: "Review computers", url: `${base}/account` },
+      { button: "Review computers", url: `${base}/account/computers` },
     ],
   });
 

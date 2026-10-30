@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { NotReady, PageShell } from "@/components/PageShell";
+import { AuthShell } from "@/components/AuthShell";
+import { NotReady } from "@/components/PageShell";
 import { accountsEnabled } from "@/lib/config";
 import { ResetForm } from "./ResetForm";
 
@@ -8,7 +9,7 @@ export const metadata: Metadata = { title: "Reset password", robots: { index: fa
 
 export default function ResetPage({ searchParams }: PageProps<"/reset">) {
   return (
-    <PageShell title="Reset your password">
+    <AuthShell title="Reset your password" intro="We'll email you a link to choose a new one.">
       {accountsEnabled ? (
         <Suspense>
           <Reset searchParams={searchParams} />
@@ -16,7 +17,7 @@ export default function ResetPage({ searchParams }: PageProps<"/reset">) {
       ) : (
         <NotReady />
       )}
-    </PageShell>
+    </AuthShell>
   );
 }
 
