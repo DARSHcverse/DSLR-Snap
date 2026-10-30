@@ -33,6 +33,8 @@ export function AuthShell({ title, intro, children }: { title: string; intro?: R
               {[0, 1, 2].map((row) => (
                 <PrintMock
                   key={row}
+                  session={col * 3 + row}
+                  sizes="200px"
                   layout={(["strip", "grid", "single", "hero"] as const)[(col + row) % 4]}
                   names={["Priya & Tom", "Sam turns 30", "Ava & Leo", "Office party"][(col * 3 + row) % 4]}
                   date={["24 October 2026", "8 November 2026", "13 December 2026"][row]}

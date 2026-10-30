@@ -1,20 +1,14 @@
-// CSS-drawn print layouts that mirror the app's built-in templates.
-// Swap for real event photos once the Canon R100 has been run end to end.
+import Image from "next/image";
+import { sessionFrame } from "@/lib/samplePhotos";
+
+// Print layouts that mirror the app's built-in templates, filled with sample guest photos.
 // Sizes use container units (cqw) so a print scales with its own width wherever it's placed.
 
-const SHOTS = [
-  "from-[#4cc3b9] to-[#1f2a3a]",
-  "from-[#f0c164] to-[#2b2433]",
-  "from-[#6a4c93] to-[#221d33]",
-  "from-[#10c08f] to-[#183039]",
-];
-
-function Shot({ tone, className = "" }: { tone: string; className?: string }) {
+function Shot({ session, frame, className = "", sizes }: { session: number; frame: number; className?: string; sizes: string }) {
+  const p = sessionFrame(session, frame);
   return (
-    <div className={`relative overflow-hidden bg-gradient-to-br ${tone} ${className}`}>
-      {/* soft figure suggests a guest without pretending to be a real photo */}
-      <div className="absolute bottom-0 left-1/2 h-[58%] w-[46%] -translate-x-1/2 rounded-t-full bg-white/18" />
-      <div className="absolute bottom-[50%] left-1/2 aspect-square w-[28%] -translate-x-1/2 rounded-full bg-white/22" />
+    <div className={`relative overflow-hidden bg-[#2a2420] ${className}`}>
+      <Image src={p.src} alt="" fill sizes={sizes} className="object-cover" style={{ objectPosition: p.focus, transform: `scale(${p.zoom})`, transformOrigin: p.focus }} />
     </div>
   );
 }
@@ -33,45 +27,40 @@ export function PrintMock({
   names = "Priya & Tom",
   date = "24 October 2026",
   caption = true,
+  session = 0,
+  sizes = "(min-width: 1024px) 220px, 30vw",
   className = "",
 }: {
   layout: Layout;
   names?: string;
   date?: string;
   caption?: boolean;
+  /** Which sample guests appear (see SAMPLE_SESSIONS); vary it so neighbouring prints differ. */
+  session?: number;
+  /** How wide one photo is drawn, for the image optimiser. */
+  sizes?: string;
   className?: string;
 }) {
   // A strip is narrow, so its caption needs a bigger share of the width to stay readable.
   const nameSize = layout === "strip" ? "text-[10cqw]" : "text-[6.5cqw]";
   const dateSize = layout === "strip" ? "text-[6cqw]" : "text-[3.6cqw]";
+  const shot = (frame: number, className: string) => <Shot key={frame} session={session} frame={frame} className={className} sizes={sizes} />;
 
   let body;
   if (layout === "strip") {
-    body = (
-      <div className="flex flex-col gap-[5cqw]">
-        {SHOTS.slice(0, 3).map((tone) => (
-          <Shot key={tone} tone={tone} className="aspect-[7/6]" />
-        ))}
-      </div>
-    );
+    body = <div className="flex flex-col gap-[5cqw]">{[0, 1, 2].map((i) => shot(i, "aspect-[7/6]"))}</div>;
   } else if (layout === "grid") {
-    body = (
-      <div className="grid grid-cols-2 gap-[2.5cqw]">
-        {SHOTS.map((tone) => (
-          <Shot key={tone} tone={tone} className="aspect-[4/5]" />
-        ))}
-      </div>
-    );
+    body = <div className="grid grid-cols-2 gap-[2.5cqw]">{[0, 1, 2, 3].map((i) => shot(i, "aspect-[4/5]"))}</div>;
   } else if (layout === "hero") {
     body = (
       <div className="grid grid-cols-[2fr_1fr] grid-rows-2 gap-[1.8cqw]">
-        <Shot tone={SHOTS[0]} className="row-span-2 aspect-[7/6]" />
-        <Shot tone={SHOTS[1]} />
-        <Shot tone={SHOTS[2]} />
+        {shot(0, "row-span-2 aspect-[7/6]")}
+        {shot(1, "")}
+        {shot(2, "")}
       </div>
     );
   } else {
-    body = <Shot tone={SHOTS[2]} className="aspect-[4/5]" />;
+    body = shot(0, "aspect-[4/5]");
   }
 
   return (

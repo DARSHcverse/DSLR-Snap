@@ -162,9 +162,9 @@ export default function Home() {
         <section className="border-y border-line bg-surface/50">
           <div className="mx-auto grid max-w-6xl items-center gap-14 px-4 py-24 sm:px-6 lg:grid-cols-2">
             <div className="order-2 flex items-end justify-center gap-4 sm:gap-6 lg:order-1">
-              <PrintMock layout="strip" className="w-[22%] -rotate-3" />
-              <PrintMock layout="grid" className="w-[38%]" />
-              <PrintMock layout="single" className="w-[30%] rotate-3" />
+              <PrintMock layout="strip" session={0} names="Sofia's 30th" date="8 November 2026" className="w-[22%] -rotate-3" />
+              <PrintMock layout="grid" session={1} className="w-[38%]" />
+              <PrintMock layout="single" session={2} names="Baby shower" date="13 December 2026" className="w-[30%] rotate-3" />
             </div>
             <div className="order-1 lg:order-2">
               <p className="text-sm font-semibold tracking-[0.2em] text-accent uppercase">Templates</p>
