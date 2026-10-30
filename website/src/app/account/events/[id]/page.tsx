@@ -1,216 +1,71 @@
+import { BarChart3, Code2, Download, FolderPlus, MonitorPlay, Pencil, QrCode, Trash2 } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound, redirect } from "next/navigation";
-import QRCode from "qrcode";
 import { Suspense } from "react";
-import { NotReady } from "@/components/PageShell";
-import { Footer } from "@/components/Footer";
-import { Header } from "@/components/Header";
-import { inputClass } from "@/components/ui";
-import { BarChart } from "@/components/admin/BarChart";
-import { designForEvent } from "@/lib/cloudDesign";
-import { statsForEvent } from "@/lib/galleryStats";
+import { toolButton as tool } from "@/components/dash/ui";
 import { eventAlbums } from "@/lib/galleryServer";
-import { getEvent, sessionsForOwner } from "@/lib/cloudEvents";
-import { accountsEnabled, appUrl } from "@/lib/config";
-import { isUuid } from "@/lib/gallery";
-import { getCurrentUser } from "@/lib/supabase/server";
-import { addAlbum, changeAlbum, deleteWholeEvent, replaceLink, saveEventSettings } from "./actions";
-import { CopyLink } from "./CopyLink";
-import { DesignEditor } from "./DesignEditor";
+import { addAlbum, changeAlbum } from "./actions";
+import { ownedEvent } from "./data";
 import { PhotoUpload } from "./PhotoUpload";
 import { SessionGrid } from "./SessionGrid";
 
-export const metadata: Metadata = { title: "Event", robots: { index: false } };
+export const metadata: Metadata = { title: "Event" };
 
-/** One event in DSLR Snap Cloud: share it, set who sees what, manage its photos. */
-export default function EventPage({ params, searchParams }: PageProps<"/account/events/[id]">) {
+/** The event's photos: tools across the top, albums, then the grid with select and bulk actions. */
+export default function EventPhotosPage({ params, searchParams }: PageProps<"/account/events/[id]">) {
   return (
-    <>
-      <Header />
-      <main className="mx-auto max-w-7xl px-4 py-10 sm:px-6">
-        {accountsEnabled ? (
-          <Suspense fallback={<p className="text-muted">Loading the event…</p>}>
-            <Event params={params} searchParams={searchParams} />
-          </Suspense>
-        ) : (
-          <NotReady />
-        )}
-      </main>
-      <Footer />
-    </>
+    <Suspense fallback={<div className="grid grid-cols-2 gap-3 sm:grid-cols-4">{Array.from({ length: 8 }, (_, i) => <div key={i} className="aspect-[2/3] animate-pulse rounded-xl bg-surface-2/40" />)}</div>}>
+      <Photos params={params} searchParams={searchParams} />
+    </Suspense>
   );
 }
 
-const toggle = (name: string, label: string, hint: string, on: boolean) => (
-  <label className="flex gap-3 py-2">
-    <input type="checkbox" name={name} defaultChecked={on} className="mt-1 size-4 shrink-0 accent-[var(--color-accent)]" />
-    <span>
-      <span className="block text-sm font-medium text-fg">{label}</span>
-      <span className="block text-xs text-muted">{hint}</span>
-    </span>
-  </label>
-);
-
-async function Event({ params, searchParams }: PageProps<"/account/events/[id]">) {
-  const user = await getCurrentUser();
+async function Photos({ params, searchParams }: PageProps<"/account/events/[id]">) {
   const { id } = await params;
-  if (!user) redirect(`/login?next=/account/events/${id}`);
-  const event = isUuid(id) ? await getEvent(user.id, id) : null;
-  if (!event) notFound();
-  const { done } = await searchParams;
-  const sessions = await sessionsForOwner(event.id);
-  const link = `${appUrl}/e/${event.shareToken}`;
-  const qr = await QRCode.toDataURL(link, { margin: 1, width: 360, color: { dark: "#16161d", light: "#ffffff" } });
-  const hidden = sessions.filter((s) => s.hidden).length;
-  const [look, stats, albums] = await Promise.all([designForEvent(user.id, event.design), statsForEvent(event.id, 30), eventAlbums(event.id, { includeHidden: true })]);
+  const { event, sessions } = await ownedEvent(id);
+  const albums = await eventAlbums(event.id, { includeHidden: true });
   const albumParam = (await searchParams).album;
   const album = albums.find((a) => a.id === albumParam) ?? null;
   const shown = album ? sessions.filter((s) => s.albumId === album.id) : sessions;
-  const { tab } = await searchParams;
-  const field = "flex flex-col gap-1 text-sm text-muted";
+  const base = `/account/events/${event.id}`;
+  const chip = (on: boolean) => `inline-flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-sm transition-colors ${on ? "border-accent bg-accent/10 font-semibold text-fg" : "border-line text-muted hover:text-fg"}`;
 
   return (
-    <div className="flex flex-col gap-6">
-      <Link href="/account/events" className="text-sm text-muted hover:text-fg">← Your events</Link>
-
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="font-display text-3xl font-bold tracking-tight sm:text-4xl">{event.name}</h1>
-          <p className="mt-1 text-muted">
-            {sessions.length - hidden} in the gallery{hidden ? ` · ${hidden} hidden` : ""} · {event.linkEnabled ? (event.passwordSet ? "link on, with password" : "link on") : "link off"}
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <a href={link} target="_blank" rel="noopener" className="rounded-full border border-line px-4 py-2 text-sm font-semibold hover:bg-surface-2">View gallery ↗</a>
-          <a href={`/e/${event.shareToken}/slideshow`} target="_blank" rel="noopener" className="rounded-full border border-line px-4 py-2 text-sm font-semibold hover:bg-surface-2">Slideshow ↗</a>
-          <CopyLink url={link} />
-          <PhotoUpload eventId={event.id} />
-          {sessions.length > 0 && <a href={`/account/events/${event.id}/download`} className="rounded-full bg-accent px-4 py-2 text-sm font-semibold text-accent-ink">Download all (zip)</a>}
-        </div>
+    <div className="flex flex-col gap-5">
+      <div className="grid grid-cols-4 gap-1 rounded-2xl border border-line bg-surface p-1.5 sm:flex sm:[&>*]:flex-1">
+        {sessions.length > 0 && <a href={`${base}/download`} className={tool}><Download className="size-5" aria-hidden /> Download all</a>}
+        <PhotoUpload eventId={event.id} className={tool} />
+        <a href={`/e/${event.shareToken}/slideshow`} target="_blank" rel="noopener" className={tool}><MonitorPlay className="size-5" aria-hidden /> Slideshow</a>
+        <Link href={`${base}/sharing`} className={tool}><QrCode className="size-5" aria-hidden /> QR code</Link>
+        <Link href={`${base}/sharing#embed`} className={tool}><Code2 className="size-5" aria-hidden /> Embed</Link>
+        <Link href={`${base}/analytics`} className={tool}><BarChart3 className="size-5" aria-hidden /> Analytics</Link>
+        <Link href={`${base}/settings#delete`} className={`${tool} hover:text-bad`}><Trash2 className="size-5" aria-hidden /> Delete event</Link>
       </div>
-      {typeof done === "string" && <p className="rounded-xl border border-ok/40 bg-ok/10 px-4 py-3 text-sm">{done}</p>}
 
-      <details id="analytics" open={tab === "analytics"} className="rounded-card border border-line bg-surface p-5">
-        <summary className="cursor-pointer font-semibold">
-          Analytics <span className="font-normal text-muted">· {stats.totals.views + stats.totals.sessionViews} views, {stats.totals.visitors} visitors, {stats.totals.downloads + stats.totals.zips} downloads</span>
-        </summary>
-        <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-          {[
-            ["Gallery views", stats.totals.views],
-            ["Unique visitors", stats.totals.visitors],
-            ["Guest pages opened", stats.totals.sessionViews],
-            ["Photo downloads", stats.totals.downloads],
-            ["Download all (zip)", stats.totals.zips],
-            ["Slideshow opens", stats.totals.slideshows],
-          ].map(([label, n]) => (
-            <div key={label} className="rounded-xl border border-line p-4">
-              <p className="text-xs text-muted">{label}</p>
-              <p className="mt-1 font-display text-2xl font-bold">{n}</p>
-            </div>
-          ))}
-        </div>
-        <div className="mt-4">
-          <BarChart
-            title="Views per day (last 30 days)"
-            bars={stats.days.map((d) => ({ label: new Date(`${d.day}T12:00:00Z`).toLocaleDateString("en-GB", { day: "numeric", month: "short" }), value: d.views, display: `${d.views} views · ${d.visitors} visitors · ${d.downloads} downloads` }))}
-            empty="No visits yet. Views appear here once you share the gallery."
-          />
-        </div>
-        <p className="mt-3 text-xs text-muted">Counted without cookies; link previews and bots are left out. Visitors are counted once per day.</p>
-      </details>
-
-      <details id="design" open={tab === "design"} className="rounded-card border border-line bg-surface p-5">
-        <summary className="cursor-pointer font-semibold">Edit design <span className="font-normal text-muted">· colours, font, banner, logo and background for this gallery</span></summary>
-        <div className="mt-5">
-          <DesignEditor
-            eventId={event.id}
-            eventName={event.name}
-            initial={look.design}
-            images={look.images}
-            samples={sessions.filter((s) => !s.hidden).slice(0, 6).map((s) => s.photo)}
-            custom={!!event.design}
-          />
-        </div>
-      </details>
-
-      <div className="grid items-start gap-6 lg:grid-cols-[300px_1fr]">
-        <aside className="flex flex-col gap-5 lg:sticky lg:top-20">
-          <form action={saveEventSettings} className="rounded-card border border-line bg-surface p-5">
-            <input type="hidden" name="event" value={event.id} />
-            <h2 className="font-semibold">Event settings</h2>
-            <div className="mt-3 flex flex-col gap-3">
-              <label className={field}>Event name<input name="name" defaultValue={event.name} maxLength={120} className={inputClass} /></label>
-              <label className={field}>Event date<input type="date" name="date" defaultValue={event.date ?? ""} className={inputClass} /></label>
-            </div>
-            <div className="mt-2 divide-y divide-line/60">
-              {toggle("showDate", "Show the date", "On the gallery page", event.showDate)}
-              {toggle("linkEnabled", "Link sharing", "Anyone with the link can see this gallery", event.linkEnabled)}
-              {toggle("guestAccess", "Guests see everyone's photos", "A guest's QR page links to the whole event", event.guestAccess === "all")}
-              {toggle("allowDownloadAll", "Download all", "Visitors can download the whole event as a zip", event.allowDownloadAll)}
-            </div>
-            <div className="mt-3 flex flex-col gap-3">
-              <label className={field}>
-                Password {event.passwordSet && <span className="text-xs text-ok">(set)</span>}
-                <input name="password" type="text" autoComplete="off" placeholder={event.passwordSet ? "Type a new one to change it" : "Leave empty for none"} className={inputClass} />
-              </label>
-              {event.passwordSet && (
-                <label className="flex items-center gap-2 text-sm text-muted"><input type="checkbox" name="removePassword" value="1" className="accent-[var(--color-accent)]" /> Remove the password</label>
-              )}
-              <label className={field}>Your website<input name="website" defaultValue={event.website ?? ""} placeholder="yourbooth.co.uk" className={inputClass} /></label>
-            </div>
-            <button className="mt-4 w-full rounded-full bg-accent px-4 py-2.5 font-semibold text-accent-ink">Save settings</button>
-          </form>
-
-          <section className="rounded-card border border-line bg-surface p-5">
-            <h2 className="font-semibold">Share with the client</h2>
-            {/* eslint-disable-next-line @next/next/no-img-element -- generated data URL */}
-            <img src={qr} alt="QR code for the event gallery" className="mx-auto mt-3 w-40 rounded-lg" />
-            <p className="mt-3 break-all text-xs text-muted">{link}</p>
-            <a href={qr} download={`${event.name} gallery QR.png`} className="mt-3 block text-center text-sm text-accent hover:underline">Download QR image</a>
-            <form action={replaceLink} className="mt-3 text-center">
-              <input type="hidden" name="event" value={event.id} />
-              <button className="text-xs text-muted hover:text-fg">Make a new link (the old one stops working)</button>
-            </form>
-          </section>
-
-          <details className="rounded-card border border-bad/30 p-5">
-            <summary className="cursor-pointer text-sm font-semibold text-bad">Delete this event from the cloud</summary>
-            <p className="mt-2 text-xs text-muted">Removes every photo and video of this event from DSLR Snap Cloud, and all its links stop working. The copies on your booth computer stay.</p>
-            <form action={deleteWholeEvent} className="mt-3 flex flex-col gap-2">
-              <input type="hidden" name="event" value={event.id} />
-              <input name="confirm" autoComplete="off" placeholder="Type the event name" className={inputClass} />
-              <button className="rounded-full border border-bad/60 px-4 py-2 text-sm font-semibold text-bad hover:bg-bad/10">Delete event</button>
-            </form>
-          </details>
-        </aside>
-
-        <div className="flex min-w-0 flex-col gap-4">
-          <div className="flex flex-wrap items-center gap-2">
-            <Link href={`/account/events/${event.id}`} className={`rounded-full border px-3 py-1.5 text-sm ${!album ? "border-accent bg-accent/10" : "border-line text-muted hover:text-fg"}`}>All <span className="text-muted">{sessions.length}</span></Link>
-            {albums.map((a) => (
-              <Link key={a.id} href={`/account/events/${event.id}?album=${a.id}`} className={`rounded-full border px-3 py-1.5 text-sm ${album?.id === a.id ? "border-accent bg-accent/10" : "border-line text-muted hover:text-fg"}`}>
-                {a.name} <span className="text-muted">{a.count}</span>
-              </Link>
-            ))}
-            <form action={addAlbum} className="flex items-center gap-1">
-              <input type="hidden" name="event" value={event.id} />
-              <input name="name" placeholder="New album" maxLength={60} required className="w-32 rounded-full border border-line bg-bg px-3 py-1.5 text-sm" />
-              <button className="rounded-full border border-line px-3 py-1.5 text-sm font-semibold hover:bg-surface-2">Add</button>
-            </form>
-          </div>
-          {album && (
-            <form action={changeAlbum} className="flex flex-wrap items-center gap-2 text-sm">
-              <input type="hidden" name="event" value={event.id} />
-              <input type="hidden" name="album" value={album.id} />
-              <input name="name" defaultValue={album.name} maxLength={60} className="rounded-full border border-line bg-bg px-3 py-1.5" />
-              <button name="op" value="rename" className="rounded-full border border-line px-3 py-1.5 font-semibold hover:bg-surface-2">Rename</button>
-              <button name="op" value="delete" className="text-bad hover:underline">Delete album (photos stay in the event)</button>
-            </form>
-          )}
-          <SessionGrid eventId={event.id} sessions={shown} coverId={event.coverSessionId} albums={albums} />
-        </div>
+      <div className="flex flex-wrap items-center gap-2">
+        <Link href={base} className={chip(!album)}>All <span className="text-muted">{sessions.length}</span></Link>
+        {albums.map((a) => (
+          <Link key={a.id} href={`${base}?album=${a.id}`} className={chip(album?.id === a.id)}>
+            {a.name} <span className="text-muted">{a.count}</span>
+          </Link>
+        ))}
+        <form action={addAlbum} className="flex items-center gap-1">
+          <input type="hidden" name="event" value={event.id} />
+          <input name="name" placeholder="New album" maxLength={60} required aria-label="New album name" className="w-32 rounded-full border border-dashed border-line bg-transparent px-3.5 py-1.5 text-sm placeholder:text-muted focus:border-accent focus:outline-none" />
+          <button className="rounded-full p-2 text-muted hover:bg-surface-2 hover:text-fg" aria-label="Add album" title="Add album"><FolderPlus className="size-4" /></button>
+        </form>
       </div>
+      {album && (
+        <form action={changeAlbum} className="flex flex-wrap items-center gap-2 rounded-xl border border-line bg-surface px-3 py-2 text-sm">
+          <Pencil className="size-4 text-muted" aria-hidden />
+          <input type="hidden" name="event" value={event.id} />
+          <input type="hidden" name="album" value={album.id} />
+          <input name="name" defaultValue={album.name} maxLength={60} aria-label="Album name" className="rounded-lg border border-line bg-bg px-3 py-1.5" />
+          <button name="op" value="rename" className="rounded-lg border border-line px-3 py-1.5 font-semibold hover:bg-surface-2">Rename</button>
+          <button name="op" value="delete" className="ml-auto text-bad hover:underline">Delete album (photos stay in the event)</button>
+        </form>
+      )}
+      <SessionGrid eventId={event.id} sessions={shown} coverId={event.coverSessionId} albums={albums} />
     </div>
   );
 }

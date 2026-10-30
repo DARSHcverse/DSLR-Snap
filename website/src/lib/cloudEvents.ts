@@ -64,6 +64,20 @@ export async function listEvents(userId: string): Promise<CloudEventCard[]> {
     .map((c) => ({ ...c.card, cover: c.coverPath ? (urls.get(c.coverPath) ?? null) : null }));
 }
 
+/**
+ * An event made on the website (for photos added by hand rather than from a booth). It gets its own
+ * random app id, so it never collides with an event a booth uploads.
+ */
+export async function createEvent(userId: string, name: string, date: string | null): Promise<string> {
+  const { data, error } = await supabaseAdmin()
+    .from("gallery_events")
+    .insert({ user_id: userId, app_event_id: crypto.randomUUID(), name, event_date: date, share_token: makeShareToken(), edited_at: new Date().toISOString() })
+    .select("id")
+    .single();
+  if (error || !data) throw new Error(`Could not create the event: ${error?.message}`);
+  return data.id;
+}
+
 export interface CloudEvent {
   id: string;
   name: string;
@@ -133,6 +147,10 @@ export async function saveSettings(userId: string, id: string, s: EventSettings)
   if (s.password !== undefined) update.password_hash = s.password ? hashPassword(s.password) : null;
   const { error } = await supabaseAdmin().from("gallery_events").update(update).eq("id", id).eq("user_id", userId);
   if (error) throw new Error(error.message);
+}
+
+export async function setLinkEnabled(userId: string, id: string, on: boolean): Promise<void> {
+  await supabaseAdmin().from("gallery_events").update({ link_enabled: on }).eq("id", id).eq("user_id", userId);
 }
 
 /** A new host link; the old one stops working at once. */
