@@ -5,7 +5,7 @@ import { Icon, type IconName } from "@/components/Icon";
 import { PrintMock } from "@/components/PrintMock";
 import { PLANS } from "@/lib/plans";
 import { accountsEnabled } from "@/lib/config";
-import { earlyAccessHref, site, siteUrl, tradingName } from "@/lib/site";
+import { earlyAccessHref, launch, site, siteUrl, tradingName } from "@/lib/site";
 import { FAQ, FEATURES } from "@/lib/marketing";
 import { PricingCards } from "@/components/Pricing";
 import { JsonLd } from "@/components/ContentPage";
@@ -94,6 +94,12 @@ export default function Home() {
   return (
     <>
       <JsonLd data={jsonLd} />
+      {launch.comingSoon && (
+        <div className="bg-accent px-4 py-2.5 text-center text-sm font-semibold text-accent-ink">
+          <span className="mr-2 rounded-full bg-accent-ink px-2 py-0.5 text-xs tracking-wider text-accent uppercase">Coming soon</span>
+          DSLR Snap launches {launch.date}. Create your free account now and the download opens on launch day.
+        </div>
+      )}
       <Header />
       <main id="top" className="overflow-x-clip">
         {/* Hero */}
@@ -101,6 +107,7 @@ export default function Home() {
           <div className="mx-auto grid max-w-6xl items-center gap-16 px-4 pt-16 pb-28 sm:px-6 lg:grid-cols-[1fr_1.05fr] lg:pt-24 lg:pb-36">
             <div className="text-center lg:text-left">
               <p className="inline-flex items-center gap-2 rounded-full border border-line bg-surface px-3 py-1.5 text-sm text-muted">
+                {launch.comingSoon && <span className="hidden rounded-full bg-accent px-2 py-0.5 text-xs font-bold tracking-wider whitespace-nowrap text-accent-ink uppercase sm:inline">Coming soon</span>}
                 <Icon name="windows" className="size-3.5 text-accent" />
                 Photo booth software for Windows
               </p>

@@ -5,7 +5,7 @@ import { ContentPage, JsonLd } from "@/components/ContentPage";
 import { Icon } from "@/components/Icon";
 import { primaryButton, secondaryButton } from "@/components/ui";
 import { latestRelease } from "@/lib/downloads";
-import { site, siteUrl } from "@/lib/site";
+import { launch, site, siteUrl } from "@/lib/site";
 
 export const metadata: Metadata = pageMetadata({
   title: "Download DSLR Snap for Windows",
@@ -63,8 +63,9 @@ export default async function DownloadPage() {
           </>
         ) : (
           <>
-            <p className="mt-5 text-lg font-semibold">The first version is almost ready.</p>
-            <p className="mt-2 text-muted">Create your free account now; the download appears on this page as soon as it&apos;s out.</p>
+            <p className="mt-5 inline-flex rounded-full bg-accent px-2.5 py-0.5 text-xs font-bold tracking-wider text-accent-ink uppercase">Coming soon</p>
+            <p className="mt-3 text-lg font-semibold">DSLR Snap launches {launch.date}.</p>
+            <p className="mt-2 text-muted">Create your free account now; the download appears on this page on launch day and we&apos;ll email you when it&apos;s out.</p>
             <Link href="/signup" className={`${primaryButton} mt-5`}>Create a free account</Link>
           </>
         )}

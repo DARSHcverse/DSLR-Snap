@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  CalendarClock,
   ChevronDown,
   CreditCard,
   Download,
@@ -24,6 +25,7 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { signOut } from "@/app/(auth)/actions";
 import { Logo } from "@/components/Logo";
+import { launch } from "@/lib/site";
 
 export interface ChromeUser {
   displayName: string;
@@ -85,7 +87,18 @@ export function DashChrome({ user, children }: { user: ChromeUser; children: Rea
           </Link>
           <UserMenu user={user} />
         </header>
-        <main className="mx-auto w-full max-w-[1400px] flex-1 px-4 py-6 sm:px-6 sm:py-8 lg:px-10">{children}</main>
+        <main className="mx-auto w-full max-w-[1400px] flex-1 px-4 py-6 sm:px-6 sm:py-8 lg:px-10">
+          {launch.comingSoon && (
+            <div role="status" className="mb-6 flex items-start gap-3 rounded-2xl border border-busy/40 bg-busy/10 px-4 py-3.5 text-sm">
+              <CalendarClock className="mt-0.5 size-5 shrink-0 text-busy" aria-hidden />
+              <p>
+                <span className="font-semibold text-fg">Coming soon: DSLR Snap launches {launch.date}.</span>{" "}
+                <span className="text-muted">Your account is ready. The Windows app download opens on launch day, and we&apos;ll email you the moment it does.</span>
+              </p>
+            </div>
+          )}
+          {children}
+        </main>
       </div>
     </div>
   );
