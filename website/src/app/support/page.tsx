@@ -60,6 +60,13 @@ export default function SupportPage() {
           mainEntity: FAQ.map((f) => ({ "@type": "Question", name: f.q, acceptedAnswer: { "@type": "Answer", text: f.a } })),
         }}
       />
+      <Link href="/guide" className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-card border border-accent/40 bg-accent/5 p-5 transition-colors hover:border-accent">
+        <span>
+          <span className="block text-lg font-semibold">The full user guide</span>
+          <span className="block text-muted">Install, camera and flash settings, DNP printing and 2×6 cutting, events and troubleshooting. Also as a PDF.</span>
+        </span>
+        <span className="font-semibold text-accent">Read the guide →</span>
+      </Link>
       <div className="grid gap-4 md:grid-cols-2">
         {GUIDES.map((g) => (
           <section key={g.title} className="rounded-card border border-line bg-surface p-6">

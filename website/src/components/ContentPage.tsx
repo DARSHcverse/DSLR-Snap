@@ -25,7 +25,7 @@ export function ContentPage({ eyebrow, title, intro, children, narrow }: { eyebr
 /** Long-form text (legal, support articles) without a typography plugin. */
 export function Prose({ children }: { children: ReactNode }) {
   return (
-    <div className="space-y-4 leading-relaxed text-muted [&_a]:text-accent [&_a]:underline-offset-4 hover:[&_a]:underline [&_h2]:mt-10 [&_h2]:font-display [&_h2]:text-2xl [&_h2]:font-bold [&_h2]:text-fg [&_h3]:mt-6 [&_h3]:font-semibold [&_h3]:text-fg [&_li]:ml-5 [&_li]:list-disc [&_strong]:text-fg">
+    <div className="space-y-4 leading-relaxed text-muted [&_a]:text-accent [&_a]:underline-offset-4 hover:[&_a]:underline [&_h2]:mt-10 [&_h2]:font-display [&_h2]:text-2xl [&_h2]:font-bold [&_h2]:text-fg [&_h3]:mt-6 [&_h3]:font-semibold [&_h3]:text-fg [&_li]:ml-5 [&_ul>li]:list-disc [&_ol>li]:list-decimal [&_strong]:text-fg">
       {children}
     </div>
   );

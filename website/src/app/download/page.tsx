@@ -99,6 +99,7 @@ export default async function DownloadPage() {
 
       <div className="mt-14 flex flex-wrap gap-3">
         <Link href="/pricing" className={secondaryButton}>See pricing</Link>
+        <Link href="/guide" className={secondaryButton}>User guide</Link>
         <Link href="/support" className={secondaryButton}>Setup help</Link>
       </div>
     </ContentPage>

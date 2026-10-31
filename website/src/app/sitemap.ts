@@ -17,6 +17,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     page("/download", 0.9, "weekly"),
     ...SOLUTIONS.map((s) => page(`/solutions/${s.slug}`, 0.8)),
     page("/compare/dslrbooth", 0.7),
+    page("/guide", 0.7),
     page("/support", 0.6),
     page("/signup", 0.5),
     page("/terms", 0.2, "yearly"),

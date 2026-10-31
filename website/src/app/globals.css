@@ -76,3 +76,23 @@ section[id] {
 @media (prefers-reduced-motion: reduce) {
   .auth-drift-up, .auth-drift-down { animation: none; }
 }
+
+/* Printing (and the user guide PDF): dark text on white, no site header, footer or buttons. */
+@media print {
+  :root {
+    color-scheme: light;
+    --color-bg: #ffffff;
+    --color-surface: #f6f5f3;
+    --color-surface-2: #eeece8;
+    --color-line: #dcd8d2;
+    --color-fg: #16161d;
+    --color-muted: #45434c;
+    --color-accent: #c2410c;
+    --color-booth-glow: #ffffff;
+  }
+  html, body { background: #ffffff !important; }
+  body > header, header.sticky, footer, .guide-actions, [aria-label="Chat with us"] { display: none !important; }
+  li, .rounded-xl { break-inside: avoid-page; }
+  h2 { break-after: avoid-page; }
+  a { text-decoration: none; }
+}
