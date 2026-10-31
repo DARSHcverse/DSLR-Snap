@@ -75,7 +75,8 @@ export const DEFAULT_DEVICE_SETTINGS: DeviceSettings = {
   printerDriver: 'auto',
   // Empty = detect the DNP printer, whatever Windows named it.
   printerName4x6: '',
-  printerName2x6: ''
+  printerName2x6: '',
+  cameraPresets: []
 }
 
 const now = () => new Date().toISOString()

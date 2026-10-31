@@ -7,7 +7,7 @@ import { analyzeShot } from '../src/main/camera/analyzeShot'
 import { avLabel, decodeExposure, encodeOption, isoLabel, tvLabel, wbLabel } from '../src/main/camera/canonCodes'
 import { applyExposure } from '../src/main/camera/applyExposure'
 import { MockCamera } from '../src/main/camera/MockCamera'
-import { flashSafe, nearestOption, PRESETS, shutterSeconds, step } from '../src/shared/exposure'
+import { flashSafe, MAX_SAVED_PRESETS, nearestOption, PRESETS, savePreset, shutterSeconds, step } from '../src/shared/exposure'
 
 describe('Canon code → label', () => {
   it.each([[0x00, 'Auto'], [0x48, '100'], [0x4b, '125'], [0x4d, '160'], [0x58, '400'], [0x5d, '640'], [0x63, '1000'], [0x70, '3200'], [0x80, '12800']])('ISO 0x%s → %s', (code, label) => {
@@ -153,5 +153,38 @@ describe('analyzeShot', () => {
 
   it('calls a mid-grey shot good', async () => {
     expect((await analyzeShot(await solid('mid.jpg', 120))).verdict).toBe('good')
+  })
+})
+
+describe('saved camera settings', () => {
+  const flash = { iso: '200', aperture: '8', shutter: '1/125', whiteBalance: 'Flash' }
+
+  it('adds a preset under the given name', () => {
+    const list = savePreset([], '  Speedlite 1/4 ballroom ', flash)
+    expect(list).toHaveLength(1)
+    expect(list[0]).toMatchObject({ name: 'Speedlite 1/4 ballroom', settings: flash })
+    expect(list[0].id).toBeTruthy()
+  })
+
+  it('replaces a preset with the same name (any case) and keeps its place', () => {
+    const a = savePreset([], 'Church', flash)
+    const b = savePreset(a, 'Garden', flash)
+    const c = savePreset(b, 'church', { ...flash, iso: '800' })
+    expect(c.map((p) => p.name)).toEqual(['church', 'Garden'])
+    expect(c[0].settings.iso).toBe('800')
+    expect(c[0].id).toBe(a[0].id)
+  })
+
+  it('needs a name and keeps only exposure values', () => {
+    expect(() => savePreset([], '   ', flash)).toThrow(/name/i)
+    const list = savePreset([], 'X', { ...flash, junk: 'y' } as never)
+    expect(Object.keys(list[0].settings).sort()).toEqual(['aperture', 'iso', 'shutter', 'whiteBalance'])
+  })
+
+  it('keeps at most 12', () => {
+    let list: ReturnType<typeof savePreset> = []
+    for (let i = 0; i < 14; i++) list = savePreset(list, `P${i}`, flash)
+    expect(list).toHaveLength(MAX_SAVED_PRESETS)
+    expect(list.at(-1)!.name).toBe('P13')
   })
 })

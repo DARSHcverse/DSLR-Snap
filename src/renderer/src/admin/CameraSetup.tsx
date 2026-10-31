@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { DeviceSnapshot } from '@shared/api'
-import { describeExposure, EXPOSURE_LABELS, PRESETS, step } from '@shared/exposure'
-import type { ExposureKey, ExposureSettings, ExposureState, TestShot } from '@shared/types'
+import { describeExposure, EXPOSURE_LABELS, PRESETS, savePreset, step } from '@shared/exposure'
+import type { ExposureKey, ExposureSettings, ExposureState, SavedPreset, TestShot } from '@shared/types'
 import LiveView from '../components/LiveView'
 
 /** IPC errors arrive wrapped ("Error invoking remote method …"); operators only need the message. */
@@ -38,6 +38,8 @@ export default function CameraSetup({ devices, event }: { devices: DeviceSnapsho
   const [view, setView] = useState<number | 'live'>('live')
   const [zoom, setZoom] = useState(false)
   const [eventName, setEventName] = useState<string | null>(null)
+  const [mine, setMine] = useState<SavedPreset[]>([])
+  const [naming, setNaming] = useState<string | null>(null)
   const cameraState = devices?.camera.state
 
   const load = async () => {
@@ -57,6 +59,7 @@ export default function CameraSetup({ devices, event }: { devices: DeviceSnapsho
     } else {
       window.booth.getActiveEvent().then((a) => setEventName(a?.event.name ?? null))
     }
+    window.booth.getDeviceSettings().then((s) => setMine(s.cameraPresets ?? [])).catch(() => undefined)
     return window.booth.onExposure(() => void load())
   }, [event?.id]) // eslint-disable-line react-hooks/exhaustive-deps
   // Reload when the camera (re)connects; ignore 'busy' blips during a shot.
@@ -80,13 +83,27 @@ export default function CameraSetup({ devices, event }: { devices: DeviceSnapsho
   const set = (key: ExposureKey, value: string | undefined) =>
     value && value !== state?.current[key] && run(async () => setState(await window.booth.setExposure(key, value, event?.id)))
 
-  const applyPreset = (id: string) =>
+  const applyPreset = (settings: ExposureSettings) =>
     run(async () => {
-      const preset = PRESETS.find((p) => p.id === id)!
-      const res = await window.booth.applyExposure(preset.settings, event?.id)
+      const res = await window.booth.applyExposure(settings, event?.id)
       setState(res.state)
       if (res.skipped.length) setNotice(`Couldn't set ${res.skipped.map((k) => EXPOSURE_LABELS[k].toLowerCase()).join(', ')} on the camera.`)
     })
+
+  // "My settings" live with this computer's device settings, so they're there for every event.
+  const storeMine = async (update: (list: SavedPreset[]) => SavedPreset[]) => {
+    const s = await window.booth.getDeviceSettings()
+    const next = update(s.cameraPresets ?? [])
+    await window.booth.saveDeviceSettings({ ...s, cameraPresets: next })
+    setMine(next)
+  }
+  const saveMine = (name: string) =>
+    run(async () => {
+      await storeMine((list) => savePreset(list, name, state?.current ?? {}))
+      setNaming(null)
+      setNotice(`Saved "${name.trim()}". It's under My settings for every event on this computer.`)
+    })
+  const deleteMine = (p: SavedPreset) => confirm(`Delete "${p.name}"?`) && run(() => storeMine((list) => list.filter((x) => x.id !== p.id)))
 
   const takeShot = () =>
     run(async () => {
@@ -96,7 +113,9 @@ export default function CameraSetup({ devices, event }: { devices: DeviceSnapsho
     })
 
   const shot = view === 'live' ? null : shots[view]
-  const activePreset = state && PRESETS.find((p) => KEYS.every((k) => !p.settings[k] || p.settings[k] === state.current[k]))?.id
+  const matches = (settings: ExposureSettings) => !!state && KEYS.every((k) => !settings[k] || settings[k] === state.current[k])
+  const activeMine = mine.find((p) => matches(p.settings))?.id
+  const activePreset = !activeMine ? PRESETS.find((p) => matches(p.settings))?.id : undefined
 
   return (
     <section className="cam">
@@ -144,12 +163,39 @@ export default function CameraSetup({ devices, event }: { devices: DeviceSnapsho
               <span className="field-label">Start from</span>
               <div className="presets">
                 {PRESETS.map((p) => (
-                  <button key={p.id} disabled={busy || !state.manual} className={activePreset === p.id ? 'on' : ''} onClick={() => applyPreset(p.id)}>
+                  <button key={p.id} disabled={busy || !state.manual} className={activePreset === p.id ? 'on' : ''} onClick={() => applyPreset(p.settings)}>
                     <strong>{p.name}</strong>
                     <span>{p.hint}</span>
                   </button>
                 ))}
               </div>
+            </div>
+
+            <div className="field">
+              <span className="field-label">My settings</span>
+              {mine.length > 0 && (
+                <div className="presets">
+                  {mine.map((p) => (
+                    <div key={p.id} className="preset-mine">
+                      <button disabled={busy || !state.manual} className={activeMine === p.id ? 'on' : ''} onClick={() => applyPreset(p.settings)}>
+                        <strong>{p.name}</strong>
+                        <span>{describeExposure(p.settings)}</span>
+                      </button>
+                      <button className="preset-x" disabled={busy} onClick={() => deleteMine(p)} aria-label={`Delete ${p.name}`} title="Delete">×</button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {naming === null ? (
+                <button className="btn small" disabled={busy || !state.manual} onClick={() => setNaming('')}>＋ Save current settings as mine</button>
+              ) : (
+                <form className="preset-save" onSubmit={(e) => (e.preventDefault(), saveMine(naming))}>
+                  <input autoFocus value={naming} maxLength={40} placeholder="e.g. Speedlite ¼ power, ballroom" onChange={(e) => setNaming(e.target.value)} />
+                  <button className="btn small primary" disabled={busy || !naming.trim()}>Save</button>
+                  <button type="button" className="btn small" onClick={() => setNaming(null)}>Cancel</button>
+                </form>
+              )}
+              <span className="muted small">Your own starting points, e.g. for your flash at a venue you work often. Saving a name that exists updates it.</span>
             </div>
 
             {KEYS.map((k) => {

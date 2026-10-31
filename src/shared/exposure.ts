@@ -1,4 +1,4 @@
-import type { ExposureKey, ExposureSettings } from './types'
+import type { ExposureKey, ExposureSettings, SavedPreset } from './types'
 
 /**
  * Fastest shutter speed that still syncs with the flash. Faster than this, part of the frame
@@ -67,6 +67,24 @@ export const PRESETS: Preset[] = [
   { id: 'dark', name: 'Dark venue', hint: 'Party lighting; keeps some room light', settings: { iso: '800', aperture: '5.6', shutter: '1/60', whiteBalance: 'Flash' } },
   { id: 'outdoor', name: 'Outdoors', hint: 'Shade or overcast', settings: { iso: '100', aperture: '8', shutter: '1/200', whiteBalance: 'Flash' } }
 ]
+
+export const MAX_SAVED_PRESETS = 12
+const EXPOSURE_KEYS: ExposureKey[] = ['iso', 'aperture', 'shutter', 'whiteBalance']
+
+/**
+ * "My settings": adds the camera's current settings under a name, or updates the one with that
+ * name (any case), keeping its place. Oldest drop off past MAX_SAVED_PRESETS.
+ */
+export function savePreset(list: SavedPreset[], rawName: string, current: ExposureSettings): SavedPreset[] {
+  const name = rawName.trim().replace(/\s+/g, ' ').slice(0, 40)
+  if (!name) throw new Error('Give these settings a name, like "Speedlite, ballroom".')
+  const settings: ExposureSettings = {}
+  for (const k of EXPOSURE_KEYS) if (current[k]) settings[k] = current[k]
+  const i = list.findIndex((p) => p.name.toLowerCase() === name.toLowerCase())
+  if (i >= 0) return list.map((p, j) => (j === i ? { ...p, name, settings } : p))
+  const id = `my-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`
+  return [...list, { id, name, settings }].slice(-MAX_SAVED_PRESETS)
+}
 
 export const EXPOSURE_LABELS: Record<ExposureKey, string> = { iso: 'ISO', aperture: 'Aperture', shutter: 'Shutter', whiteBalance: 'White balance' }
 

@@ -261,6 +261,14 @@ export interface DeviceSettings {
   /** Video guestbook: webcam and microphone (browser device ids; empty = system default). */
   videoInputId: string
   audioInputId: string
+  /** The operator's own camera settings ("My settings"), e.g. for their flash at a regular venue. */
+  cameraPresets: SavedPreset[]
+}
+
+export interface SavedPreset {
+  id: string
+  name: string
+  settings: ExposureSettings
 }
 
 /** Which printer queues the app will actually use, for the Devices screen. */
