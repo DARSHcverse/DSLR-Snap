@@ -9,6 +9,16 @@ files:
   # The AI runtime ships builds for every platform; the Windows installer needs only win32/x64.
   - "!node_modules/onnxruntime-node/bin/napi-v*/{darwin,linux}/**"
   - "!node_modules/onnxruntime-node/bin/napi-v*/win32/arm64/**"
+  # Other platforms' prebuilt binaries and build sources (~50 MB the Windows app never loads).
+  - "!node_modules/@img/sharp-{darwin,linux,linuxmusl,wasm32}*/**"
+  - "!node_modules/@img/sharp-libvips-*/**"
+  - "!node_modules/better-sqlite3/prebuilds/{darwin,linux,linuxmusl}-*.node"
+  - "!node_modules/better-sqlite3/prebuilds/win32-arm64.node"
+  - "!node_modules/better-sqlite3/{deps,src}/**"
+# Every native module ships prebuilt N-API binaries for each platform (better-sqlite3 13 in
+# prebuilds/, sharp in @img/*, onnxruntime-node in bin/), so nothing is recompiled. This also lets
+# the Windows installer be built on a Mac, where node-gyp can't cross-compile.
+npmRebuild: false
 asarUnpack:
   - node_modules/sharp/**
   - node_modules/@img/**

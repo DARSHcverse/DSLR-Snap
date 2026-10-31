@@ -16,7 +16,8 @@
   <!-- Canon's 64-bit DLLs (EDSDK.dll, EdsImage.dll) are NOT in this repo: download the SDK from
        Canon's developer programme and copy the DLLs from EDSDK_64\Dll into native\CanonBridge\EDSDK\ -->
   <ItemGroup>
-    <None Include="EDSDK\*.dll" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" Condition="Exists('EDSDK')" />
+    <!-- Copied flat, beside CanonBridge.exe: [DllImport("EDSDK.dll")] only searches the exe's own folder. -->
+    <None Include="EDSDK\*.dll" Link="%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" Condition="Exists('EDSDK')" />
   </ItemGroup>
 
 </Project>
