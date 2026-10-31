@@ -3,7 +3,7 @@ import type { DeviceSnapshot } from '@shared/api'
 import { formatEventDate, todayIso } from '@shared/dates'
 import { describeExposure } from '@shared/exposure'
 import { LOOKS, lookInfo } from '@shared/looks'
-import type { BoothEvent, Template } from '@shared/types'
+import type { BoothEvent, PrinterDetection, Template } from '@shared/types'
 import CameraSetup from './CameraSetup'
 import { describe, DropZone, type Editing, message, startImport, TemplateEditor, TemplateThumb } from './Templates'
 
@@ -230,7 +230,7 @@ function EventSetup({ initial, devices, onClose, onLaunch }: {
 
         {step === CAMERA_STEP && draft.id && <CameraSetup devices={devices} event={{ id: draft.id, name: draft.name, exposure: draft.exposure }} />}
 
-        {step === 4 && <PrintStep draft={draft} set={set} template={template} devices={devices} />}
+        {step === 4 && <PrintStep draft={draft} set={set} template={template} templates={templates} devices={devices} />}
 
         {step === 5 && draft.id && template && <LaunchStep draft={{ ...draft, id: draft.id }} template={template} devices={devices} onLaunch={onLaunch} />}
       </div>
@@ -285,16 +285,63 @@ function TemplatePicker({ templates, selected, onSelect, onImported }: {
   )
 }
 
-function PrintStep({ draft, set, template, devices }: {
+const PRINT_SIZES = [
+  { format: '4x6', label: '4×6 postcard', cut: 'Prints uncut' },
+  { format: '2x6', label: '2×6 strips', cut: 'Cut into two strips' }
+] as const
+
+function PrintStep({ draft, set, template, templates, devices }: {
   draft: Draft
   set: <K extends keyof Draft>(k: K, v: Draft[K]) => void
   template?: Template
+  templates: Template[]
   devices: DeviceSnapshot | null
 }) {
   const [status, setStatus] = useState<string | null>(null)
+  const [found, setFound] = useState<PrinterDetection | null>(null)
+  const [settingUp, setSettingUp] = useState(false)
+  const detect = () => window.booth.detectPrinters().then(setFound).catch(() => setFound(null))
+  useEffect(() => void detect(), [])
   const printer = devices?.printer
+  const format = template?.format
+  // Strips go to the "(2x6 cut)" entry, postcards to the plain one: show the one this event really uses.
+  const queueFor = (f: '4x6' | '2x6') => (f === '2x6' ? found?.queue2x6 : found?.queue4x6)
+  const noCutQueue = format === '2x6' && !!found && (found.stripsUncut || !found.queue2x6 || found.queue2x6 === found.queue4x6)
+
+  // The print size comes from the template, so switching size switches to a template of that size.
+  const pickSize = (f: '4x6' | '2x6') => {
+    if (f === format) return
+    const next = templates.find((t) => t.format === f)
+    if (!next) return setStatus(`No ${f === '2x6' ? '2×6' : '4×6'} template yet. Add one in the Template step.`)
+    set('templateId', next.id)
+    setStatus(`Template changed to "${next.name}". Pick a different ${f === '2x6' ? '2×6' : '4×6'} design in the Template step if you like.`)
+  }
+  const setUpCut = async () => {
+    setSettingUp(true)
+    try {
+      const r = await window.booth.setupStripCutting()
+      setStatus(r.status === 'done' ? `Done: strips now print on "${r.printer}" and are cut.` : `Added "${r.printer}". Tick 2inch cut ON in its preferences, then print a test copy.`)
+      await detect()
+    } catch (e) {
+      setStatus(message(e))
+    } finally {
+      setSettingUp(false)
+    }
+  }
+
   return (
     <div className="form narrow">
+      <div className="field">
+        <span className="field-label">Print size</span>
+        <div className="presets">
+          {PRINT_SIZES.map((s) => (
+            <button key={s.format} className={format === s.format ? 'on' : ''} disabled={draft.printCopies === 0} onClick={() => pickSize(s.format)}>
+              <strong>{s.label}</strong>
+              <span>{s.cut} · {queueFor(s.format) ?? 'no printer found'}</span>
+            </button>
+          ))}
+        </div>
+      </div>
       <label>Copies per session
         <div className="seg">
           {[0, 1, 2, 3, 4].map((n) => (
@@ -308,8 +355,14 @@ function PrintStep({ draft, set, template, devices }: {
       <label className="check"><input type="checkbox" checked={draft.showGallery} onChange={(e) => set('showGallery', e.target.checked)} /> Let guests browse this event's photos and GIFs on the booth screen</label>
       {draft.galleryEnabled && !devices?.uploads.enabled && <p className="warn small">The cloud gallery isn't set up on this computer yet, so no QR code will appear. See Devices → Digital delivery.</p>}
       <div className="note">
-        <p>Printer: <span className={`pill ${printer?.state === 'ready' ? 'ok' : 'bad'}`}>{printer?.state ?? '…'}</span> {printer?.printerName ?? ''}</p>
+        <p>Printer: <span className={`pill ${printer?.state === 'ready' ? 'ok' : 'bad'}`}>{printer?.state ?? '…'}</span> {(format && queueFor(format)) ?? printer?.printerName ?? ''}</p>
         {printer?.message && <p className="muted small">{printer.message}</p>}
+        {noCutQueue && (
+          <>
+            <p className="warn small">Strips will come out as one uncut 4×6: no "2x6 cut" printer is set up.</p>
+            <button className="btn small" disabled={settingUp} onClick={setUpCut}>{settingUp ? 'Setting up…' : 'Set up automatic 2×6 cutting'}</button>
+          </>
+        )}
       </div>
       {template && (
         <button className="btn" onClick={async () => {

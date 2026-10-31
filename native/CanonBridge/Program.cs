@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Threading;
@@ -23,6 +24,10 @@ internal static class Program
     [STAThread]
     private static int Main(string[] args)
     {
+        // Piped stdin/stdout default to the OEM code page, which garbles non-ASCII paths
+        // (e.g. a Documents folder named ドキュメント). The app speaks UTF-8.
+        Console.InputEncoding = new UTF8Encoding(false);
+        Console.OutputEncoding = new UTF8Encoding(false);
         var usePress = !args.Contains("--shutter=take");
         using var camera = new CanonCamera(usePress);
 
