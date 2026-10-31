@@ -35,13 +35,33 @@ async function Conversation({ params }: Pick<PageProps<"/admin/support/[id]">, "
           <p className="mt-1 text-sm text-muted">
             {t.name ? `${t.name} · ` : ""}
             {t.user_id ? <Link href={adminHref(`customers/${t.user_id}`)} className="text-accent hover:underline">{t.email}</Link> : `${t.email} · contact form (your reply is emailed)`}
+            {t.status === "spam" && <span className="text-busy"> · filtered as a sales pitch ({t.spam_reason ?? "marked by hand"})</span>}
           </p>
         </div>
-        <form action={changeStatus}>
-          <input type="hidden" name="thread" value={t.id} />
-          <input type="hidden" name="status" value={t.status === "open" ? "closed" : "open"} />
-          <button className="rounded-full border border-line px-4 py-2 text-sm font-semibold hover:bg-surface-2">{t.status === "open" ? "Close conversation" : "Reopen"}</button>
-        </form>
+        <div className="flex flex-wrap gap-2">
+          {t.status === "spam" ? (
+            <form action={changeStatus}>
+              <input type="hidden" name="thread" value={t.id} />
+              <input type="hidden" name="status" value="open" />
+              <button className="rounded-full bg-accent px-4 py-2 text-sm font-semibold text-accent-ink">Not spam: move to inbox</button>
+            </form>
+          ) : (
+            <>
+              <form action={changeStatus}>
+                <input type="hidden" name="thread" value={t.id} />
+                <input type="hidden" name="status" value={t.status === "open" ? "closed" : "open"} />
+                <button className="rounded-full border border-line px-4 py-2 text-sm font-semibold hover:bg-surface-2">{t.status === "open" ? "Close conversation" : "Reopen"}</button>
+              </form>
+              {!t.user_id && (
+                <form action={changeStatus}>
+                  <input type="hidden" name="thread" value={t.id} />
+                  <input type="hidden" name="status" value="spam" />
+                  <button className="rounded-full border border-line px-4 py-2 text-sm text-muted hover:bg-surface-2 hover:text-fg">Mark as spam</button>
+                </form>
+              )}
+            </>
+          )}
+        </div>
       </div>
       <div className="rounded-card border border-line bg-surface p-5">
         <div className="max-h-[60vh] overflow-y-auto pr-1">

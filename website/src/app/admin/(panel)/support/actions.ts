@@ -23,7 +23,8 @@ export async function replyAsAdmin(_prev: ReplyResult, form: FormData): Promise<
 export async function changeStatus(form: FormData): Promise<void> {
   await requireAdmin();
   const id = String(form.get("thread") ?? "");
-  const status = form.get("status") === "closed" ? "closed" : "open";
+  const asked = String(form.get("status"));
+  const status = asked === "closed" || asked === "spam" ? asked : "open";
   if (UUID.test(id)) await setThreadStatus(id, status);
-  redirect(adminHref(status === "closed" ? "support" : `support/${id}`));
+  redirect(adminHref(status === "open" ? `support/${id}` : status === "spam" ? "support?show=spam" : "support"));
 }

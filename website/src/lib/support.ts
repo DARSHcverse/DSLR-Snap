@@ -17,7 +17,8 @@ export interface Thread {
   email: string;
   name: string | null;
   subject: string;
-  status: "open" | "closed";
+  status: "open" | "closed" | "spam";
+  spam_reason: string | null;
   unread_by_admin: boolean;
   unread_by_customer: boolean;
   last_message_at: string;
@@ -63,7 +64,11 @@ async function overLimit(userId: string): Promise<boolean> {
   return (count ?? 0) >= MAX_PER_HOUR;
 }
 
-export async function startThread(o: { userId: string | null; email: string; name?: string | null; subject: string; body: string }): Promise<Thread> {
+/**
+ * A new conversation. `spam` (from the contact form's filter) files it under Filtered instead:
+ * saved, but no email to the team and nothing unread.
+ */
+export async function startThread(o: { userId: string | null; email: string; name?: string | null; subject: string; body: string; spam?: string[] }): Promise<Thread> {
   if (o.userId && (await overLimit(o.userId))) throw new Error("You've sent a lot of messages this hour. We'll reply soon.");
   const db = supabaseAdmin();
   if (!o.userId) {
@@ -77,13 +82,19 @@ export async function startThread(o: { userId: string | null; email: string; nam
   }
   const { data: thread, error } = await db
     .from("support_threads")
-    .insert({ user_id: o.userId, email: o.email.toLowerCase(), name: o.name ?? null, subject: clean(o.subject, 120) || "Question", unread_by_admin: true })
+    .insert({
+      user_id: o.userId,
+      email: o.email.toLowerCase(),
+      name: o.name ?? null,
+      subject: clean(o.subject, 120) || "Question",
+      ...(o.spam ? { status: "spam", unread_by_admin: false, spam_reason: o.spam.join(", ") } : { unread_by_admin: true }),
+    })
     .select("*")
     .single<Thread>();
   if (error || !thread) throw new Error("Couldn't start the conversation.");
   const body = clean(o.body, 4000);
   await db.from("support_messages").insert({ thread_id: thread.id, from_admin: false, body });
-  await notifyTeam(thread, body, true);
+  if (!o.spam) await notifyTeam(thread, body, true);
   return thread;
 }
 
@@ -121,13 +132,13 @@ export async function customerReply(userId: string, id: string, text: string): P
 
 // ---------- Admin side ----------
 
-export async function inbox(status: "open" | "closed"): Promise<Thread[]> {
+export async function inbox(status: Thread["status"]): Promise<Thread[]> {
   const { data } = await supabaseAdmin().from("support_threads").select("*").eq("status", status).order("last_message_at", { ascending: false }).limit(200);
   return (data ?? []) as Thread[];
 }
 
 export async function unreadCount(): Promise<number> {
-  const { count } = await supabaseAdmin().from("support_threads").select("id", { count: "exact", head: true }).eq("unread_by_admin", true);
+  const { count } = await supabaseAdmin().from("support_threads").select("id", { count: "exact", head: true }).eq("unread_by_admin", true).neq("status", "spam");
   return count ?? 0;
 }
 
@@ -156,7 +167,7 @@ export async function adminReply(id: string, text: string): Promise<void> {
   });
 }
 
-export async function setThreadStatus(id: string, status: "open" | "closed"): Promise<void> {
+export async function setThreadStatus(id: string, status: Thread["status"]): Promise<void> {
   await supabaseAdmin().from("support_threads").update({ status }).eq("id", id);
 }
 
@@ -176,6 +187,11 @@ export async function addEmailReply(o: { thread: string; role: "customer" | "adm
   if (o.from.trim().toLowerCase() !== thread.email.toLowerCase()) return "ignored";
   const body = clean(o.body, 4000);
   await db.from("support_messages").insert({ thread_id: thread.id, from_admin: false, body });
+  // A pitch that writes back stays under Filtered, without emailing the team.
+  if (thread.status === "spam") {
+    await db.from("support_threads").update({ last_message_at: new Date().toISOString() }).eq("id", thread.id);
+    return "added";
+  }
   await db.from("support_threads").update({ status: "open", unread_by_admin: true, last_message_at: new Date().toISOString() }).eq("id", thread.id);
   await notifyTeam(thread, body, false);
   return "added";

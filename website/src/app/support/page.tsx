@@ -4,6 +4,7 @@ import { pageMetadata } from "@/lib/seo";
 import { ContentPage, JsonLd } from "@/components/ContentPage";
 import { FAQ } from "@/lib/marketing";
 import { site } from "@/lib/site";
+import { turnstileEnabled, turnstileSiteKey } from "@/lib/turnstile";
 import { ContactForm } from "./ContactForm";
 
 export const metadata: Metadata = pageMetadata({
@@ -95,7 +96,7 @@ export default function SupportPage() {
           </p>
           <p className="mt-3 text-sm text-muted">Tip: in the app, Printer &amp; devices → App shows your version and the log file. Attaching the log helps us fix things fast.</p>
         </div>
-        <ContactForm />
+        <ContactForm turnstileKey={turnstileEnabled ? turnstileSiteKey : ""} />
       </section>
     </ContentPage>
   );
