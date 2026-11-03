@@ -189,12 +189,14 @@ export class BoothService {
     hideOnWindows(dirname(files.printSheet))
     const watermark = this.deps.watermark?.()
     const look = { look: ev.look, skinSmoothing: ev.skinSmoothing, background: this.backgroundFor(ev, opts.backgroundId) }
-    const { composite, printSheet } = await compose({ template, photoPaths, eventName: ev.name, watermark, ...look })
+    // The QR on the print needs the link before the upload starts; galleries that only know it later print without.
+    const qrUrl = template.qr && ev.galleryEnabled && this.deps.gallery.enabled ? this.deps.gallery.sessionUrl?.(sessionId, ev.id) : undefined
+    const { composite, printSheet } = await compose({ template, photoPaths, eventName: ev.name, watermark, ...look, qrUrl })
     const compositePath = files.final
     // Glam/filter events can also give guests the colour version (shown on screen; saved next to the final).
     let colourPreview: string | undefined
     if (ev.colourCopy && ev.look !== 'colour') {
-      const colour = await compose({ template, photoPaths, eventName: ev.name, watermark, background: look.background })
+      const colour = await compose({ template, photoPaths, eventName: ev.name, watermark, background: look.background, qrUrl })
       await writeFile(colourPathFor(compositePath), colour.composite)
       colourPreview = await previewDataUrl(colour.composite, 700)
     }

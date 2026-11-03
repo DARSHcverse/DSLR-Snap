@@ -102,3 +102,22 @@ describe('trial watermark', () => {
     expect(Buffer.compare(marked.printSheet, plain.printSheet)).not.toBe(0)
   })
 })
+
+describe('QR code on the print', () => {
+  const t = { ...BUILT_IN_TEMPLATES.find((x) => x.id === 'classic-strip-3')!, qr: { x: 400, y: 1600, w: 180, h: 180 } }
+  // A QR's top-left finder square is dark; the template background there is white.
+  const pixel = async (img: Buffer, x: number, y: number) => {
+    const { data } = await sharp(img).extract({ left: x, top: y, width: 1, height: 1 }).raw().toBuffer({ resolveWithObject: true })
+    return data[0] + data[1] + data[2]
+  }
+
+  it('prints the session link as a QR code in the QR square', async () => {
+    const out = await compose({ template: t, photoPaths: photos.slice(0, 3), eventName: 'E', qrUrl: 'https://dslrsnap.com/s/00000000-0000-4000-8000-000000000000' })
+    expect(await pixel(out.composite, 400 + 12, 1600 + 12)).toBeLessThan(150)
+  })
+
+  it('leaves the square as the design when there is no link (offline, QR off)', async () => {
+    const out = await compose({ template: t, photoPaths: photos.slice(0, 3), eventName: 'E' })
+    expect(await pixel(out.composite, 400 + 12, 1600 + 12)).toBeGreaterThan(700)
+  })
+})

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { BUILT_IN_TEMPLATES } from '../src/shared/templates'
-import { copyName, FONTS, sanitizeTemplate } from '../src/shared/templateEdit'
+import { centreX, copyName, defaultQr, FONTS, newText, sanitizeTemplate, spaceEvenly } from '../src/shared/templateEdit'
 import type { Template } from '../src/shared/types'
 
 const imported: Template = {
@@ -56,5 +56,43 @@ describe('copyName', () => {
     expect(copyName('Strip', [])).toBe('Strip (copy)')
     expect(copyName('Strip', ['Strip (copy)'])).toBe('Strip (copy 2)')
     expect(copyName('Strip (copy)', ['Strip (copy)'])).toBe('Strip (copy 2)')
+  })
+})
+
+describe('layout helpers', () => {
+  const c = { w: 624, h: 1844 }
+  it('centres a photo across the canvas', () => {
+    expect(centreX({ x: 10, y: 50, w: 400, h: 300 }, c)).toEqual({ x: 112, y: 50, w: 400, h: 300 })
+  })
+  it('spaces photos evenly between the top and bottom ones, in their order', () => {
+    const slots = [{ x: 0, y: 900, w: 100, h: 200 }, { x: 0, y: 100, w: 100, h: 200 }, { x: 0, y: 1500, w: 100, h: 200 }]
+    expect(spaceEvenly(slots).map((s) => s.y)).toEqual([800, 100, 1500])
+  })
+  it('leaves one or two photos alone', () => {
+    const two = [{ x: 0, y: 0, w: 10, h: 10 }, { x: 0, y: 99, w: 10, h: 10 }]
+    expect(spaceEvenly(two)).toEqual(two)
+  })
+})
+
+describe('text and QR on a print', () => {
+  const c = { w: 624, h: 1844 }
+  it('adds new text in the middle, below the photos, in the chosen font', () => {
+    expect(newText(c, '#PriyaAndTom')).toMatchObject({ text: '#PriyaAndTom', x: 312, align: 'middle', fontFamily: FONTS[0].family })
+  })
+  it('puts each new line below the lowest text, or above the top one when there is no room', () => {
+    const first = newText(c, 'a')
+    const second = newText(c, 'b', [first])
+    expect(second.y).toBeGreaterThan(first.y + first.size)
+    const low = { ...first, y: c.h - 40 }
+    const above = newText(c, 'c', [low])
+    expect(above.y).toBeLessThan(low.y - low.size)
+  })
+  it('places a QR square inside the safe area, and sanitize keeps it there', () => {
+    const qr = defaultQr(c)
+    expect(qr.w).toBe(qr.h)
+    expect(qr.x + qr.w).toBeLessThanOrEqual(c.w - 36)
+    const t = sanitizeTemplate({ ...imported, qr: { x: 9999, y: -10, w: 50, h: 900 } })
+    expect(t.qr).toEqual({ x: 624 - 120, y: 0, w: 120, h: 120 })
+    expect(sanitizeTemplate(imported).qr).toBeUndefined()
   })
 })

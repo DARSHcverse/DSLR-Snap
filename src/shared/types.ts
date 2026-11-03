@@ -34,6 +34,8 @@ export interface Template {
   /** Absolute path to an image sized to the design canvas. Drawn behind photos (designs without transparency). */
   backgroundPath?: string
   logo?: Rect & { path: string }
+  /** A square where each guest's QR code (their download link) is printed; empty when there's no link. */
+  qr?: Rect
   slots: Rect[]
   texts: TextItem[]
 }

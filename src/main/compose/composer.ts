@@ -1,3 +1,4 @@
+import QRCode from 'qrcode'
 import sharp, { type OverlayOptions } from 'sharp'
 import { canvasSize, fillTokens, SHEET } from '../../shared/layout'
 import type { Look, Template, TextItem } from '../../shared/types'
@@ -18,6 +19,8 @@ export interface ComposeInput {
   /** Filter for the photos (not the template artwork). */
   look?: Look
   skinSmoothing?: number
+  /** The guest's download link, printed as a QR code in the template's QR square (if it has one). */
+  qrUrl?: string
 }
 
 export interface ComposeOutput {
@@ -109,6 +112,13 @@ export async function compose(input: ComposeInput): Promise<ComposeOutput> {
     layers.push({ input: logo, left: Math.round(l.x), top: Math.round(l.y) })
   }
   if (template.texts.length) layers.push({ input: textSvg(template.texts, size.w, size.h, vars), left: 0, top: 0 })
+  if (template.qr && input.qrUrl) {
+    const q = template.qr
+    const side = Math.round(Math.min(q.w, q.h))
+    // White quiet zone included: it scans on any design, dark or busy.
+    const qr = await QRCode.toBuffer(input.qrUrl, { type: 'png', width: side, margin: 2, errorCorrectionLevel: 'M', color: { dark: '#000000', light: '#ffffff' } })
+    layers.push({ input: await sharp(qr).resize(side, side).png().toBuffer(), left: Math.round(q.x), top: Math.round(q.y) })
+  }
   if (input.watermark) layers.push({ input: watermarkSvg(input.watermark, size.w, size.h), left: 0, top: 0 })
 
   const composite = await sharp({ create: { width: size.w, height: size.h, channels: 3, background: template.background } })

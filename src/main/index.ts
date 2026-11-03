@@ -168,6 +168,19 @@ function rememberExposure(current: ExposureSettings, eventId = db.getActiveEvent
 
 const TEST_SHOTS_KEPT = 12
 
+/**
+ * Photos for template previews and test prints: the operator's newest camera test shots (real
+ * faces, their lighting) when there are any, otherwise the built-in samples.
+ */
+async function previewShots(n: number): Promise<string[]> {
+  const dir = join(userData, 'testshots')
+  const files = (await readdir(dir).catch(() => [] as string[])).filter((f) => /\.jpe?g$/i.test(f)).sort().reverse()
+  if (!files.length) return sampleShots(n)
+  const shots = Array.from({ length: n }, (_, i) => join(dir, files[i % files.length]))
+  // A test shot pruned between listing and composing would fail the preview; use the samples then.
+  return shots.every((p) => existsSync(p)) ? shots : sampleShots(n)
+}
+
 async function testShot(): Promise<TestShot> {
   const settings = (await camera.getExposure().catch(() => null))?.current ?? {}
   const dir = join(userData, 'testshots')
@@ -280,6 +293,9 @@ function syncMockBackdrop(): void {
   const backdrop = (id && db.getEvent(id)?.backdrop) || 'none'
   camera.backdrop = backdrop === 'ai' ? 'none' : backdrop
 }
+
+/** Previews and test prints show where the guest's QR goes; this link just opens the website. */
+const SAMPLE_QR_URL = 'https://dslrsnap.com'
 
 const IMPORTED_ID = /^imported-[0-9a-f]{8}$/
 
@@ -451,7 +467,7 @@ function registerIpc(): void {
     const keyed = look?.backdrop && look.backdrop !== 'none' && look.backgroundId ? look.backdrop : undefined
     const shots = keyed ? await sampleShotsBackdrop[keyed](t.slots.length) : await sampleShots(t.slots.length)
     const background = keyed ? { path: backgroundPath(look!.backgroundId!), key: keyed } : undefined
-    const { composite } = await compose({ template: t, photoPaths: shots, eventName: eventName || 'Your Event', look: look?.look, skinSmoothing: look?.skinSmoothing, background })
+    const { composite } = await compose({ template: t, photoPaths: shots, eventName: eventName || 'Your Event', look: look?.look, skinSmoothing: look?.skinSmoothing, background, qrUrl: SAMPLE_QR_URL })
     return previewDataUrl(composite, 520)
   })
   handle('chooseTemplateFile', async () => {
@@ -505,12 +521,12 @@ function registerIpc(): void {
   })
   handle('previewTemplateDraft', async (t: Template, eventName: string) => {
     const clean = cleanTemplate(t)
-    const { composite } = await compose({ template: clean, photoPaths: await sampleShots(clean.slots.length), eventName: eventName || 'Your Event' })
+    const { composite } = await compose({ template: clean, photoPaths: await previewShots(clean.slots.length), eventName: eventName || 'Your Event', qrUrl: SAMPLE_QR_URL })
     return previewDataUrl(composite, 520)
   })
   handle('testPrintTemplate', async (t: Template) => {
     const template = cleanTemplate(t)
-    const { printSheet } = await compose({ template, photoPaths: await sampleShots(template.slots.length), eventName: 'Test print' })
+    const { printSheet } = await compose({ template, photoPaths: await previewShots(template.slots.length), eventName: 'Test print', qrUrl: SAMPLE_QR_URL })
     const file = join(userData, 'test-template.jpg')
     await writeFile(file, printSheet)
     await printer.print({ filePath: file, format: template.format, copies: 1, jobName: 'test-template' })
