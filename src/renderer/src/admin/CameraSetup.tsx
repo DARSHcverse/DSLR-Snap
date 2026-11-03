@@ -94,7 +94,7 @@ export default function CameraSetup({ devices, event }: { devices: DeviceSnapsho
   const storeMine = async (update: (list: SavedPreset[]) => SavedPreset[]) => {
     const s = await window.booth.getDeviceSettings()
     const next = update(s.cameraPresets ?? [])
-    await window.booth.saveDeviceSettings({ ...s, cameraPresets: next })
+    await window.booth.saveCameraPresets(next)
     setMine(next)
   }
   const saveMine = (name: string) =>

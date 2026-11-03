@@ -11,7 +11,7 @@ import type { DeviceSnapshot, PreviewLook } from '../shared/api'
 import { flashSafe } from '../shared/exposure'
 import { canvasSize, SHEET, validateTemplate } from '../shared/layout'
 import { copyName, sanitizeTemplate } from '../shared/templateEdit'
-import type { DeviceSettings, ExposureKey, ExposureSettings, PrintFormat, Template, TemplateImportDraft, TemplateImportOptions, TestShot } from '../shared/types'
+import type { DeviceSettings, ExposureKey, ExposureSettings, PrintFormat, SavedPreset, Template, TemplateImportDraft, TemplateImportOptions, TestShot } from '../shared/types'
 import { BoothService } from './BoothService'
 import { exportEventPhotos } from './exportEvent'
 import { isBlockedWhileLocked, shouldLock } from './kiosk'
@@ -38,6 +38,7 @@ import { aiOntoBackground } from './compose/chromaKey'
 import { defaultSlots, detectSlots, guessLayout, type Layout, normalizeArtwork, suggestFit } from './compose/templateImport'
 import { ASSET_ID, BACKGROUND_ID, BoothDatabase } from './db/database'
 import { PresetSync } from './licence/presetSync'
+import { fromScreen } from './deviceSettings'
 import { SetupTransfer } from './licence/setupTransfer'
 import { paperAlertDue } from '../shared/paper'
 import { BUILT_IN_TEMPLATES } from '../shared/templates'
@@ -589,8 +590,8 @@ function registerIpc(): void {
   handle('getDeviceSettings', () => db.getDeviceSettings())
   handle('saveDeviceSettings', async (s: DeviceSettings) => {
     const prev = db.getDeviceSettings()
+    s = fromScreen(prev, s)
     db.saveDeviceSettings(s)
-    if (JSON.stringify(prev.cameraPresets ?? []) !== JSON.stringify(s.cameraPresets ?? [])) void presetSync.changed()
     if (prev.cameraDriver !== s.cameraDriver) {
       await camera.disconnect().catch(() => undefined)
       camera = makeCamera(s)
@@ -599,6 +600,11 @@ function registerIpc(): void {
     }
     if (prev.printerDriver !== s.printerDriver) printer = makePrinter(s)
     await broadcastDevices()
+  })
+  /** "My settings": the only way presets change from a screen (see fromScreen). */
+  handle('saveCameraPresets', (list: SavedPreset[]) => {
+    db.saveDeviceSettings({ ...db.getDeviceSettings(), cameraPresets: Array.isArray(list) ? list : [] })
+    void presetSync.changed()
   })
   handle('detectPrinters', () => printer.detect())
   /**

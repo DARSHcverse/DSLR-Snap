@@ -7,6 +7,7 @@ import type {
   CameraStatus,
   CaptureResult,
   DeviceSettings,
+  SavedPreset,
   EventInput,
   EventStats,
   ExposureKey,
@@ -120,7 +121,9 @@ export interface BoothApi {
   setPhotosFolder(pick: boolean): Promise<{ path: string; chosen: boolean }>
 
   getDeviceSettings(): Promise<DeviceSettings>
+  /** Everything except the camera presets, which keep their stored value (use saveCameraPresets). */
   saveDeviceSettings(s: DeviceSettings): Promise<void>
+  saveCameraPresets(list: SavedPreset[]): Promise<void>
   detectPrinters(): Promise<PrinterDetection>
   /** Windows' Printing Preferences for the printer `format` uses (2-inch cut); resolves when closed. */
   openPrinterPreferences(format: '4x6' | '2x6'): Promise<{ printer: string; cut: 'on' | 'off'; sharedQueue: boolean }>
