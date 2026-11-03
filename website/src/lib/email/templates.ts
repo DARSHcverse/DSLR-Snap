@@ -183,6 +183,18 @@ export const newDeviceSignedIn = (o: { device: string; at: string | number }): R
     ],
   });
 
+export const paperLow = (o: { device: string; remaining: number; capacity: number; event?: string }): RenderedEmail =>
+  r({
+    subject: o.remaining <= 15 ? `Almost out of paper: ${o.remaining} prints left on ${o.device}` : `Paper running low: ${o.remaining} prints left on ${o.device}`,
+    preheader: "Load a new roll and ribbon soon so no guest misses a print.",
+    heading: o.remaining <= 15 ? "Almost out of paper" : "Paper running low",
+    blocks: [
+      { facts: [["Computer", o.device], ...(o.event ? ([["Event", o.event]] as [string, string][]) : []), ["Prints left", `${o.remaining} of ${o.capacity}`]] },
+      { p: "Load a new roll and ribbon soon. Afterwards, press **New roll** in DSLR Snap (Printer & devices → Paper) so the count starts again." },
+      { p: "Prints that can't be made wait in the print queue and print once the new roll is in." },
+    ],
+  });
+
 export const accountDeleted = (): RenderedEmail =>
   r({
     subject: "Your DSLR Snap account is deleted",

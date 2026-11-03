@@ -39,6 +39,7 @@ import { defaultSlots, detectSlots, guessLayout, type Layout, normalizeArtwork, 
 import { ASSET_ID, BACKGROUND_ID, BoothDatabase } from './db/database'
 import { PresetSync } from './licence/presetSync'
 import { SetupTransfer } from './licence/setupTransfer'
+import { paperAlertDue } from '../shared/paper'
 import { BUILT_IN_TEMPLATES } from '../shared/templates'
 import { AccountService } from './licence/AccountService'
 import { machineHash } from './licence/machineId'
@@ -169,6 +170,33 @@ async function applyEventExposure(): Promise<void> {
 /** Remembers the camera's exposure on an event (default: the active one), so it is re-applied next time. */
 function rememberExposure(current: ExposureSettings, eventId = db.getActiveEventId()): void {
   if (eventId && db.getEvent(eventId)) db.saveEventExposure(eventId, current)
+}
+
+/**
+ * Low paper: emails the operator (through the website) at 50 and 15 prints left, once per roll.
+ * Not marked as sent until the website has it, so an offline booth warns once it's back online.
+ */
+let paperAlertBusy = false
+async function checkPaperAlert(): Promise<void> {
+  const paper = db.getPaper()
+  if (!paper || paperAlertBusy || !account?.state().signedIn) return
+  const saved = JSON.parse(db.getSetting('paperAlerts') ?? '{}') as { roll?: string; sent?: number[] }
+  const sent = saved.roll === paper.loadedAt ? (saved.sent ?? []) : []
+  const due = paperAlertDue(paper, sent)
+  if (!due) return
+  paperAlertBusy = true
+  try {
+    const active = db.getActiveEventId()
+    const res = await account.call('/api/app/notify', {
+      kind: 'paper_low', remaining: paper.remaining, capacity: paper.capacity, threshold: due.threshold, roll: paper.loadedAt,
+      event: active ? db.getEvent(active)?.name : undefined
+    })
+    if (res) db.setSetting('paperAlerts', JSON.stringify({ roll: paper.loadedAt, sent: [...sent, ...due.covers] }))
+  } catch (e) {
+    void log('warn', `paper alert: ${e instanceof Error ? e.message : e}`)
+  } finally {
+    paperAlertBusy = false
+  }
 }
 
 const TEST_SHOTS_KEPT = 12
@@ -896,6 +924,7 @@ app.whenReady().then(async () => {
     void broadcastDevices()
   })
   printQueue.on('jobFailed', (id: string, e: unknown) => void log('error', `print job ${id} failed: ${e}`))
+  printQueue.on('changed', () => void checkPaperAlert())
   pinLock = new PinLock(db)
   account = new AccountService({
     store: { get: (k) => db.getSetting(k), set: (k, v) => db.setSetting(k, v) },

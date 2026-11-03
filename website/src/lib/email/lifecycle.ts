@@ -123,6 +123,12 @@ export async function emailExtraComputers(userId: string, o: { extra: number; to
   if (email) await sendEmail({ to: email, email: t.extraComputersChanged(o), template: "computers-changed" });
 }
 
+/** "Paper running low" to the operator's phone; once per computer, roll and threshold (`onceKey`). */
+export async function emailPaperLow(userId: string, o: { device: string; remaining: number; capacity: number; event?: string }, onceKey: string) {
+  const email = await emailForUser(userId);
+  if (email) await sendEmail({ to: email, email: t.paperLow(o), template: "paper-low", onceKey });
+}
+
 export async function emailNewDevice(userId: string, device: string) {
   const email = await emailForUser(userId);
   if (email) await sendEmail({ to: email, email: t.newDeviceSignedIn({ device, at: Date.now() }), template: "new-device" });
