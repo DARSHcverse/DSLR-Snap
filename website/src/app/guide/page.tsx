@@ -69,7 +69,7 @@ const SECTIONS: { id: string; title: string; body: ReactNode }[] = [
           <li>Start from a built-in setting: <strong>Standard</strong> (most indoor events), <strong>Bright room</strong>, <strong>Dark venue</strong> or <strong>Outdoors</strong>.</li>
           <li>Press <strong>Take test shot</strong>. The histogram and the message say whether it&apos;s too dark, too bright or good. Tap the photo to check focus.</li>
           <li>Adjust with the ◀ ▶ arrows: <strong>ISO</strong> brighter or darker; <strong>Aperture</strong> f/5.6–8 keeps a whole group sharp; <strong>Shutter</strong> slower keeps more room light.</li>
-          <li>Happy with it? Press <strong>＋ Save current settings as mine</strong> and give it a name, like &quot;Speedlite ¼ power, ballroom&quot;. It appears under <strong>My settings</strong> for every future event on that computer. Saving the same name again updates it; × deletes it.</li>
+          <li>Happy with it? Press <strong>＋ Save current settings as mine</strong> and give it a name, like &quot;Speedlite ¼ power, ballroom&quot;. It appears under <strong>My settings</strong> for every future event. Signed in under Account, your saved settings also appear on your other booth computers. Saving the same name again updates it; × deletes it.</li>
         </ol>
         <p>Settings are saved with the event and put back on the camera when the event starts and whenever the camera reconnects.</p>
         <Tip warn>Shutter speeds faster than the flash can sync (about 1/200) aren&apos;t offered: they&apos;d leave a dark band across the photo. With flash, live view can&apos;t show the final brightness, so always take a test shot.</Tip>
@@ -96,7 +96,7 @@ const SECTIONS: { id: string; title: string; body: ReactNode }[] = [
         <p>When you set up an event, the <strong>Print &amp; share</strong> step lets you choose <strong>4×6 postcard</strong> (uncut) or <strong>2×6 strips</strong> (cut). Choosing a size switches to a template of that size.</p>
         <h3>Paper and the print queue</h3>
         <ul>
-          <li>Set how many prints the roll has left under <strong>Printer &amp; devices → Paper</strong>; the booth warns you before it runs out.</li>
+          <li>Set how many prints the roll has left under <strong>Printer &amp; devices → Paper</strong>; the booth warns you before it runs out. Signed in, you also get an <strong>email at 50 and 15 prints left</strong>, so it reaches your phone.</li>
           <li>If the printer runs out of paper or the door is open, the job shows <strong>Failed</strong>. Fix the printer, then press <strong>Retry</strong> in the <strong>Print queue</strong>. Nothing is printed twice.</li>
         </ul>
         <Tip>Strips coming out uncut? The event is using the plain entry: run Set up automatic 2×6 cutting again, or check that 2inch cut is ON in the &quot;(2x6 cut)&quot; printer&apos;s preferences.</Tip>
@@ -131,7 +131,14 @@ const SECTIONS: { id: string; title: string; body: ReactNode }[] = [
           <li>Download it as a <strong>PNG with a transparent background</strong>.</li>
           <li>In <strong>Templates</strong>, drop the PNG in. DSLR Snap finds each photo window automatically; drag to fine-tune. The preview matches the print.</li>
         </ol>
-        <p>The built-in layouts can also add your event name, date and logo.</p>
+        <h3>Changing a template later</h3>
+        <ul>
+          <li>Press <strong>Edit</strong> on any template, in Templates or in the event&apos;s Template step. Built-in templates have <strong>Duplicate &amp; edit</strong>: your changes are saved as your own copy.</li>
+          <li>Add <strong>text</strong> (Event name, Date, Time or a #Hashtag), drag it into place and choose its font, colour and size.</li>
+          <li>Tick <strong>Print each guest&apos;s QR code</strong> to put a scannable link to their photos on the print (QR downloads must be on for the event).</li>
+          <li><strong>Centre</strong>, <strong>Space evenly</strong> and <strong>Make all same size</strong> tidy the photos; the dashed <strong>safe area</strong> shows where the printer may trim. Undo with Ctrl+Z.</li>
+          <li>If other events use the template, the editor says so; <strong>Save as a copy</strong> leaves them unchanged.</li>
+        </ul>
       </>
     ),
   },
@@ -142,9 +149,11 @@ const SECTIONS: { id: string; title: string; body: ReactNode }[] = [
       <ul>
         <li>Press <strong>▶ Start booth</strong>. With <strong>Booth lock</strong> on, the booth covers the taskbar and ignores close shortcuts; leave through the operator menu and its PIN.</li>
         <li>Guests tap <strong>Start</strong>, get a countdown for each photo, then see their print and (if on) a QR code.</li>
+        <li><strong>Ending a session early</strong>: guests can press <strong>✕ End</strong> (bottom-left) during their photos; nothing prints. You can also hold the foot pedal down for a second and a half or press End on the phone remote. For walk-aways, turn on <strong>Only print when the guest taps Print</strong> in the event&apos;s Print &amp; share step.</li>
         <li><strong>Foot pedal or clicker</strong>: under Printer &amp; devices, press <strong>Learn key</strong> and press your pedal once.</li>
         <li><strong>Phone remote</strong>: tick &quot;Control the booth from my phone&quot; and scan the QR. Allow the Windows firewall prompt on private networks.</li>
-        <li><strong>Photos &amp; stats</strong> shows every session; the event folder holds the full-size files to give the client.</li>
+        <li><strong>Photos &amp; stats</strong> shows every session (and how many ended early); the event folder holds the full-size files to give the client.</li>
+        <li><strong>Two booths?</strong> On the first computer, open <strong>Account → Save this computer&apos;s setup</strong>; on the second, <strong>Copy setup to this computer</strong>. Templates, booth lock, pedal key and (if you choose) the PIN come across.</li>
       </ul>
     ),
   },

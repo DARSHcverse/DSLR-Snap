@@ -49,7 +49,7 @@ export const productionUrl = "https://dslrsnap.com";
 export const siteUrl = process.env.VERCEL ? productionUrl : "http://localhost:3000";
 
 /** When the marketing copy last changed: the sitemap's lastmod. Bump it with real content changes. */
-export const contentUpdated = "2026-10-31";
+export const contentUpdated = "2026-11-03";
 
 export const earlyAccessHref = `mailto:${site.contactEmail}?subject=${encodeURIComponent(
   "DSLR Snap early access",
