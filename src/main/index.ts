@@ -37,6 +37,7 @@ import { findWiredGoPro, GoPro } from './gopro/GoPro'
 import { aiOntoBackground } from './compose/chromaKey'
 import { defaultSlots, detectSlots, guessLayout, type Layout, normalizeArtwork, suggestFit } from './compose/templateImport'
 import { ASSET_ID, BACKGROUND_ID, BoothDatabase } from './db/database'
+import { PresetSync } from './licence/presetSync'
 import { AccountService } from './licence/AccountService'
 import { machineHash } from './licence/machineId'
 import { MockPrinter } from './printer/MockPrinter'
@@ -98,6 +99,7 @@ let uploadQueue: UploadQueue
 let service: BoothService
 let pinLock: PinLock
 let account: AccountService
+let presetSync: PresetSync
 let updates: Updates | undefined
 let gallery: CloudGallery
 loadEnv(join(userData, '.env'))
@@ -557,6 +559,7 @@ function registerIpc(): void {
   handle('saveDeviceSettings', async (s: DeviceSettings) => {
     const prev = db.getDeviceSettings()
     db.saveDeviceSettings(s)
+    if (JSON.stringify(prev.cameraPresets ?? []) !== JSON.stringify(s.cameraPresets ?? [])) void presetSync.changed()
     if (prev.cameraDriver !== s.cameraDriver) {
       await camera.disconnect().catch(() => undefined)
       camera = makeCamera(s)
@@ -902,6 +905,15 @@ app.whenReady().then(async () => {
     log: (level, m) => void log(level, `account: ${m}`)
   })
   account.on('changed', () => win?.webContents.send('booth:account', account.state()))
+  // "My settings" follow the account: synced after sign-in, with every licence refresh and on each change.
+  presetSync = new PresetSync({
+    call: (path, body) => account.call(path, body),
+    getPresets: () => db.getDeviceSettings().cameraPresets ?? [],
+    setPresets: (cameraPresets) => db.saveDeviceSettings({ ...db.getDeviceSettings(), cameraPresets }),
+    store: { get: (k) => db.getSetting(k), set: (k, v) => db.setSetting(k, v) },
+    log: (level, m) => void log(level, m)
+  })
+  account.on('changed', () => account.state().signedIn && void presetSync.sync())
   updates = new Updates(app.isPackaged, (level, m) => void log(level, `updates: ${m}`))
   updates.on('changed', (s) => win?.webContents.send('booth:update', s))
   updates.start()

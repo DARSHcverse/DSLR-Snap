@@ -86,6 +86,31 @@ export function savePreset(list: SavedPreset[], rawName: string, current: Exposu
   return [...list, { id, name, settings }].slice(-MAX_SAVED_PRESETS)
 }
 
+/**
+ * Merges this computer's "My settings" with the account's copy. `synced` holds the names (lower
+ * case) both sides had after the last sync, so a preset missing on one side can be told apart:
+ * deleted there (drop it) or new here (keep it). `prefer` is 'local' when this computer has changes
+ * the account hasn't seen yet, so its edits and deletes win; otherwise the account wins.
+ */
+export function mergePresets(local: SavedPreset[], account: SavedPreset[], synced: string[], prefer: 'local' | 'account'): SavedPreset[] {
+  const key = (p: SavedPreset) => p.name.toLowerCase()
+  const was = new Set(synced)
+  const localBy = new Map(local.map((p) => [key(p), p]))
+  const accountNames = new Set(account.map(key))
+  const out: SavedPreset[] = []
+  for (const a of account) {
+    const mine = localBy.get(key(a))
+    if (mine) out.push(prefer === 'local' ? mine : a)
+    else if (!(prefer === 'local' && was.has(key(a)))) out.push(a) // else: deleted here, not sent yet
+  }
+  for (const mine of local) {
+    if (accountNames.has(key(mine))) continue
+    if (prefer === 'account' && was.has(key(mine))) continue // deleted on another computer
+    out.push(mine)
+  }
+  return out.slice(-MAX_SAVED_PRESETS)
+}
+
 export const EXPOSURE_LABELS: Record<ExposureKey, string> = { iso: 'ISO', aperture: 'Aperture', shutter: 'Shutter', whiteBalance: 'White balance' }
 
 /** "ISO 400 · f/5.6 · 1/125 · Flash" */

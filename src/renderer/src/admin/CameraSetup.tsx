@@ -101,7 +101,7 @@ export default function CameraSetup({ devices, event }: { devices: DeviceSnapsho
     run(async () => {
       await storeMine((list) => savePreset(list, name, state?.current ?? {}))
       setNaming(null)
-      setNotice(`Saved "${name.trim()}". It's under My settings for every event on this computer.`)
+      setNotice(`Saved "${name.trim()}". It's under My settings for every event, and on your other booth computers when they're signed in.`)
     })
   const deleteMine = (p: SavedPreset) => confirm(`Delete "${p.name}"?`) && run(() => storeMine((list) => list.filter((x) => x.id !== p.id)))
 
@@ -195,7 +195,7 @@ export default function CameraSetup({ devices, event }: { devices: DeviceSnapsho
                   <button type="button" className="btn small" onClick={() => setNaming(null)}>Cancel</button>
                 </form>
               )}
-              <span className="muted small">Your own starting points, e.g. for your flash at a venue you work often. Saving a name that exists updates it.</span>
+              <span className="muted small">Your own starting points, e.g. for your flash at a venue you work often. Saving a name that exists updates it. Signed in under Account, they follow you to every booth computer.</span>
             </div>
 
             {KEYS.map((k) => {

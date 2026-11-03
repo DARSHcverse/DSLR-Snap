@@ -93,6 +93,21 @@ export class AccountService extends EventEmitter {
     return refreshToken && this.configured ? { refreshToken, machine: this.deps.machineHash } : null
   }
 
+  /**
+   * Calls one of the website's /api/app routes as this booth (credentials added). Null when signed
+   * out or this build has no account; a "signed out" answer signs the booth out like a refresh does.
+   */
+  async call<T>(path: string, body: Record<string, unknown> = {}): Promise<T | null> {
+    const creds = this.apiCredentials()
+    if (!creds) return null
+    try {
+      return await this.post<T>(path, { ...body, ...creds })
+    } catch (e) {
+      if (e instanceof AccountError && e.code === 'signed_out') this.clear()
+      throw e
+    }
+  }
+
   get accountUrl(): string {
     return this.deps.accountUrl
   }
@@ -194,15 +209,15 @@ export class AccountService extends EventEmitter {
     this.emit('changed')
   }
 
-  private async post(path: string, body: unknown): Promise<{ refreshToken: string; licence: string }> {
+  private async post<T = { refreshToken: string; licence: string }>(path: string, body: unknown): Promise<T> {
     const res = await (this.deps.fetch ?? fetch)(`${this.deps.accountUrl}${path}`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify(body),
       signal: AbortSignal.timeout(15_000)
     })
-    const json = (await res.json().catch(() => ({}))) as { error?: string; message?: string; refreshToken?: string; licence?: string }
+    const json = (await res.json().catch(() => ({}))) as { error?: string; message?: string }
     if (!res.ok) throw new AccountError(json.error ?? `http_${res.status}`, json.message ?? `The website returned ${res.status}.`)
-    return json as { refreshToken: string; licence: string }
+    return json as T
   }
 }

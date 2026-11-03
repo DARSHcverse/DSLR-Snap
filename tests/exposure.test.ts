@@ -7,7 +7,7 @@ import { analyzeShot } from '../src/main/camera/analyzeShot'
 import { avLabel, decodeExposure, encodeOption, isoLabel, tvLabel, wbLabel } from '../src/main/camera/canonCodes'
 import { applyExposure } from '../src/main/camera/applyExposure'
 import { MockCamera } from '../src/main/camera/MockCamera'
-import { flashSafe, MAX_SAVED_PRESETS, nearestOption, PRESETS, savePreset, shutterSeconds, step } from '../src/shared/exposure'
+import { flashSafe, MAX_SAVED_PRESETS, mergePresets, nearestOption, PRESETS, savePreset, shutterSeconds, step } from '../src/shared/exposure'
 
 describe('Canon code → label', () => {
   it.each([[0x00, 'Auto'], [0x48, '100'], [0x4b, '125'], [0x4d, '160'], [0x58, '400'], [0x5d, '640'], [0x63, '1000'], [0x70, '3200'], [0x80, '12800']])('ISO 0x%s → %s', (code, label) => {
@@ -186,5 +186,34 @@ describe('saved camera settings', () => {
     for (let i = 0; i < 14; i++) list = savePreset(list, `P${i}`, flash)
     expect(list).toHaveLength(MAX_SAVED_PRESETS)
     expect(list.at(-1)!.name).toBe('P13')
+  })
+})
+
+describe('syncing My settings with the account', () => {
+  const p = (name: string, iso = '400', id = `id-${name}`) => ({ id, name, settings: { iso } })
+
+  it('adds presets from the account and keeps ones made on this computer', () => {
+    const r = mergePresets([p('Local')], [p('Remote')], [], 'account')
+    expect(r.map((x) => x.name)).toEqual(['Remote', 'Local'])
+  })
+
+  it('drops a preset that was synced before and has since been deleted on another computer', () => {
+    expect(mergePresets([p('Gone'), p('Kept')], [p('Kept')], ['gone', 'kept'], 'account').map((x) => x.name)).toEqual(['Kept'])
+  })
+
+  it('for the same name, the account wins unless this computer changed it since the last sync', () => {
+    expect(mergePresets([p('Hall', '800')], [p('hall', '200')], ['hall'], 'account')[0].settings.iso).toBe('200')
+    expect(mergePresets([p('Hall', '800')], [p('hall', '200')], ['hall'], 'local')[0].settings.iso).toBe('800')
+  })
+
+  it('a local delete wins when this computer has unsent changes', () => {
+    // "Old" was synced, then deleted here while offline: the account still has it.
+    expect(mergePresets([], [p('Old')], ['old'], 'local')).toEqual([])
+  })
+
+  it('keeps at most 12', () => {
+    const many = Array.from({ length: 10 }, (_, i) => p(`A${i}`))
+    const more = Array.from({ length: 10 }, (_, i) => p(`B${i}`))
+    expect(mergePresets(more, many, [], 'account')).toHaveLength(MAX_SAVED_PRESETS)
   })
 })

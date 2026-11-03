@@ -17,6 +17,7 @@ export const LIMITS = {
   appLicence: { limit: 120, windowSeconds: 3600 },
   appUploads: { limit: 600, windowSeconds: 3600 },
   appOther: { limit: 60, windowSeconds: 3600 },
+  appSettings: { limit: 300, windowSeconds: 3600 },
 } as const;
 export type LimitName = keyof typeof LIMITS;
 
