@@ -547,6 +547,7 @@ function SessionsTab() {
         <div className="stat-grid">
           <Stat value={stats.sessions} label="Guest sessions" />
           <Stat value={stats.prints.sent} label="Prints sent" />
+          {stats.ended > 0 && <Stat value={stats.ended} label="Ended early" detail="Stopped before printing: no paper used. Their photos are in the event's Photos folder." />}
           <Stat value={stats.prints.pending + stats.prints.failed} label="Prints waiting or failed" bad={stats.prints.failed > 0} detail={stats.prints.lastError} />
           <Stat value={stats.uploads.done} label="QR downloads ready" bad={stats.uploads.failed > 0}
             detail={stats.uploads.failed || stats.uploads.pending ? `${stats.uploads.pending} uploading, ${stats.uploads.failed} retrying${stats.uploads.lastError ? ` · ${stats.uploads.lastError}` : ''}` : undefined} />

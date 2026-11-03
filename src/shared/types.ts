@@ -79,6 +79,10 @@ export interface BoothEvent {
   photoReviewSeconds: number
   /** How long the final "printing" screen stays before returning to "Tap to start". */
   doneScreenSeconds: number
+  /** Guests see an End button during their session (nothing prints when they use it). */
+  guestCanEnd: boolean
+  /** Only print when the guest taps Print on their last photo; walk-aways don't print. */
+  confirmPrint: boolean
   /** Guests can browse this event's photos and GIFs from the welcome screen. */
   showGallery: boolean
   /** Camera exposure for this venue; applied whenever the camera connects. */
@@ -129,13 +133,15 @@ export type Look = 'colour' | 'glam' | 'bw' | 'warm' | 'vintage'
 export interface EventStats {
   /** Completed guest sessions. */
   sessions: number
+  /** Sessions ended before printing (End button, pedal hold, remote, or nobody tapped Print). */
+  ended: number
   /** sent counts sheets (copies); pending and failed count jobs. Failed includes "check printer". */
   prints: { sent: number; pending: number; failed: number; lastError?: string }
   uploads: { done: number; pending: number; failed: number; lastError?: string }
 }
 
 /** Fields added after the first release; optional when saving so older callers keep working. */
-type NewerEventFields = 'shotIntervalSeconds' | 'photoReviewSeconds' | 'doneScreenSeconds' | 'showGallery' | 'look' | 'skinSmoothing' | 'colourCopy' | 'boomerang' | 'backdrop' | 'backgrounds' | 'folder' | 'mode' | 'videoSeconds' | 'videoPrompt' | 'spinSeconds' | 'spinFps' | 'overlayId' | 'musicId'
+type NewerEventFields = 'shotIntervalSeconds' | 'photoReviewSeconds' | 'doneScreenSeconds' | 'guestCanEnd' | 'confirmPrint' | 'showGallery' | 'look' | 'skinSmoothing' | 'colourCopy' | 'boomerang' | 'backdrop' | 'backgrounds' | 'folder' | 'mode' | 'videoSeconds' | 'videoPrompt' | 'spinSeconds' | 'spinFps' | 'overlayId' | 'musicId'
 export type EventInput = Omit<BoothEvent, 'id' | 'createdAt' | NewerEventFields> & Partial<Pick<BoothEvent, NewerEventFields>> & { id?: string }
 
 export type ExposureKey = 'iso' | 'aperture' | 'shutter' | 'whiteBalance'
@@ -166,7 +172,7 @@ export interface TestShot {
   takenAt: string
 }
 
-export type SessionStatus = 'capturing' | 'composed' | 'complete' | 'abandoned'
+export type SessionStatus = 'capturing' | 'composed' | 'complete' | 'abandoned' | 'ended'
 
 export interface SessionRecord {
   id: string

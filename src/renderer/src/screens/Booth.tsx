@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useReducer, useRef, useState } from 'react'
 import type { DeviceSnapshot } from '@shared/api'
-import { boothReducer, retakesLeft, type BoothAction, type BoothConfig, type BoothState } from '@shared/sessionMachine'
+import { boothReducer, CONFIRM_PRINT_SECONDS, retakesLeft, type BoothAction, type BoothConfig, type BoothState } from '@shared/sessionMachine'
 import type { BoothEvent, FinishResult, Template } from '@shared/types'
 import Gallery, { GalleryCorner } from '../components/Gallery'
 import { lookInfo } from '@shared/looks'
@@ -24,9 +24,19 @@ function configFor(a: Active | null | undefined): BoothConfig {
     intervalSeconds: a.event.shotIntervalSeconds,
     reviewSeconds: a.event.photoReviewSeconds,
     retakesAllowed: a.event.retakesAllowed,
-    boomerang: a.event.boomerang
+    boomerang: a.event.boomerang,
+    // Waiting for a "Print" tap only makes sense when this event prints automatically.
+    confirmPrint: a.event.confirmPrint && a.event.autoPrint && a.event.printCopies > 0,
+    confirmPrintSeconds: CONFIRM_PRINT_SECONDS
   }
 }
+
+/** Steps a session can still be stopped from (the print isn't being made yet). */
+const ENDABLE = new Set<BoothState['name']>(['countdown', 'capturing', 'preview', 'error', 'boomerangCountdown', 'boomerang'])
+/** The "End your session?" question closes by itself (the session carries on) after this long. */
+const CONFIRM_END_MS = 8000
+/** How long "Session ended" shows before "Tap to start" comes back. */
+const ENDED_SCREEN_MS = 4000
 
 export default function Booth({ onNeedSetup }: Props) {
   const [active, setActive] = useState<Active | null | undefined>(undefined)
@@ -38,12 +48,17 @@ export default function Booth({ onNeedSetup }: Props) {
   useEffect(() => window.booth.onPaused(setPaused), [])
   // Pedal / phone remote, photo booth: start from the start screen, or finish the final screen.
   const triggerRef = useRef<() => void>(() => undefined)
-  useStartTrigger(() => triggerRef.current())
+  // Holding the pedal (or the remote's End button) stops a session in progress, no questions asked.
+  const stateRef = useRef<BoothState['name']>('welcome')
+  const endRef = useRef<(by: 'guest' | 'operator') => void>(() => undefined)
+  useStartTrigger(() => triggerRef.current(), { armed: () => ENDABLE.has(stateRef.current), onHold: () => endRef.current('operator') })
   const cfg = configFor(active)
   const cfgRef = useRef(cfg)
   cfgRef.current = cfg
 
   const [state, dispatch] = useReducer((s: BoothState, a: BoothAction) => boothReducer(s, a, cfgRef.current), { name: 'welcome' })
+  stateRef.current = state.name
+  const [confirmingEnd, setConfirmingEnd] = useState(false)
   const [previews, setPreviews] = useState<Record<string, string>>({})
   const [result, setResult] = useState<FinishResult | null>(null)
   const [doneView, setDoneView] = useState<'print' | 'colour' | 'boomerang'>('print')
@@ -78,12 +93,29 @@ export default function Booth({ onNeedSetup }: Props) {
     else setGalleryOpen(false)
   }, [state.name, active?.event.id])
 
-  // Countdown and photo-preview ticks
+  // Countdown and photo-preview ticks (paused while the guest is asked whether to end)
   useEffect(() => {
+    if (confirmingEnd) return
     if (state.name !== 'countdown' && state.name !== 'preview' && state.name !== 'boomerangCountdown') return
     const t = setTimeout(() => dispatch({ type: 'TICK' }), 1000)
     return () => clearTimeout(t)
-  }, [state])
+  }, [state, confirmingEnd])
+
+  // "End your session?" carries on by itself if nobody answers; it also closes once ending is no longer possible.
+  useEffect(() => {
+    if (!confirmingEnd) return
+    if (!ENDABLE.has(state.name)) return setConfirmingEnd(false)
+    const t = setTimeout(() => setConfirmingEnd(false), CONFIRM_END_MS)
+    return () => clearTimeout(t)
+  }, [confirmingEnd, state.name])
+
+  // Ended (End button, pedal hold, remote, or nobody tapped Print): record it, then back to the start.
+  useEffect(() => {
+    if (state.name !== 'ended') return
+    if (sessionId.current) void window.booth.endSession(sessionId.current).catch(() => undefined)
+    const t = setTimeout(() => reset(), ENDED_SCREEN_MS)
+    return () => clearTimeout(t)
+  }, [state.name]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Shutter
   useEffect(() => {
@@ -134,6 +166,7 @@ export default function Booth({ onNeedSetup }: Props) {
 
   const reset = useCallback(() => {
     sessionId.current = null
+    setConfirmingEnd(false)
     setPreviews({})
     setResult(null)
     setDoneView('print')
@@ -175,6 +208,11 @@ export default function Booth({ onNeedSetup }: Props) {
         <button className="btn primary" onClick={reset}>Back to start</button>
       </div>
     )
+  }
+
+  endRef.current = (by) => {
+    setConfirmingEnd(false)
+    dispatch({ type: 'END', by })
   }
 
   triggerRef.current = () => {
@@ -280,7 +318,8 @@ export default function Booth({ onNeedSetup }: Props) {
               {state.photos.length >= cfg.photosPerSession ? (active.event.autoPrint && active.event.printCopies > 0 ? 'Print ▶' : 'Done ▶') : 'Looks good ▶'}
             </button>
           </div>
-          <div className="preview-timer" key={state.shot + ':' + state.retakesUsed} style={{ animationDuration: `${cfg.reviewSeconds}s` }} />
+          {cfg.confirmPrint && state.photos.length >= cfg.photosPerSession && <p className="preview-hint">Tap Print to get your photos printed</p>}
+          <div className="preview-timer" key={state.shot + ':' + state.retakesUsed} style={{ animationDuration: `${cfg.confirmPrint && state.photos.length >= cfg.photosPerSession ? (cfg.confirmPrintSeconds ?? CONFIRM_PRINT_SECONDS) : cfg.reviewSeconds}s` }} />
         </div>
       )}
 
@@ -317,13 +356,37 @@ export default function Booth({ onNeedSetup }: Props) {
         </div>
       )}
 
+      {active.event.guestCanEnd && ENDABLE.has(state.name) && state.name !== 'error' && (
+        <button className="end-session-btn" onClick={(e) => (e.stopPropagation(), setConfirmingEnd(true))}>✕ End</button>
+      )}
+
+      {confirmingEnd && (
+        <div className="end-confirm" onClick={() => setConfirmingEnd(false)}>
+          <div className="end-confirm-card" onClick={(e) => e.stopPropagation()}>
+            <h2 className="title">End your session?</h2>
+            <p className="muted">Nothing will be printed.</p>
+            <div className="row">
+              <button className="btn huge ghost" onClick={() => setConfirmingEnd(false)}>Keep going</button>
+              <button className="btn huge danger-solid" onClick={() => endRef.current('guest')}>End session</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {state.name === 'ended' && (
+        <div className="center ended" onClick={reset}>
+          <h2 className="title">{state.reason === 'walked away' ? 'No one tapped Print' : 'Session ended'}</h2>
+          <p className="muted">Nothing was printed. Thanks for stopping by!</p>
+        </div>
+      )}
+
       {state.name === 'error' && (
         <div className="center">
           <h2 className="title">Oops — the camera missed that one</h2>
           <p className="muted">{state.message}</p>
           <div className="row">
             <button className="btn primary" onClick={() => dispatch({ type: 'RETRY_SHOT' })}>Try again</button>
-            <button className="btn ghost" onClick={reset}>Start over</button>
+            <button className="btn ghost" onClick={() => endRef.current('guest')}>Start over</button>
           </div>
         </div>
       )}

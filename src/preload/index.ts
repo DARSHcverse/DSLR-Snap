@@ -6,7 +6,7 @@ import type { UpdateStatus } from '../shared/updates'
 const invoke = (channel: string) => (...args: unknown[]) => ipcRenderer.invoke(channel, ...args)
 
 const methods = [
-  'getActiveEvent', 'startSession', 'capture', 'recordBoomerang', 'finishVideo', 'record360', 'importAsset', 'overlayPreview', 'finish', 'reprint', 'liveViewStart', 'liveViewFrame', 'aiAvailable', 'liveViewStop', 'galleryList', 'galleryItem',
+  'getActiveEvent', 'startSession', 'capture', 'endSession', 'recordBoomerang', 'finishVideo', 'record360', 'importAsset', 'overlayPreview', 'finish', 'reprint', 'liveViewStart', 'liveViewFrame', 'aiAvailable', 'liveViewStop', 'galleryList', 'galleryItem',
   'listEvents', 'saveEvent', 'deleteEvent', 'setActiveEvent', 'listTemplates', 'previewTemplate', 'importBackgrounds', 'backgroundImage', 'listSessions', 'openEventFolder', 'photosFolder', 'setPhotosFolder',
   'chooseTemplateFile', 'prepareTemplateImport', 'getTemplateArtwork', 'saveTemplate', 'deleteTemplate', 'discardTemplateDraft',
   'previewTemplateDraft', 'testPrintTemplate',
@@ -64,6 +64,12 @@ api.onRemoteStart = (cb: () => void) => {
   const listener = () => cb()
   ipcRenderer.on('booth:remoteStart', listener)
   return () => ipcRenderer.removeListener('booth:remoteStart', listener)
+}
+
+api.onRemoteEnd = (cb: () => void) => {
+  const listener = () => cb()
+  ipcRenderer.on('booth:remoteEnd', listener)
+  return () => ipcRenderer.removeListener('booth:remoteEnd', listener)
 }
 
 contextBridge.exposeInMainWorld('booth', api)

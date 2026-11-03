@@ -19,6 +19,7 @@ export interface RemoteStatus {
 
 export type RemoteAction =
   | { action: 'start' }
+  | { action: 'end' }
   | { action: 'pause' }
   | { action: 'resume' }
   | { action: 'retry'; jobId: string }
@@ -113,7 +114,7 @@ async function readBody(req: IncomingMessage): Promise<unknown> {
 
 export function parseAction(b: unknown): RemoteAction | null {
   const o = (b ?? {}) as Record<string, unknown>
-  if (o.action === 'start' || o.action === 'pause' || o.action === 'resume') return { action: o.action }
+  if (o.action === 'start' || o.action === 'end' || o.action === 'pause' || o.action === 'resume') return { action: o.action }
   if (o.action === 'retry' && typeof o.jobId === 'string' && ID.test(o.jobId)) return { action: 'retry', jobId: o.jobId }
   if (o.action === 'reprint' && typeof o.sessionId === 'string' && ID.test(o.sessionId)) return { action: 'reprint', sessionId: o.sessionId }
   return null

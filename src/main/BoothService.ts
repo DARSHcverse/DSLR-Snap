@@ -117,6 +117,16 @@ export class BoothService {
     return { sessionId: s.id, event: ev }
   }
 
+  /**
+   * The session stopped before printing (End button, pedal hold, remote, or nobody tapped Print).
+   * Photos already taken stay in the event's Photos folder; nothing is printed or uploaded. A session
+   * that already finished is left alone.
+   */
+  endSession(sessionId: string): void {
+    const session = this.deps.db.getSession(sessionId)
+    if (session?.status === 'capturing') this.deps.db.updateSession(sessionId, { status: 'ended' })
+  }
+
   async capture(sessionId: string): Promise<CaptureResult> {
     const { db } = this.deps
     const session = db.getSession(sessionId)

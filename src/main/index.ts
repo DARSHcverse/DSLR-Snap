@@ -363,6 +363,7 @@ function registerIpc(): void {
   })
   handle('startSession', () => service.startSession())
   handle('capture', (sessionId: string) => service.capture(sessionId))
+  handle('endSession', (sessionId: string) => service.endSession(sessionId))
   handle('finishVideo', (sessionId: string, recording: ArrayBuffer) => service.finishVideo(sessionId, new Uint8Array(recording)))
   handle('record360', (sessionId: string) => service.record360(sessionId))
   /** 360 overlay frame (PNG, kept transparent) or music, copied into the app. */
@@ -725,6 +726,7 @@ async function remoteStatus(): Promise<RemoteStatus> {
 async function remoteAct(a: RemoteAction): Promise<void> {
   // The booth screen decides: it only starts from its start screen, so a second press can't cut a spin short.
   if (a.action === 'start') win?.webContents.send('booth:remoteStart')
+  else if (a.action === 'end') win?.webContents.send('booth:remoteEnd')
   else if (a.action === 'pause' || a.action === 'resume') setPaused(a.action === 'pause')
   else if (a.action === 'retry') await printQueue.retry(a.jobId)
   else service.reprint(a.sessionId, randomUUID(), 1)

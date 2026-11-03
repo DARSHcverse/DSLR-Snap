@@ -11,7 +11,7 @@ type Draft = Omit<BoothEvent, 'id' | 'createdAt'> & { id?: string }
 
 const blankEvent = (templateId: string): Draft => ({
   name: '', date: todayIso(), templateId, photosPerSession: 3, countdownSeconds: 5, shotIntervalSeconds: 3, photoReviewSeconds: 3, doneScreenSeconds: 20,
-  retakesAllowed: 2, printCopies: 1, autoPrint: true, galleryEnabled: false, showGallery: true,
+  retakesAllowed: 2, printCopies: 1, autoPrint: true, galleryEnabled: false, showGallery: true, guestCanEnd: true, confirmPrint: false,
   look: 'colour', skinSmoothing: 50, colourCopy: false, boomerang: false, backdrop: 'none', backgrounds: [], mode: 'photo', videoSeconds: 20, videoPrompt: '', spinSeconds: 10, spinFps: 120
 })
 
@@ -351,6 +351,10 @@ function PrintStep({ draft, set, template, templates, devices }: {
       </label>
       {template?.format === '2x6' && draft.printCopies > 0 && <p className="muted small">Each copy is one 2×6 strip; strips are printed two to a sheet and cut by the printer.</p>}
       <label className="check"><input type="checkbox" checked={draft.autoPrint} onChange={(e) => set('autoPrint', e.target.checked)} /> Print automatically when a guest finishes</label>
+      {draft.autoPrint && draft.printCopies > 0 && (
+        <label className="check"><input type="checkbox" checked={draft.confirmPrint} onChange={(e) => set('confirmPrint', e.target.checked)} /> Only print when the guest taps Print <span className="muted small">(if a group walks away, nothing prints)</span></label>
+      )}
+      <label className="check"><input type="checkbox" checked={draft.guestCanEnd} onChange={(e) => set('guestCanEnd', e.target.checked)} /> Show an End button so guests can stop their session <span className="muted small">(nothing prints)</span></label>
       <label className="check"><input type="checkbox" checked={draft.galleryEnabled} onChange={(e) => set('galleryEnabled', e.target.checked)} /> Show a QR code so guests can download their photos</label>
       <label className="check"><input type="checkbox" checked={draft.showGallery} onChange={(e) => set('showGallery', e.target.checked)} /> Let guests browse this event's photos and GIFs on the booth screen</label>
       {draft.galleryEnabled && !devices?.uploads.enabled && <p className="warn small">The cloud gallery isn't set up on this computer yet, so no QR code will appear. See Devices → Digital delivery.</p>}
@@ -569,7 +573,7 @@ function LaunchStep({ draft, template, devices, onLaunch }: {
     { ok: true, label: 'Look', detail: `${lookInfo(draft.look).label}${draft.look === 'glam' ? ` · skin smoothing ${draft.skinSmoothing}` : ''}${draft.look !== 'colour' && draft.colourCopy ? ' · plus colour copy' : ''}` },
     { ok: cam?.state === 'ready', label: 'Camera', detail: cam?.state === 'ready' ? (cam.model ?? 'Connected') : (cam?.message ?? 'Not connected') },
     { ok: draft.exposure ? true : 'warn', label: 'Exposure', detail: draft.exposure ? describeExposure(draft.exposure) : "Not set: the camera's own settings will be used" },
-    { ok: draft.printCopies === 0 || printer?.state === 'ready', label: 'Printer', detail: draft.printCopies === 0 ? 'Printing off' : `${printer?.state ?? '…'}${printer?.queueLength ? ` · ${printer.queueLength} waiting` : ''} · ${draft.printCopies} cop${draft.printCopies === 1 ? 'y' : 'ies'}${draft.autoPrint ? ', automatic' : ''}` },
+    { ok: draft.printCopies === 0 || printer?.state === 'ready', label: 'Printer', detail: draft.printCopies === 0 ? 'Printing off' : `${printer?.state ?? '…'}${printer?.queueLength ? ` · ${printer.queueLength} waiting` : ''} · ${draft.printCopies} cop${draft.printCopies === 1 ? 'y' : 'ies'}${draft.autoPrint ? (draft.confirmPrint ? ', when the guest taps Print' : ', automatic') : ''}` },
     { ok: !draft.galleryEnabled || devices?.uploads.enabled ? true : 'warn', label: 'QR download', detail: !draft.galleryEnabled ? 'Off' : devices?.uploads.enabled ? 'On' : 'On, but the cloud gallery is not set up' }
   ]
   const blocking = checks.some((c) => c.ok === false)

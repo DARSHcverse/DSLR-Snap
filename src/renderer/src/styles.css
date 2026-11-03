@@ -402,3 +402,16 @@ input[type='checkbox'] { width: 22px; height: 22px; accent-color: var(--accent);
 .done video.final.portrait { width: auto; height: 80vh; aspect-ratio: 9 / 16; }
 .overlay-thumb { height: 140px; width: auto; border-radius: 8px; background: repeating-conic-gradient(#2a2a35 0% 25%, #1c1c24 0% 50%) 50% / 16px 16px; }
 .busy-note { margin: 0; padding: 10px 12px; border-radius: 10px; background: color-mix(in srgb, var(--busy) 14%, transparent); border: 1px solid color-mix(in srgb, var(--busy) 45%, transparent); font-size: 14px; }
+
+/* End a session early: a quiet pill bottom-left (clear of the hidden top-left corner and the
+   retake ✕ top-right), and a big two-button question that pauses the countdown. */
+.end-session-btn { position: absolute; left: 24px; bottom: 24px; z-index: 30; font: inherit; font-size: 18px; font-weight: 600; color: #fff; background: rgba(0, 0, 0, 0.55); border: 1px solid rgba(255, 255, 255, 0.35); border-radius: 999px; padding: 12px 22px; cursor: pointer; }
+.end-session-btn:active { transform: scale(0.97); }
+.end-confirm { position: fixed; inset: 0; z-index: 60; display: flex; align-items: center; justify-content: center; background: rgba(0, 0, 0, 0.7); backdrop-filter: blur(4px); }
+.end-confirm-card { background: var(--surface); border: 1px solid var(--line); border-radius: 24px; padding: 40px 48px; text-align: center; max-width: 640px; }
+.end-confirm-card .row { margin-top: 28px; justify-content: center; gap: 16px; }
+.btn.danger-solid { background: var(--bad); color: #fff; border-color: transparent; }
+.preview-hint { position: absolute; left: 0; right: 0; bottom: 150px; text-align: center; font-size: 22px; font-weight: 600; text-shadow: 0 2px 12px rgba(0, 0, 0, 0.8); }
+.center.ended { cursor: pointer; }
+.end-confirm-card .row { flex-wrap: nowrap; }
+.end-confirm-card .btn.huge { min-width: 0; font-size: 26px; padding: 20px 40px; }

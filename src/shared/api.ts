@@ -56,6 +56,8 @@ export interface BoothApi {
   // booth flow
   getActiveEvent(): Promise<{ event: BoothEvent; template: Template } | null>
   startSession(): Promise<{ sessionId: string; event: BoothEvent }>
+  /** Stopped before printing: photos so far are kept, nothing prints or uploads. */
+  endSession(sessionId: string): Promise<void>
   capture(sessionId: string): Promise<CaptureResult>
   /** 360 booth: the GoPro records a spin, then the edit is made and shared. */
   record360(sessionId: string): Promise<VideoResult>
@@ -177,6 +179,8 @@ export interface BoothApi {
   onPaused(cb: (paused: boolean) => void): () => void
   /** Start pressed on the phone remote. */
   onRemoteStart(cb: () => void): () => void
+  /** The phone remote's End session button. */
+  onRemoteEnd(cb: () => void): () => void
   /** Booth screen shown/hidden: applies the kiosk lock if it's on. */
   setBoothShowing(showing: boolean): Promise<void>
   appInfo(): Promise<{ version: string; dataDir: string; logFile: string }>

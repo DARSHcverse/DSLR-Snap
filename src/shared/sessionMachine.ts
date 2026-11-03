@@ -4,6 +4,10 @@
  * welcome → countdown → capturing → preview → (next shot: countdown) … → [boomerang] → finishing → done → welcome
  * Each photo is shown right after it's taken; the guest can retake it there (limited by
  * retakesAllowed) instead of waiting for the end. With reviewSeconds = 0 the preview is skipped.
+ *
+ * END stops a session at any point before the print is made (the guest's End button, the operator
+ * holding the pedal, or the phone remote): nothing prints. With confirmPrint, the last photo waits
+ * for the guest to tap Print, and a group that walked away ends the same way instead of printing.
  */
 
 export interface BoothConfig {
@@ -17,7 +21,13 @@ export interface BoothConfig {
   retakesAllowed: number
   /** After the last photo: "Boomerang! 3-2-1", then a short clip from the live view. */
   boomerang: boolean
+  /** Only print when the guest taps Print on the last photo; nobody tapping ends the session. */
+  confirmPrint?: boolean
+  /** How long the last photo waits for that tap. */
+  confirmPrintSeconds?: number
 }
+
+export const CONFIRM_PRINT_SECONDS = 30
 
 /** Seconds of "Boomerang! 3, 2, 1" before recording. */
 export const BOOMERANG_COUNTDOWN = 3
@@ -34,6 +44,8 @@ export type BoothState =
   | { name: 'finishing'; photos: string[] }
   | { name: 'done' }
   | ({ name: 'error'; message: string } & Shooting)
+  /** Stopped before printing; `photos` are the ones taken so far (kept in the event folder). */
+  | { name: 'ended'; photos: string[]; reason: 'guest' | 'operator' | 'walked away' }
 
 export type BoothAction =
   | { type: 'START' }
@@ -47,6 +59,7 @@ export type BoothAction =
   | { type: 'RETRY_SHOT' }
   /** The boomerang clip is recorded (or failed: the session carries on without it). */
   | { type: 'BOOMERANG_DONE' }
+  | { type: 'END'; by?: 'guest' | 'operator' }
 
 /** After a photo is accepted: next countdown, or finishing once every slot has a photo. */
 function advance(s: Shooting, cfg: BoothConfig): BoothState {
@@ -58,10 +71,20 @@ function advance(s: Shooting, cfg: BoothConfig): BoothState {
 
 const shooting = (s: Shooting): Shooting => ({ shot: s.shot, photos: s.photos, retakesUsed: s.retakesUsed })
 
+/** States a session can still be ended from: everything before the print is being made. */
+const ENDABLE = new Set<BoothState['name']>(['countdown', 'capturing', 'preview', 'error', 'boomerangCountdown', 'boomerang'])
+
+/** The last photo waits for a tap when the event only prints on request. */
+const isLastShot = (s: Shooting, cfg: BoothConfig) => s.photos.length >= cfg.photosPerSession
+
 export function boothReducer(state: BoothState, action: BoothAction, cfg: BoothConfig): BoothState {
   switch (action.type) {
     case 'RESET':
       return { name: 'welcome' }
+
+    case 'END':
+      if (!ENDABLE.has(state.name)) return state
+      return { name: 'ended', photos: 'photos' in state ? state.photos : [], reason: action.by ?? 'guest' }
 
     case 'BOOMERANG_DONE':
       return state.name === 'boomerang' ? { name: 'finishing', photos: state.photos } : state
@@ -83,6 +106,7 @@ export function boothReducer(state: BoothState, action: BoothAction, cfg: BoothC
       }
       if (state.name === 'preview') {
         if (state.remaining > 1) return { ...state, remaining: state.remaining - 1 }
+        if (cfg.confirmPrint && isLastShot(state, cfg)) return { name: 'ended', photos: state.photos, reason: 'walked away' }
         return advance(state, cfg)
       }
       return state
@@ -93,6 +117,7 @@ export function boothReducer(state: BoothState, action: BoothAction, cfg: BoothC
       const photos = [...state.photos]
       photos[state.shot] = action.path
       const next = { ...shooting(state), photos }
+      if (cfg.confirmPrint && isLastShot(next, cfg)) return { name: 'preview', remaining: cfg.confirmPrintSeconds ?? CONFIRM_PRINT_SECONDS, ...next }
       return cfg.reviewSeconds > 0 ? { name: 'preview', remaining: cfg.reviewSeconds, ...next } : advance(next, cfg)
     }
 

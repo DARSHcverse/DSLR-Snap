@@ -96,3 +96,60 @@ describe('boomerang', () => {
     expect(run([{ type: 'BOOMERANG_DONE' }])).toEqual({ name: 'welcome' })
   })
 })
+
+describe('ending a session early', () => {
+  const started = run([{ type: 'START' }])
+  const firstPreview = run([{ type: 'START' }, ...shoot(3, 'a')])
+
+  it('ends from a countdown, keeping the photos taken so far and printing nothing', () => {
+    expect(run([{ type: 'END' }], started)).toEqual({ name: 'ended', photos: [], reason: 'guest' })
+    const midway = run([{ type: 'NEXT' }, { type: 'TICK' }], firstPreview)
+    expect(run([{ type: 'END' }], midway)).toEqual({ name: 'ended', photos: ['a'], reason: 'guest' })
+  })
+
+  it('ends from a photo preview, a camera error, while capturing or before the boomerang', () => {
+    expect(run([{ type: 'END' }], firstPreview)).toMatchObject({ name: 'ended', photos: ['a'] })
+    const failed = run([...ticks(3), { type: 'CAPTURE_FAILED', message: 'x' }], started)
+    expect(run([{ type: 'END' }], failed)).toMatchObject({ name: 'ended' })
+    expect(run([{ type: 'END' }], run(ticks(3), started))).toMatchObject({ name: 'ended' })
+    const boomerangCfg = { ...cfg, photosPerSession: 1, boomerang: true }
+    const before = run([{ type: 'START' }, ...shoot(3, 'a'), { type: 'NEXT' }], { name: 'welcome' }, boomerangCfg)
+    expect(before.name).toBe('boomerangCountdown')
+    expect(run([{ type: 'END' }], before, boomerangCfg)).toMatchObject({ name: 'ended', photos: ['a'] })
+  })
+
+  it("can't end once the print is being made, and a late photo is ignored", () => {
+    const finishing: BoothState = { name: 'finishing', photos: ['a', 'b', 'c'] }
+    expect(run([{ type: 'END' }], finishing)).toBe(finishing)
+    expect(run([{ type: 'END' }], { name: 'welcome' })).toEqual({ name: 'welcome' })
+    const ended = run([...ticks(3), { type: 'END' }], started)
+    expect(run([{ type: 'CAPTURED', path: 'late' }], ended)).toBe(ended)
+    expect(run([{ type: 'RESET' }], ended)).toEqual({ name: 'welcome' })
+  })
+})
+
+describe('only print when the guest taps Print', () => {
+  const confirm: BoothConfig = { ...cfg, confirmPrint: true, confirmPrintSeconds: 30 }
+  const lastPreview = run([{ type: 'START' }, ...shoot(3, 'a'), { type: 'NEXT' }, ...shoot(2, 'b'), { type: 'NEXT' }, ...shoot(2, 'c')], { name: 'welcome' }, confirm)
+
+  it('waits on the last photo for the longer confirm time', () => {
+    expect(lastPreview).toMatchObject({ name: 'preview', shot: 2, remaining: 30 })
+  })
+
+  it('prints on Print, but ends without printing when nobody taps', () => {
+    expect(run([{ type: 'NEXT' }], lastPreview, confirm)).toEqual({ name: 'finishing', photos: ['a', 'b', 'c'] })
+    expect(run(ticks(30), lastPreview, confirm)).toEqual({ name: 'ended', photos: ['a', 'b', 'c'], reason: 'walked away' })
+  })
+
+  it('still shows the last photo when per-photo review is off', () => {
+    const noReview = { ...confirm, reviewSeconds: 0 }
+    const s = run([{ type: 'START' }, ...shoot(3, 'a'), ...shoot(2, 'b'), ...shoot(2, 'c')], { name: 'welcome' }, noReview)
+    expect(s).toMatchObject({ name: 'preview', shot: 2, remaining: 30 })
+  })
+
+  it('earlier photos keep the normal review time and move on by themselves', () => {
+    const s = run([{ type: 'START' }, ...shoot(3, 'a')], { name: 'welcome' }, confirm)
+    expect(s).toMatchObject({ name: 'preview', remaining: 2 })
+    expect(run(ticks(2), s, confirm)).toMatchObject({ name: 'countdown', shot: 1 })
+  })
+})

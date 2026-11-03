@@ -26,6 +26,7 @@ export function remotePage(): string {
   button.primary { background: var(--accent); color: var(--ink); border-color: transparent; width: 100%; font-size: 18px; padding: 14px; }
   button.paused { background: var(--busy); color: #1c1203; }
   button.start { font-size: 24px; padding: 22px; margin-bottom: 10px; }
+  button.end { width: 100%; margin-bottom: 10px; color: var(--bad); }
   #pause:not(.paused) { background: var(--surface2); color: var(--text); border-color: var(--line); }
   .row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--line); }
   .row:last-child { border-bottom: 0; }
@@ -41,6 +42,7 @@ export function remotePage(): string {
   <h1>DSLR Snap remote</h1>
   <h2 id="event">…</h2>
   <button id="start" class="primary start">Start</button>
+  <button id="end" class="end">End current session (no print)</button>
   <button id="pause" class="primary">Pause booth</button>
   <div class="grid" style="margin-top:12px">
     <div class="card"><div class="muted">Guests</div><div class="big" id="guests">–</div></div>
@@ -68,6 +70,7 @@ export function remotePage(): string {
     } catch (e) { toast(e.message); }
   }
   $('start').onclick = () => act({ action: 'start' }, 'Starting…');
+  $('end').onclick = () => confirm('End the session in progress? Nothing will print.') && act({ action: 'end' }, 'Session ended');
   $('pause').onclick = () => act({ action: state.paused ? 'resume' : 'pause' }, state.paused ? 'Booth resumed' : 'Booth paused');
   async function refresh() {
     try {

@@ -45,6 +45,7 @@ describe('eventStats', () => {
     db.updateSession(s1.id, { status: 'complete' })
     db.updateSession(s2.id, { status: 'complete' })
     db.updateSession(db.createSession(other.id).id, { status: 'complete' })
+    db.updateSession(db.createSession(ev.id).id, { status: 'ended' }) // stopped before printing
 
     const sent = db.insertPrintJob(s1.id, 'k1', '/p1.jpg', '2x6', 2)
     db.transitionPrintJob(sent.id, ['queued'], 'sent')
@@ -57,6 +58,7 @@ describe('eventStats', () => {
 
     expect(db.eventStats(ev.id)).toEqual({
       sessions: 2,
+      ended: 1,
       prints: { sent: 2, pending: 1, failed: 1, lastError: 'Out of paper' },
       uploads: { done: 0, pending: 0, failed: 1, lastError: 'Offline' }
     })

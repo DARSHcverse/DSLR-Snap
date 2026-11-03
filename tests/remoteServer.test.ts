@@ -50,6 +50,7 @@ describe('phone remote server', () => {
   it('parses actions strictly', () => {
     expect(parseAction({ action: 'resume' })).toEqual({ action: 'resume' })
     expect(parseAction({ action: 'start' })).toEqual({ action: 'start' })
+    expect(parseAction({ action: 'end' })).toEqual({ action: 'end' })
     expect(parseAction({ action: 'retry', jobId: 'nope' })).toBeNull()
     expect(parseAction(null)).toBeNull()
   })
