@@ -181,11 +181,20 @@ export class BoothDatabase {
     return toSave
   }
 
+  isBuiltInTemplate(id: string): boolean {
+    return !!(this.db.prepare('SELECT built_in FROM templates WHERE id = ?').get(id) as { built_in: number } | undefined)?.built_in
+  }
+
+  /** Names of the events that print with this template. */
+  templateUsers(id: string): string[] {
+    return (this.db.prepare('SELECT name FROM events WHERE template_id = ? ORDER BY date DESC').all(id) as { name: string }[]).map((u) => u.name)
+  }
+
   deleteTemplate(id: string): void {
     const row = this.db.prepare('SELECT built_in FROM templates WHERE id = ?').get(id) as { built_in: number } | undefined
     if (row?.built_in) throw new Error('Built-in templates cannot be deleted.')
-    const users = this.db.prepare('SELECT name FROM events WHERE template_id = ?').all(id) as { name: string }[]
-    if (users.length) throw new Error(`This template is used by: ${users.map((u) => u.name).join(', ')}. Pick another template for those events first.`)
+    const users = this.templateUsers(id)
+    if (users.length) throw new Error(`This template is used by: ${users.join(', ')}. Pick another template for those events first.`)
     this.db.prepare('DELETE FROM templates WHERE id = ?').run(id)
   }
 

@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { canvasSize, validateTemplate } from '@shared/layout'
+import { BUILT_IN_TEMPLATES } from '@shared/templates'
 import type { FitMode, PrintFormat, Orientation, Rect, Template, TemplateImportDraft } from '@shared/types'
 
-const isImported = (t: Template) => t.id.startsWith('imported-')
+const BUILT_IN_IDS = new Set(BUILT_IN_TEMPLATES.map((t) => t.id))
+export const isBuiltIn = (t: Template) => BUILT_IN_IDS.has(t.id)
 export const describe = (t: Template) => `${t.format === '2x6' ? '2×6 strip' : `4×6 ${t.orientation}`} · ${t.slots.length} photo${t.slots.length === 1 ? '' : 's'}`
 /** IPC errors arrive wrapped ("Error invoking remote method …"); operators only need the message. */
 export const message = (e: unknown) => String(e instanceof Error ? e.message : e).replace(/^Error invoking remote method '[^']+': (Error: )?/, '')
@@ -12,6 +14,16 @@ export interface Editing {
   artwork: string
   /** Present while importing; lets the operator change format and fit before saving. */
   draft?: TemplateImportDraft & { srcPath: string }
+}
+
+/**
+ * Editor state for a saved template. Imported designs bring their artwork; drawn templates (the
+ * built-ins and copies of them) have none and are edited on their background colour.
+ */
+export async function openForEdit(t: Template): Promise<Editing> {
+  const artwork = await window.booth.getTemplateArtwork(t.id)
+  if (!artwork && t.id.startsWith('imported-')) throw new Error(`The design file for "${t.name}" is missing. Import it again.`)
+  return { template: t, artwork: artwork ?? '' }
 }
 
 /** Reads a dropped/chosen design and returns editor state for it. */
@@ -43,9 +55,11 @@ export default function TemplatesTab() {
   }
 
   const edit = async (t: Template) => {
-    const artwork = await window.booth.getTemplateArtwork(t.id)
-    if (!artwork) return setError(`The design file for "${t.name}" is missing. Import it again.`)
-    setEditing({ template: t, artwork })
+    try {
+      setEditing(await openForEdit(t))
+    } catch (e) {
+      setError(message(e))
+    }
   }
 
   if (editing) {
@@ -63,11 +77,11 @@ export default function TemplatesTab() {
             <TemplateThumb id={t.id} />
             <div>
               <strong>{t.name}</strong>
-              <div className="muted small">{describe(t)}{isImported(t) ? '' : ' · built-in'}</div>
+              <div className="muted small">{describe(t)}{isBuiltIn(t) ? ' · built-in' : ''}</div>
             </div>
-            {isImported(t) && (
-              <div className="row">
-                <button className="btn small" onClick={() => edit(t)}>Edit</button>
+            <div className="row">
+              <button className="btn small" onClick={() => edit(t)}>{isBuiltIn(t) ? 'Duplicate & edit' : 'Edit'}</button>
+              {!isBuiltIn(t) && (
                 <button className="btn small ghost danger" onClick={async () => {
                   if (!confirm(`Delete the template "${t.name}"?`)) return
                   try {
@@ -78,8 +92,8 @@ export default function TemplatesTab() {
                     setError(message(e))
                   }
                 }}>Delete</button>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         ))}
       </div>
@@ -147,8 +161,13 @@ export function TemplateEditor({ initial, onDone }: { initial: Editing; onDone: 
   const [busy, setBusy] = useState(false)
   const [status, setStatus] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [users, setUsers] = useState<string[]>([])
   const size = canvasSize(t.format, t.orientation)
   const issues = validateTemplate(t)
+  const builtIn = isBuiltIn(initial.template)
+  useEffect(() => {
+    if (!draft && !builtIn) window.booth.templateUsers(initial.template.id).then(setUsers).catch(() => setUsers([]))
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const run = async (fn: () => Promise<void>) => {
     setBusy(true)
@@ -198,8 +217,17 @@ export function TemplateEditor({ initial, onDone }: { initial: Editing; onDone: 
         <SlotCanvas template={t} artwork={artwork} selected={selected} onSelect={setSelected} onChange={setSlot} />
       </div>
       <div className="form">
-        <h2>{draft ? 'Import design' : 'Edit template'}</h2>
+        <h2>{draft ? 'Import design' : builtIn ? 'Duplicate & edit' : 'Edit template'}</h2>
+        {builtIn && <p className="muted small">Built-in templates stay as they are; your changes are saved as your own copy.</p>}
+        {users.length > 0 && (
+          <p className="note small">Used by {users.length === 1 ? 'the event' : `${users.length} events`} <strong>{users.slice(0, 3).join(', ')}{users.length > 3 ? '…' : ''}</strong>. Saving changes {users.length === 1 ? 'it' : 'all of them'}; use <strong>Save as a copy</strong> to leave {users.length === 1 ? 'it' : 'them'} unchanged.</p>
+        )}
         <label>Template name<input value={t.name} onChange={(e) => setT({ ...t, name: e.target.value })} /></label>
+        {!artwork && (
+          <label className="row-label">Background colour
+            <input type="color" value={t.background} onChange={(e) => setT({ ...t, background: e.target.value })} />
+          </label>
+        )}
 
         {draft && (
           <>
@@ -254,7 +282,12 @@ export function TemplateEditor({ initial, onDone }: { initial: Editing; onDone: 
         <div className="row">
           <button className="btn primary" disabled={busy || issues.some((i) => i.level === 'error') || !t.name.trim()} onClick={() => run(async () => {
             onDone(await window.booth.saveTemplate(t))
-          })}>Save template</button>
+          })}>{builtIn ? 'Save as my copy' : 'Save template'}</button>
+          {!draft && !builtIn && (
+            <button className="btn" disabled={busy || issues.some((i) => i.level === 'error') || !t.name.trim()} onClick={() => run(async () => {
+              onDone(await window.booth.saveTemplate(t, { asCopy: true }))
+            })}>Save as a copy</button>
+          )}
           <button className="btn ghost" onClick={cancel}>Cancel</button>
         </div>
       </div>
@@ -330,11 +363,11 @@ function SlotCanvas({ template, artwork, selected, onSelect, onChange }: {
       ref={ref}
       tabIndex={0}
       className={`tpl-canvas ${template.orientation === 'landscape' ? 'wide' : 'tall'}`}
-      style={{ aspectRatio: `${size.w} / ${size.h}` }}
+      style={{ aspectRatio: `${size.w} / ${size.h}`, background: template.background }}
       onPointerDown={() => onSelect(null)}
       onKeyDown={nudge}
     >
-      <img src={artwork} alt="" draggable={false} />
+      {artwork && <img src={artwork} alt="" draggable={false} />}
       {template.slots.map((s, i) => (
         <div key={i} className={`tpl-slot${selected === i ? ' sel' : ''}`}
           style={{ left: pct(s.x, size.w), top: pct(s.y, size.h), width: pct(s.w, size.w), height: pct(s.h, size.h) }}

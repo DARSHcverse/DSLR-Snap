@@ -8,7 +8,7 @@ const invoke = (channel: string) => (...args: unknown[]) => ipcRenderer.invoke(c
 const methods = [
   'getActiveEvent', 'startSession', 'capture', 'endSession', 'recordBoomerang', 'finishVideo', 'record360', 'importAsset', 'overlayPreview', 'finish', 'reprint', 'liveViewStart', 'liveViewFrame', 'aiAvailable', 'liveViewStop', 'galleryList', 'galleryItem',
   'listEvents', 'saveEvent', 'deleteEvent', 'setActiveEvent', 'listTemplates', 'previewTemplate', 'importBackgrounds', 'backgroundImage', 'listSessions', 'openEventFolder', 'photosFolder', 'setPhotosFolder',
-  'chooseTemplateFile', 'prepareTemplateImport', 'getTemplateArtwork', 'saveTemplate', 'deleteTemplate', 'discardTemplateDraft',
+  'chooseTemplateFile', 'prepareTemplateImport', 'getTemplateArtwork', 'saveTemplate', 'templateUsers', 'deleteTemplate', 'discardTemplateDraft',
   'previewTemplateDraft', 'testPrintTemplate',
   'getDeviceSettings', 'saveDeviceSettings', 'detectPrinters', 'openPrinterPreferences', 'setupStripCutting', 'reconnectCamera', 'getDevices',
   'getExposure', 'setExposure', 'applyExposure', 'testShot',

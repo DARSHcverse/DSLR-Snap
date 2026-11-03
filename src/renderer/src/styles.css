@@ -415,3 +415,8 @@ input[type='checkbox'] { width: 22px; height: 22px; accent-color: var(--accent);
 .center.ended { cursor: pointer; }
 .end-confirm-card .row { flex-wrap: nowrap; }
 .end-confirm-card .btn.huge { min-width: 0; font-size: 26px; padding: 20px 40px; }
+.form label.row-label { flex-direction: row; align-items: center; justify-content: space-between; }
+.form label.row-label input[type="color"] { width: 56px; height: 36px; padding: 2px; border-radius: 8px; border: 1px solid var(--line); background: transparent; cursor: pointer; }
+/* Template cards in event setup: the whole card picks it; Edit opens the editor. */
+.tpl-card.pick { position: relative; }
+.tpl-card .tpl-edit { position: absolute; top: 10px; right: 10px; }

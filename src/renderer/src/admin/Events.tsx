@@ -5,7 +5,7 @@ import { describeExposure } from '@shared/exposure'
 import { LOOKS, lookInfo } from '@shared/looks'
 import type { BoothEvent, PrinterDetection, Template } from '@shared/types'
 import CameraSetup from './CameraSetup'
-import { describe, DropZone, type Editing, message, startImport, TemplateEditor, TemplateThumb } from './Templates'
+import { describe, DropZone, type Editing, isBuiltIn, message, openForEdit, startImport, TemplateEditor, TemplateThumb } from './Templates'
 
 type Draft = Omit<BoothEvent, 'id' | 'createdAt'> & { id?: string }
 
@@ -274,11 +274,20 @@ function TemplatePicker({ templates, selected, onSelect, onImported }: {
       {error && <p className="warn">{error}</p>}
       <div className="tpl-grid">
         {templates.map((t) => (
-          <button key={t.id} className={`tpl-card pick${t.id === selected ? ' on' : ''}`} onClick={() => onSelect(t.id)}>
+          <div key={t.id} role="button" tabIndex={0} className={`tpl-card pick${t.id === selected ? ' on' : ''}`} onClick={() => onSelect(t.id)} onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && onSelect(t.id)}>
             <TemplateThumb id={t.id} />
             <strong>{t.name}</strong>
             <span className="muted small">{describe(t)}</span>
-          </button>
+            <button className="btn small tpl-edit" onClick={async (e) => {
+              e.stopPropagation()
+              try {
+                setEditing(await openForEdit(t))
+                setError(null)
+              } catch (err) {
+                setError(message(err))
+              }
+            }}>{isBuiltIn(t) ? 'Duplicate & edit' : 'Edit'}</button>
+          </div>
         ))}
       </div>
     </div>

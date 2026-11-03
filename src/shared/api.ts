@@ -103,7 +103,10 @@ export interface BoothApi {
   chooseTemplateFile(): Promise<string | null>
   prepareTemplateImport(filePath: string, opts?: TemplateImportOptions): Promise<TemplateImportDraft>
   getTemplateArtwork(templateId: string): Promise<string | null>
-  saveTemplate(t: Template): Promise<Template>
+  /** A built-in is saved as the operator's copy; `asCopy` leaves the original unchanged. */
+  saveTemplate(t: Template, opts?: { asCopy?: boolean }): Promise<Template>
+  /** Names of the events that print with this template. */
+  templateUsers(id: string): Promise<string[]>
   deleteTemplate(id: string): Promise<void>
   discardTemplateDraft(id: string): Promise<void>
   previewTemplateDraft(t: Template, eventName: string): Promise<string>

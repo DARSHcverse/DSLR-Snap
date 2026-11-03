@@ -2,7 +2,7 @@ import { app, BrowserWindow, dialog, ipcMain, powerSaveBlocker, safeStorage, she
 import { execFile } from 'node:child_process'
 import { randomBytes, randomUUID } from 'node:crypto'
 import { existsSync, readFileSync } from 'node:fs'
-import { appendFile, mkdir, readdir, rm, statfs, writeFile } from 'node:fs/promises'
+import { appendFile, copyFile, mkdir, readdir, rm, statfs, writeFile } from 'node:fs/promises'
 import { hostname, networkInterfaces } from 'node:os'
 import { basename, extname, join, resolve } from 'node:path'
 import QRCode from 'qrcode'
@@ -10,6 +10,7 @@ import sharp from 'sharp'
 import type { DeviceSnapshot, PreviewLook } from '../shared/api'
 import { flashSafe } from '../shared/exposure'
 import { canvasSize, SHEET, validateTemplate } from '../shared/layout'
+import { copyName, sanitizeTemplate } from '../shared/templateEdit'
 import type { DeviceSettings, ExposureKey, ExposureSettings, PrintFormat, Template, TemplateImportDraft, TemplateImportOptions, TestShot } from '../shared/types'
 import { BoothService } from './BoothService'
 import { exportEventPhotos } from './exportEvent'
@@ -288,20 +289,16 @@ function artworkPath(id: string): string {
   return join(userData, 'templates', `${id}.png`)
 }
 
-/** Rebuilds an imported template from renderer data, keeping only the fields the editor may change. */
-function cleanImported(t: Template): Template {
-  if (!['2x6', '4x6'].includes(t.format) || !['portrait', 'landscape'].includes(t.orientation)) throw new Error('Unknown print layout.')
-  const path = artworkPath(t.id)
-  return {
-    id: t.id,
-    name: String(t.name ?? '').trim().slice(0, 80),
-    format: t.format,
-    orientation: t.format === '2x6' ? 'portrait' : t.orientation,
-    background: '#ffffff',
-    ...(t.overlayPath ? { overlayPath: path } : { backgroundPath: path }),
-    slots: (t.slots ?? []).map((s) => ({ x: Math.round(s.x), y: Math.round(s.y), w: Math.round(s.w), h: Math.round(s.h) })),
-    texts: []
-  }
+/**
+ * Rebuilds a template from renderer data, keeping only what the editor may change. Imported
+ * artwork comes from the template's id; a drawn template (a built-in, or a copy of one) must
+ * already exist, and keeps what only the app sets, like its logo.
+ */
+function cleanTemplate(t: Template): Template {
+  if (IMPORTED_ID.test(t.id)) return sanitizeTemplate(t, { artworkPath: artworkPath(t.id) })
+  const known = db.getTemplate(t.id)
+  if (!known) throw new Error('Unknown template.')
+  return sanitizeTemplate(t, { keep: { logo: known.logo } })
 }
 
 async function artworkPreview(input: string | Buffer): Promise<string> {
@@ -471,14 +468,33 @@ function registerIpc(): void {
     const path = t?.overlayPath ?? t?.backgroundPath
     return path && existsSync(path) ? artworkPreview(path) : null
   })
-  handle('saveTemplate', (t: Template) => {
-    const clean = cleanImported(t)
+  /**
+   * Saves an edited template. A built-in is never changed: it's saved as the operator's own copy.
+   * `asCopy` keeps the original as it is (events using it don't change) and saves a new template.
+   */
+  handle('saveTemplate', async (t: Template, opts?: { asCopy?: boolean }) => {
+    let clean = cleanTemplate(t)
     if (!clean.name) throw new Error('Give the template a name.')
-    if (!existsSync(artworkPath(clean.id))) throw new Error('The design file is missing. Import it again.')
+    const imported = IMPORTED_ID.test(clean.id)
+    if (imported && !existsSync(artworkPath(clean.id))) throw new Error('The design file is missing. Import it again.')
     const errors = validateTemplate(clean).filter((i) => i.level === 'error')
     if (errors.length) throw new Error(errors.map((e) => e.message).join(' '))
+    const names = db.listTemplates().map((x) => x.name)
+    if (opts?.asCopy) {
+      const name = copyName(clean.name, names)
+      if (imported) {
+        const id = `imported-${randomUUID().slice(0, 8)}`
+        await copyFile(artworkPath(clean.id), artworkPath(id))
+        clean = sanitizeTemplate({ ...clean, id, name }, { artworkPath: artworkPath(id) })
+      } else {
+        clean = { ...clean, id: `${clean.id.replace(/-copy-[0-9a-f]+$/, '')}-copy-${randomBytes(3).toString('hex')}`, name }
+      }
+    } else if (db.isBuiltInTemplate(clean.id) && names.includes(clean.name)) {
+      clean = { ...clean, name: copyName(clean.name, names) } // the copy shouldn't look like the original in lists
+    }
     return db.saveTemplate(clean)
   })
+  handle('templateUsers', (id: string) => db.templateUsers(id))
   handle('deleteTemplate', async (id: string) => {
     db.deleteTemplate(id)
     if (IMPORTED_ID.test(id)) await rm(artworkPath(id), { force: true })
@@ -488,13 +504,12 @@ function registerIpc(): void {
     if (IMPORTED_ID.test(id) && !db.getTemplate(id)) await rm(artworkPath(id), { force: true })
   })
   handle('previewTemplateDraft', async (t: Template, eventName: string) => {
-    const clean = cleanImported(t)
+    const clean = cleanTemplate(t)
     const { composite } = await compose({ template: clean, photoPaths: await sampleShots(clean.slots.length), eventName: eventName || 'Your Event' })
     return previewDataUrl(composite, 520)
   })
   handle('testPrintTemplate', async (t: Template) => {
-    const template = IMPORTED_ID.test(t.id) ? cleanImported(t) : db.getTemplate(t.id)
-    if (!template) throw new Error('Unknown template')
+    const template = cleanTemplate(t)
     const { printSheet } = await compose({ template, photoPaths: await sampleShots(template.slots.length), eventName: 'Test print' })
     const file = join(userData, 'test-template.jpg')
     await writeFile(file, printSheet)
