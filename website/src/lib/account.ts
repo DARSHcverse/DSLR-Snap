@@ -74,6 +74,8 @@ export async function deleteAccount(userId: string): Promise<void> {
   }
   // The operator's brand images (gallery banners, logos, backgrounds) go too.
   paths.push(...(await listFiles(`${userId}/brand`)));
+  // A booth setup saved for copying to other computers (template artwork).
+  paths.push(...(await listFiles(`${userId}/setup`)));
   await removeFiles(paths).catch((e: Error) => {
     throw new Error(`Could not delete gallery files: ${e.message}`);
   });

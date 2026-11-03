@@ -2,9 +2,9 @@ import { app, BrowserWindow, dialog, ipcMain, powerSaveBlocker, safeStorage, she
 import { execFile } from 'node:child_process'
 import { randomBytes, randomUUID } from 'node:crypto'
 import { existsSync, readFileSync } from 'node:fs'
-import { appendFile, copyFile, mkdir, readdir, rm, statfs, writeFile } from 'node:fs/promises'
+import { appendFile, copyFile, mkdir, readdir, readFile, rm, statfs, writeFile } from 'node:fs/promises'
 import { hostname, networkInterfaces } from 'node:os'
-import { basename, extname, join, resolve } from 'node:path'
+import { basename, dirname, extname, join, resolve } from 'node:path'
 import QRCode from 'qrcode'
 import sharp from 'sharp'
 import type { DeviceSnapshot, PreviewLook } from '../shared/api'
@@ -38,6 +38,8 @@ import { aiOntoBackground } from './compose/chromaKey'
 import { defaultSlots, detectSlots, guessLayout, type Layout, normalizeArtwork, suggestFit } from './compose/templateImport'
 import { ASSET_ID, BACKGROUND_ID, BoothDatabase } from './db/database'
 import { PresetSync } from './licence/presetSync'
+import { SetupTransfer } from './licence/setupTransfer'
+import { BUILT_IN_TEMPLATES } from '../shared/templates'
 import { AccountService } from './licence/AccountService'
 import { machineHash } from './licence/machineId'
 import { MockPrinter } from './printer/MockPrinter'
@@ -100,6 +102,7 @@ let service: BoothService
 let pinLock: PinLock
 let account: AccountService
 let presetSync: PresetSync
+let setupTransfer: SetupTransfer
 let updates: Updates | undefined
 let gallery: CloudGallery
 loadEnv(join(userData, '.env'))
@@ -641,6 +644,10 @@ function registerIpc(): void {
   handle('accountRedeemCode', (code: string) => account.redeemCode(String(code)))
   handle('accountRefresh', () => account.refresh())
   handle('accountSignOut', () => account.signOut())
+  handle('setupInfo', () => setupTransfer.info())
+  handle('setupSave', (includePin: boolean) => setupTransfer.save(!!includePin))
+  handle('setupCopy', (what: { templates: boolean; prefs: boolean; pin: boolean }) =>
+    setupTransfer.copy({ templates: !!what?.templates, prefs: !!what?.prefs, pin: !!what?.pin }))
   handle('openAccountWebsite', (page: 'account' | 'pricing' | 'support') =>
     shell.openExternal(page === 'pricing' ? `${ACCOUNT_URL}/#pricing` : page === 'support' ? `${ACCOUNT_URL}/account/support` : `${ACCOUNT_URL}/account`)
   )
@@ -914,6 +921,23 @@ app.whenReady().then(async () => {
     log: (level, m) => void log(level, m)
   })
   account.on('changed', () => account.state().signedIn && void presetSync.sync())
+  setupTransfer = new SetupTransfer({
+    call: (path, body) => account.call(path, body),
+    computerName: hostname(),
+    templates: () => db.listTemplates(),
+    builtInIds: new Set(BUILT_IN_TEMPLATES.map((t) => t.id)),
+    readArtwork: (id) => readFile(artworkPath(id)),
+    writeArtwork: async (id, png) => {
+      await mkdir(dirname(artworkPath(id)), { recursive: true })
+      await writeFile(artworkPath(id), png)
+      return artworkPath(id)
+    },
+    saveTemplate: (t) => void db.saveTemplate(t),
+    prefs: () => ({ kioskLock: db.getDeviceSettings().kioskLock, pedalKey: db.getDeviceSettings().pedalKey }),
+    setPrefs: (p) => db.saveDeviceSettings({ ...db.getDeviceSettings(), ...p }),
+    pinHash: () => db.getSetting('operator_pin'),
+    setPinHash: (h) => db.setSetting('operator_pin', h)
+  })
   updates = new Updates(app.isPackaged, (level, m) => void log(level, `updates: ${m}`))
   updates.on('changed', (s) => win?.webContents.send('booth:update', s))
   updates.start()

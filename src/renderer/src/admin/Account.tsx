@@ -100,6 +100,7 @@ export default function AccountTab() {
         )}
         {msg && <p className="muted" style={{ color: 'var(--bad)' }}>{msg}</p>}
       </div>
+      <SetupCard signedIn={!!state.signedIn} />
       <div className="card">
         <h3>Need help?</h3>
         <p className="muted small">Chat with the DSLR Snap team. We reply by email too, so you don't need to keep the page open.</p>
@@ -115,5 +116,76 @@ export default function AccountTab() {
         </p>
       </div>
     </section>
+  )
+}
+
+type SetupInfo = Awaited<ReturnType<typeof window.booth.setupInfo>>
+const when = (iso: string) => new Date(iso).toLocaleString('en-GB', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })
+
+/**
+ * Running two booths: save this computer's templates and booth preferences to the account, then
+ * copy them onto the other computer. Camera and printer choices stay with each computer.
+ */
+function SetupCard({ signedIn }: { signedIn: boolean }) {
+  const [info, setInfo] = useState<SetupInfo | undefined>(undefined)
+  const [busy, setBusy] = useState(false)
+  const [msg, setMsg] = useState<string | null>(null)
+  const [includePin, setIncludePin] = useState(false)
+  const [what, setWhat] = useState({ templates: true, prefs: true, pin: false })
+
+  useEffect(() => {
+    if (signedIn) window.booth.setupInfo().then(setInfo).catch(() => setInfo(null))
+  }, [signedIn])
+
+  const run = async (fn: () => Promise<string>) => {
+    setBusy(true)
+    setMsg(null)
+    try {
+      setMsg(await fn())
+    } catch (e) {
+      setMsg(String(e instanceof Error ? e.message : e).replace(/^Error invoking remote method '[^']+': (Account)?Error: /, ''))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="card">
+      <h3>Use this setup on another computer</h3>
+      <p className="muted small">Running more than one booth? Save your templates, booth lock and pedal key to your account, then copy them onto the other computer. Camera, printer and webcam choices stay with each computer; your saved camera settings already follow you.</p>
+      {!signedIn ? (
+        <p className="muted small">Sign in under Licence to use this.</p>
+      ) : (
+        <>
+          <p className="small">
+            {info === undefined ? 'Checking your account…' : info ? <>Saved from <strong>{info.savedFrom}</strong> on {when(info.savedAt)}: {info.templates} template{info.templates === 1 ? '' : 's'}{info.hasPin ? ', operator PIN' : ''}.</> : 'Nothing saved to your account yet.'}
+          </p>
+          <div className="row">
+            <button className="btn" disabled={busy} onClick={() => run(async () => {
+              const r = await window.booth.setupSave(includePin)
+              setInfo(r)
+              return `Saved ${r.templates} template${r.templates === 1 ? '' : 's'} and your booth preferences${r.hasPin ? ' and PIN' : ''}.`
+            })}>{busy ? 'Working…' : "Save this computer's setup"}</button>
+            <label className="check small"><input type="checkbox" checked={includePin} onChange={(e) => setIncludePin(e.target.checked)} /> Include the operator PIN</label>
+          </div>
+          {info && (
+            <div className="field">
+              <span className="field-label">Copy to this computer</span>
+              <div className="row">
+                <label className="check small"><input type="checkbox" checked={what.templates} onChange={(e) => setWhat({ ...what, templates: e.target.checked })} /> Templates</label>
+                <label className="check small"><input type="checkbox" checked={what.prefs} onChange={(e) => setWhat({ ...what, prefs: e.target.checked })} /> Booth lock & pedal key</label>
+                {info.hasPin && <label className="check small"><input type="checkbox" checked={what.pin} onChange={(e) => setWhat({ ...what, pin: e.target.checked })} /> Operator PIN</label>}
+              </div>
+              <button className="btn primary" disabled={busy || !(what.templates || what.prefs || what.pin)} onClick={() => confirm('Copy the saved setup onto this computer? Templates copied before are updated, not duplicated.') && run(async () => {
+                const r = await window.booth.setupCopy(what)
+                const parts = [r.templates ? `${r.templates} template${r.templates === 1 ? '' : 's'}` : '', r.prefs ? 'booth preferences' : '', r.pin ? 'operator PIN' : ''].filter(Boolean)
+                return `Copied ${parts.join(', ') || 'nothing'}.${r.skipped.length ? ` Couldn't fetch the design for: ${r.skipped.join(', ')}. Save it again on the other computer.` : ''}`
+              })}>Copy setup to this computer</button>
+            </div>
+          )}
+          {msg && <p className="muted small">{msg}</p>}
+        </>
+      )}
+    </div>
   )
 }

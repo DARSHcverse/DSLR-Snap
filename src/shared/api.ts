@@ -159,6 +159,10 @@ export interface BoothApi {
   accountRedeemCode(code: string): Promise<AccountState>
   accountRefresh(): Promise<AccountState>
   accountSignOut(): Promise<AccountState>
+  /** The setup saved to the account for copying to other computers; null when there's none. */
+  setupInfo(): Promise<{ savedFrom: string; savedAt: string; templates: number; hasPin: boolean } | null>
+  setupSave(includePin: boolean): Promise<{ savedFrom: string; savedAt: string; templates: number; hasPin: boolean }>
+  setupCopy(what: { templates: boolean; prefs: boolean; pin: boolean }): Promise<{ templates: number; skipped: string[]; prefs: boolean; pin: boolean }>
   /** Opens dslrsnap.com: the account page, pricing, or the support chat. */
   openAccountWebsite(page: 'account' | 'pricing' | 'support'): Promise<void>
   onAccount(cb: (s: AccountState) => void): () => void

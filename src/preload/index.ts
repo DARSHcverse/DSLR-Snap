@@ -14,7 +14,7 @@ const methods = [
   'getExposure', 'setExposure', 'applyExposure', 'testShot',
   'duplicateEvent', 'eventStats', 'exportEventPhotos', 'hasPin', 'verifyPin', 'setPin',
   'listPrintJobs', 'retryPrintJob', 'cancelPrintJob', 'markPrintJobPrinted', 'testPrint', 'newPaperRoll', 'eventGalleryLink', 'diskFree', 'remoteInfo', 'remoteSetEnabled', 'remoteNewLink', 'setPaused', 'setBoothShowing', 'appInfo', 'quit',
-  'accountState', 'accountSignIn', 'accountRedeemCode', 'accountRefresh', 'accountSignOut', 'openAccountWebsite',
+  'accountState', 'accountSignIn', 'accountRedeemCode', 'accountRefresh', 'accountSignOut', 'openAccountWebsite', 'setupInfo', 'setupSave', 'setupCopy',
   'updateState', 'updateCheck', 'updateInstall'
 ] as const
 
