@@ -41,6 +41,7 @@ import { PresetSync } from './licence/presetSync'
 import { fromScreen } from './deviceSettings'
 import { SetupTransfer } from './licence/setupTransfer'
 import { paperAlertDue } from '../shared/paper'
+import { CAMERA_LOST_AFTER_MS, OutageWatch, PRINTER_ALERT_EVERY_MS, Throttle } from '../shared/alerts'
 import { BUILT_IN_TEMPLATES } from '../shared/templates'
 import { AccountService } from './licence/AccountService'
 import { machineHash } from './licence/machineId'
@@ -173,6 +174,28 @@ function rememberExposure(current: ExposureSettings, eventId = db.getActiveEvent
   if (eventId && db.getEvent(eventId)) db.saveEventExposure(eventId, current)
 }
 
+/** Phone alerts are on (a device setting) and the booth is signed in, so the website can email the account. */
+const alertsOn = () => db.getDeviceSettings().phoneAlerts !== false && !!account?.state().signedIn
+const activeEventName = () => {
+  const id = db.getActiveEventId()
+  return id ? db.getEvent(id)?.name : undefined
+}
+
+/** A problem worth a phone notification; failures are only logged (alerts must never get in the way). */
+function sendAlert(kind: 'printer_error' | 'camera_lost' | 'print_limit', extra: Record<string, unknown> = {}): void {
+  if (!alertsOn()) return
+  account.call('/api/app/notify', { kind, event: activeEventName(), ...extra }).catch((e) => void log('warn', `${kind} alert: ${e instanceof Error ? e.message : e}`))
+}
+
+const printerAlerts = new Throttle(PRINTER_ALERT_EVERY_MS)
+const cameraWatch = new OutageWatch(CAMERA_LOST_AFTER_MS)
+/** Camera gone for a minute while guests are using the booth (not while it sits in the admin). */
+function watchCamera(): void {
+  if (!boothShowing || !db.getActiveEventId()) return cameraWatch.reset()
+  const s = camera.getStatus().state
+  if (cameraWatch.update(s === 'ready' || s === 'busy', Date.now())) sendAlert('camera_lost', { message: camera.getStatus().message })
+}
+
 /**
  * Low paper: emails the operator (through the website) at 50 and 15 prints left, once per roll.
  * Not marked as sent until the website has it, so an offline booth warns once it's back online.
@@ -180,7 +203,7 @@ function rememberExposure(current: ExposureSettings, eventId = db.getActiveEvent
 let paperAlertBusy = false
 async function checkPaperAlert(): Promise<void> {
   const paper = db.getPaper()
-  if (!paper || paperAlertBusy || !account?.state().signedIn) return
+  if (!paper || paperAlertBusy || !alertsOn()) return
   const saved = JSON.parse(db.getSetting('paperAlerts') ?? '{}') as { roll?: string; sent?: number[] }
   const sent = saved.roll === paper.loadedAt ? (saved.sent ?? []) : []
   const due = paperAlertDue(paper, sent)
@@ -929,7 +952,11 @@ app.whenReady().then(async () => {
     win?.webContents.send('booth:printJobs')
     void broadcastDevices()
   })
-  printQueue.on('jobFailed', (id: string, e: unknown) => void log('error', `print job ${id} failed: ${e}`))
+  printQueue.on('jobFailed', (id: string, e: unknown) => {
+    void log('error', `print job ${id} failed: ${e}`)
+    if (printerAlerts.allow(Date.now())) sendAlert('printer_error', { message: String(e instanceof Error ? e.message : e).slice(0, 200) })
+  })
+  setInterval(watchCamera, 15_000)
   printQueue.on('changed', () => void checkPaperAlert())
   pinLock = new PinLock(db)
   account = new AccountService({

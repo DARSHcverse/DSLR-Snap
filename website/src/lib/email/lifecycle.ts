@@ -129,6 +129,11 @@ export async function emailPaperLow(userId: string, o: { device: string; remaini
   if (email) await sendEmail({ to: email, email: t.paperLow(o), template: "paper-low", onceKey });
 }
 
+export async function emailBoothAlert(userId: string, o: Parameters<typeof t.boothAlert>[0], onceKey: string) {
+  const email = await emailForUser(userId);
+  if (email) await sendEmail({ to: email, email: t.boothAlert(o), template: "booth-alert", onceKey });
+}
+
 export async function emailNewDevice(userId: string, device: string) {
   const email = await emailForUser(userId);
   if (email) await sendEmail({ to: email, email: t.newDeviceSignedIn({ device, at: Date.now() }), template: "new-device" });

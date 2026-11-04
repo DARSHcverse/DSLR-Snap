@@ -210,6 +210,17 @@ function DevicesTab({ devices }: { devices: DeviceSnapshot | null }) {
         </p>
       </div>
       <div className="card">
+        <h3>Phone alerts</h3>
+        <label className="check">
+          <input type="checkbox" checked={s.phoneAlerts !== false} onChange={(e) => save({ ...s, phoneAlerts: e.target.checked })} />
+          Email me when the booth needs attention
+        </label>
+        <p className="muted small">
+          When this computer is signed in, your account email gets a message (so it pops up on your phone) when paper is running low, a print fails, the camera is
+          disconnected for a minute while guests use the booth, or a print package is nearly used up. At most one per problem every half hour.
+        </p>
+      </div>
+      <div className="card">
         <h3>Digital delivery</h3>
         <p className="muted">
           {devices?.uploads.enabled
@@ -438,7 +449,7 @@ function PaperCard({ paper }: { paper: DeviceSnapshot['paper'] }) {
             <strong>{paper.remaining}</strong> of {paper.capacity} prints left
           </p>
           <div className="meter"><span style={{ width: `${pct}%` }} className={paper.remaining <= 50 ? 'low' : ''} /></div>
-          <p className="muted small">Counted from prints sent since you loaded the roll on {new Date(paper.loadedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}. Test prints aren't counted. Signed in, you get an email at 50 and 15 prints left, so it reaches your phone.</p>
+          <p className="muted small">Counted from prints sent since you loaded the roll on {new Date(paper.loadedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}. Test prints aren't counted. With Phone alerts on, you get an email at 50 and 15 prints left.</p>
         </>
       ) : (
         <p className="muted">Press the button when you load a roll, and the booth counts down the prints left and warns you before it runs out.</p>

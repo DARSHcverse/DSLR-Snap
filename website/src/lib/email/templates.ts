@@ -195,6 +195,19 @@ export const paperLow = (o: { device: string; remaining: number; capacity: numbe
     ],
   });
 
+/** Something at the booth needs the operator: a failed print, a lost camera, a print package nearly used up. */
+export const boothAlert = (o: { title: string; device: string; event?: string; detail?: string; advice: string }): RenderedEmail =>
+  r({
+    subject: `${o.title} on ${o.device}`,
+    preheader: o.advice,
+    heading: o.title,
+    blocks: [
+      { facts: [["Computer", o.device], ...(o.event ? ([["Event", o.event]] as [string, string][]) : []), ...(o.detail ? ([["Details", o.detail]] as [string, string][]) : [])] },
+      { p: o.advice },
+      { p: "Turn these alerts off in DSLR Snap under Printer & devices → Phone alerts." },
+    ],
+  });
+
 export const accountDeleted = (): RenderedEmail =>
   r({
     subject: "Your DSLR Snap account is deleted",

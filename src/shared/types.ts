@@ -271,6 +271,8 @@ export interface DeviceSettings {
   audioInputId: string
   /** The operator's own camera settings ("My settings"), e.g. for their flash at a regular venue. */
   cameraPresets: SavedPreset[]
+  /** Email the account (so it reaches the operator's phone) about low paper, print failures and a lost camera. */
+  phoneAlerts: boolean
 }
 
 export interface SavedPreset {
