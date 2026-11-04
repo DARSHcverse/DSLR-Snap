@@ -40,6 +40,8 @@ import { ASSET_ID, BACKGROUND_ID, BoothDatabase } from './db/database'
 import { PresetSync } from './licence/presetSync'
 import { fromScreen } from './deviceSettings'
 import { SetupTransfer } from './licence/setupTransfer'
+import { GuestMailer } from './guestMailer'
+import { cleanEmail, csvForContacts } from '../shared/guestEmail'
 import { paperAlertDue } from '../shared/paper'
 import { CAMERA_LOST_AFTER_MS, OutageWatch, PRINTER_ALERT_EVERY_MS, Throttle } from '../shared/alerts'
 import { packageState } from '../shared/printLimit'
@@ -107,6 +109,7 @@ let pinLock: PinLock
 let account: AccountService
 let presetSync: PresetSync
 let setupTransfer: SetupTransfer
+let guestMailer: GuestMailer
 let updates: Updates | undefined
 let gallery: CloudGallery
 loadEnv(join(userData, '.env'))
@@ -437,6 +440,26 @@ function registerIpc(): void {
   handle('capture', (sessionId: string) => service.capture(sessionId))
   handle('endSession', (sessionId: string) => service.endSession(sessionId))
   handle('eventPrintCount', (eventId: string) => db.eventPrintCount(eventId))
+  /** A guest typed their email on the done screen; it's sent through the website (now, or once online). */
+  handle('emailPhotos', (sessionId: string, email: string, marketing: boolean) => {
+    const clean = cleanEmail(String(email ?? ''))
+    if (!clean) throw new Error('That email address doesn\u2019t look right.')
+    const session = db.getSession(String(sessionId))
+    if (!session) throw new Error('Session not found')
+    db.addGuestContact(session.eventId, session.id, clean, !!marketing)
+    void guestMailer.flush()
+  })
+  /** The event's guest list as a CSV file the operator saves (and can hand to their client). */
+  handle('exportGuestEmails', async (eventId: string) => {
+    const ev = db.getEvent(eventId)
+    const rows = ev ? db.guestContacts(ev.id) : []
+    if (!ev || !rows.length) return null
+    const res = await dialog.showSaveDialog(win!, { title: 'Save the guest list', defaultPath: `${ev.name.replace(/[\\/:*?"<>|]/g, '')} guest emails.csv`, filters: [{ name: 'CSV', extensions: ['csv'] }] })
+    if (res.canceled || !res.filePath) return null
+    await writeFile(res.filePath, csvForContacts(rows), 'utf8')
+    return { count: rows.length, path: res.filePath }
+  })
+  handle('guestEmailCount', (eventId: string) => db.guestContacts(eventId).length)
   handle('finishVideo', (sessionId: string, recording: ArrayBuffer) => service.finishVideo(sessionId, new Uint8Array(recording)))
   handle('record360', (sessionId: string) => service.record360(sessionId))
   /** 360 overlay frame (PNG, kept transparent) or music, copied into the app. */
@@ -986,6 +1009,15 @@ app.whenReady().then(async () => {
     log: (level, m) => void log(level, m)
   })
   account.on('changed', () => account.state().signedIn && void presetSync.sync())
+  guestMailer = new GuestMailer({
+    pending: () => db.pendingGuestEmails(),
+    markSent: (id) => db.markGuestEmail(id, { sent: true }),
+    markFailed: (id, error) => db.markGuestEmail(id, { error }),
+    call: (path, body) => account.call(path, body),
+    log: (level, m) => void log(level, m)
+  })
+  setInterval(() => void guestMailer.flush(), 60_000)
+  account.on('changed', () => account.state().signedIn && void guestMailer.flush())
   setupTransfer = new SetupTransfer({
     call: (path, body) => account.call(path, body),
     computerName: hostname(),

@@ -523,6 +523,7 @@ function SessionsTab() {
   const [sessions, setSessions] = useState<SessionRecord[]>([])
   const [stats, setStats] = useState<EventStats | null>(null)
   const [pkg, setPkg] = useState<{ used: number; limit: number } | null>(null)
+  const [guestEmails, setGuestEmails] = useState(0)
   const [originals, setOriginals] = useState(false)
   const [status, setStatus] = useState<string | null>(null)
 
@@ -534,6 +535,7 @@ function SessionsTab() {
     setSessions(await window.booth.listSessions(a.event.id))
     setStats(await window.booth.eventStats(a.event.id))
     setPkg(a.event.printLimit ? { used: await window.booth.eventPrintCount(a.event.id), limit: a.event.printLimit } : null)
+    setGuestEmails(await window.booth.guestEmailCount(a.event.id))
   }
   useEffect(() => {
     void load()
@@ -577,6 +579,22 @@ function SessionsTab() {
         </div>
         {status && <p className="muted small">{status}</p>}
       </div>
+      {guestEmails > 0 && (
+        <div className="card">
+          <h3>Guest emails</h3>
+          <p className="muted small">{guestEmails} guest{guestEmails === 1 ? '' : 's'} asked for their photos by email. The list shows who ticked your marketing box; only contact those who did.</p>
+          <div className="row">
+            <button className="btn" onClick={async () => {
+              try {
+                const r = await window.booth.exportGuestEmails(eventId)
+                if (r) setStatus(`Saved ${r.count} emails to ${r.path}`)
+              } catch (e) {
+                setStatus(message(e))
+              }
+            }}>Save guest list (CSV)…</button>
+          </div>
+        </div>
+      )}
       <HostGallery eventId={eventId} />
       <table className="table">
         <tbody>

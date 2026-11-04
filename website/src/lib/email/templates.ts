@@ -208,6 +208,20 @@ export const boothAlert = (o: { title: string; device: string; event?: string; d
     ],
   });
 
+/** A guest asked for their photos at the booth. Sent on the operator's behalf; replies go to them. */
+export const guestPhotos = (o: { event: string; url: string; from?: string }): RenderedEmail =>
+  r({
+    subject: `Your photos from ${o.event}`,
+    preheader: "Download your photo booth photos, GIFs and videos.",
+    heading: "Your photo booth photos",
+    blocks: [
+      { p: `Thanks for stopping by the photo booth at **${o.event}**${o.from ? ` with ${o.from}` : ""}. Your photos are ready to view and download.` },
+      { button: "Get my photos", url: o.url },
+      { note: "If the page says your photos are on their way, check back in a few minutes: the booth uploads them as soon as it's online. They're kept for one year." },
+      { note: `You're getting this because you typed your email at the booth. Reply to this email to reach ${o.from ?? "the photo booth company"}.` },
+    ],
+  });
+
 export const accountDeleted = (): RenderedEmail =>
   r({
     subject: "Your DSLR Snap account is deleted",

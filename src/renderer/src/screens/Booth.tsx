@@ -5,6 +5,7 @@ import type { BoothEvent, FinishResult, Template } from '@shared/types'
 import Gallery, { GalleryCorner } from '../components/Gallery'
 import { lookInfo } from '@shared/looks'
 import LiveView from '../components/LiveView'
+import EmailSheet from '../components/EmailSheet'
 import { useStartTrigger } from '../components/useStartTrigger'
 import Booth360 from './Booth360'
 import VideoBooth from './VideoBooth'
@@ -59,6 +60,7 @@ export default function Booth({ onNeedSetup }: Props) {
   const [state, dispatch] = useReducer((s: BoothState, a: BoothAction) => boothReducer(s, a, cfgRef.current), { name: 'welcome' })
   stateRef.current = state.name
   const [confirmingEnd, setConfirmingEnd] = useState(false)
+  const [emailing, setEmailing] = useState(false)
   const [previews, setPreviews] = useState<Record<string, string>>({})
   const [result, setResult] = useState<FinishResult | null>(null)
   const [doneView, setDoneView] = useState<'print' | 'colour' | 'boomerang'>('print')
@@ -157,16 +159,17 @@ export default function Booth({ onNeedSetup }: Props) {
       .catch((e: Error) => setFatal(cleanError(e)))
   }, [state.name]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // The final screen returns to "Tap to start" by itself after the event's chosen time.
+  // The final screen returns to "Tap to start" by itself after the event's chosen time (not while a guest types their email).
   useEffect(() => {
-    if (state.name !== 'done' || !active) return
+    if (state.name !== 'done' || !active || emailing) return
     const t = setTimeout(() => reset(), active.event.doneScreenSeconds * 1000)
     return () => clearTimeout(t)
-  }, [state.name]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [state.name, emailing]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const reset = useCallback(() => {
     sessionId.current = null
     setConfirmingEnd(false)
+    setEmailing(false)
     setPreviews({})
     setResult(null)
     setDoneView('print')
@@ -352,6 +355,9 @@ export default function Booth({ onNeedSetup }: Props) {
             ) : (
               active.event.galleryEnabled && <p className="muted">Digital copy will upload when the booth is back online.</p>
             )}
+            {active.event.emailPhotos && result.galleryUrl && (
+              <button className="btn ghost" onClick={() => setEmailing(true)}>✉ Email me my photos</button>
+            )}
             <button className="btn primary" onClick={reset}>Finish</button>
           </div>
         </div>
@@ -379,6 +385,14 @@ export default function Booth({ onNeedSetup }: Props) {
           <h2 className="title">{state.reason === 'walked away' ? 'No one tapped Print' : 'Session ended'}</h2>
           <p className="muted">Nothing was printed. Thanks for stopping by!</p>
         </div>
+      )}
+
+      {emailing && state.name === 'done' && result && (
+        <EmailSheet
+          consentText={active.event.consentText}
+          onSend={(email, marketing) => window.booth.emailPhotos(result.session.id, email, marketing)}
+          onClose={() => setEmailing(false)}
+        />
       )}
 
       {state.name === 'error' && (

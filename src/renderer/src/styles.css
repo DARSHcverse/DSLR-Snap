@@ -438,3 +438,17 @@ input[type='checkbox'] { width: 22px; height: 22px; accent-color: var(--accent);
 .tpl-textbox input[type="color"] { width: 44px; height: 36px; padding: 2px; border-radius: 8px; border: 1px solid var(--line); background: transparent; }
 .tpl-textbox input[type="range"] { flex: 1; margin-left: 12px; }
 .seg.small button { padding: 6px 10px; }
+
+/* "Email me my photos": a sheet over the done screen with a big touch keyboard. */
+.email-sheet { position: fixed; inset: 0; z-index: 60; display: flex; align-items: center; justify-content: center; background: rgba(0, 0, 0, 0.75); backdrop-filter: blur(4px); padding: 20px; }
+.email-card { background: var(--surface); border: 1px solid var(--line); border-radius: 24px; padding: 28px 32px; width: min(860px, 100%); display: flex; flex-direction: column; gap: 14px; }
+.email-input { font: inherit; font-size: 30px; color: var(--text); background: var(--bg); border: 2px solid var(--line); border-radius: 14px; padding: 14px 18px; }
+.email-input:focus { outline: none; border-color: var(--accent); }
+.osk { display: flex; flex-direction: column; gap: 8px; }
+.osk-row { display: flex; gap: 8px; justify-content: center; }
+.osk button { font: inherit; font-size: 24px; font-weight: 600; min-width: 62px; height: 62px; padding: 0 10px; color: var(--text); background: var(--surface-2); border: 1px solid var(--line); border-radius: 12px; cursor: pointer; }
+.osk button.wide { min-width: 84px; }
+.osk button:active { background: var(--accent); color: var(--accent-ink); }
+.email-consent { font-size: 18px; }
+.email-card .row { justify-content: flex-end; gap: 12px; }
+.email-sent { text-align: center; padding: 40px 0; }

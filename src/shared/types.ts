@@ -87,6 +87,10 @@ export interface BoothEvent {
   confirmPrint: boolean
   /** Print package: stop printing after this many prints for the event (0 = no limit); then digital only. */
   printLimit: number
+  /** The done screen offers "Email me my photos" (needs QR downloads on and the booth signed in). */
+  emailPhotos: boolean
+  /** Wording for an optional, unticked marketing box, e.g. "Keep me updated about offers from Acme". Empty = no box. */
+  consentText: string
   /** Guests can browse this event's photos and GIFs from the welcome screen. */
   showGallery: boolean
   /** Camera exposure for this venue; applied whenever the camera connects. */
@@ -145,7 +149,7 @@ export interface EventStats {
 }
 
 /** Fields added after the first release; optional when saving so older callers keep working. */
-type NewerEventFields = 'shotIntervalSeconds' | 'photoReviewSeconds' | 'doneScreenSeconds' | 'guestCanEnd' | 'confirmPrint' | 'printLimit' | 'showGallery' | 'look' | 'skinSmoothing' | 'colourCopy' | 'boomerang' | 'backdrop' | 'backgrounds' | 'folder' | 'mode' | 'videoSeconds' | 'videoPrompt' | 'spinSeconds' | 'spinFps' | 'overlayId' | 'musicId'
+type NewerEventFields = 'shotIntervalSeconds' | 'photoReviewSeconds' | 'doneScreenSeconds' | 'guestCanEnd' | 'confirmPrint' | 'printLimit' | 'emailPhotos' | 'consentText' | 'showGallery' | 'look' | 'skinSmoothing' | 'colourCopy' | 'boomerang' | 'backdrop' | 'backgrounds' | 'folder' | 'mode' | 'videoSeconds' | 'videoPrompt' | 'spinSeconds' | 'spinFps' | 'overlayId' | 'musicId'
 export type EventInput = Omit<BoothEvent, 'id' | 'createdAt' | NewerEventFields> & Partial<Pick<BoothEvent, NewerEventFields>> & { id?: string }
 
 export type ExposureKey = 'iso' | 'aperture' | 'shutter' | 'whiteBalance'

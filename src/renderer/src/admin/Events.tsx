@@ -11,7 +11,7 @@ type Draft = Omit<BoothEvent, 'id' | 'createdAt'> & { id?: string }
 
 const blankEvent = (templateId: string): Draft => ({
   name: '', date: todayIso(), templateId, photosPerSession: 3, countdownSeconds: 5, shotIntervalSeconds: 3, photoReviewSeconds: 3, doneScreenSeconds: 20,
-  retakesAllowed: 2, printCopies: 1, autoPrint: true, galleryEnabled: false, showGallery: true, guestCanEnd: true, confirmPrint: false, printLimit: 0,
+  retakesAllowed: 2, printCopies: 1, autoPrint: true, galleryEnabled: false, showGallery: true, guestCanEnd: true, confirmPrint: false, printLimit: 0, emailPhotos: false, consentText: '',
   look: 'colour', skinSmoothing: 50, colourCopy: false, boomerang: false, backdrop: 'none', backgrounds: [], mode: 'photo', videoSeconds: 20, videoPrompt: '', spinSeconds: 10, spinFps: 120
 })
 
@@ -371,6 +371,16 @@ function PrintStep({ draft, set, template, templates, devices }: {
       {draft.printLimit > 0 && draft.id && <PackageUsed eventId={draft.id} limit={draft.printLimit} />}
       <label className="check"><input type="checkbox" checked={draft.guestCanEnd} onChange={(e) => set('guestCanEnd', e.target.checked)} /> Show an End button so guests can stop their session <span className="muted small">(nothing prints)</span></label>
       <label className="check"><input type="checkbox" checked={draft.galleryEnabled} onChange={(e) => set('galleryEnabled', e.target.checked)} /> Show a QR code so guests can download their photos</label>
+      {draft.galleryEnabled && (
+        <>
+          <label className="check"><input type="checkbox" checked={draft.emailPhotos} onChange={(e) => set('emailPhotos', e.target.checked)} /> Also offer &quot;Email me my photos&quot; <span className="muted small">(you get the list of emails for the client)</span></label>
+          {draft.emailPhotos && (
+            <label>Optional marketing box <span className="muted small">(left unticked for guests; leave empty for none)</span>
+              <input value={draft.consentText} maxLength={120} placeholder="Keep me updated about offers from Acme Events" onChange={(e) => set('consentText', e.target.value)} />
+            </label>
+          )}
+        </>
+      )}
       <label className="check"><input type="checkbox" checked={draft.showGallery} onChange={(e) => set('showGallery', e.target.checked)} /> Let guests browse this event's photos and GIFs on the booth screen</label>
       {draft.galleryEnabled && !devices?.uploads.enabled && <p className="warn small">The cloud gallery isn't set up on this computer yet, so no QR code will appear. See Devices → Digital delivery.</p>}
       <div className="note">

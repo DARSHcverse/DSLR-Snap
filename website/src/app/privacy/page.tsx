@@ -44,6 +44,7 @@ export default function PrivacyPage() {
           <li>Each session has a private, unguessable link. Files are stored privately and shown only through links that expire after an hour. Galleries aren&apos;t listed publicly or indexed by search engines, unless the operator chooses to show an event on their homepage.</li>
           <li>Photos and videos are deleted automatically one year after they were taken, or sooner if the operator deletes them.</li>
           <li>Photos taken with QR downloads off never leave the booth computer.</li>
+          <li>If a guest types their email at the booth to get their photos, we email them the link on the operator&apos;s behalf. The address, and whether they ticked the operator&apos;s optional marketing box, is kept on the booth computer for the operator. We don&apos;t use it for anything else, and guests can ask the operator to remove it.</li>
           <li>To show operators how often a gallery is viewed, we count visits without cookies. A visitor is counted using a one-way code made from the connection and browser details that changes every day, so it can&apos;t identify anyone.</li>
         </ul>
         <p>If you&apos;re a guest and want a photo removed, please ask the photo booth company that ran the event. You can also contact us and we&apos;ll pass your request on.</p>

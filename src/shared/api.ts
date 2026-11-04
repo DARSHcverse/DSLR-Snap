@@ -61,6 +61,11 @@ export interface BoothApi {
   endSession(sessionId: string): Promise<void>
   /** Prints made or queued for the event: what its print package has used. */
   eventPrintCount(eventId: string): Promise<number>
+  /** The done screen's "Email me my photos": queued, and sent through the website when online. */
+  emailPhotos(sessionId: string, email: string, marketing: boolean): Promise<void>
+  /** Saves the event's guest emails as CSV; null when there are none or the operator cancels. */
+  exportGuestEmails(eventId: string): Promise<{ count: number; path: string } | null>
+  guestEmailCount(eventId: string): Promise<number>
   capture(sessionId: string): Promise<CaptureResult>
   /** 360 booth: the GoPro records a spin, then the edit is made and shared. */
   record360(sessionId: string): Promise<VideoResult>

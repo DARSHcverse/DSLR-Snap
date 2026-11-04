@@ -64,7 +64,14 @@ const MIGRATIONS: string[] = [
    ALTER TABLE events ADD COLUMN music_id TEXT;`,
   `ALTER TABLE events ADD COLUMN guest_can_end INTEGER NOT NULL DEFAULT 1;
    ALTER TABLE events ADD COLUMN confirm_print INTEGER NOT NULL DEFAULT 0;`,
-  `ALTER TABLE events ADD COLUMN print_limit INTEGER NOT NULL DEFAULT 0;`
+  `ALTER TABLE events ADD COLUMN print_limit INTEGER NOT NULL DEFAULT 0;`,
+  `ALTER TABLE events ADD COLUMN email_photos INTEGER NOT NULL DEFAULT 0;
+   ALTER TABLE events ADD COLUMN consent_text TEXT NOT NULL DEFAULT '';
+   CREATE TABLE guest_contacts (
+     id TEXT PRIMARY KEY, event_id TEXT NOT NULL REFERENCES events(id) ON DELETE CASCADE, session_id TEXT NOT NULL,
+     email TEXT NOT NULL, marketing INTEGER NOT NULL, created_at TEXT NOT NULL,
+     sent_at TEXT, attempts INTEGER NOT NULL DEFAULT 0, last_error TEXT);
+   CREATE INDEX guest_contacts_event ON guest_contacts(event_id, created_at);`
 ]
 
 const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(min, Math.round(v)))
@@ -209,6 +216,7 @@ export class BoothDatabase {
       shotIntervalSeconds: r.shot_interval_seconds, photoReviewSeconds: r.photo_review_seconds,
       doneScreenSeconds: r.done_screen_seconds, showGallery: !!r.show_gallery,
       guestCanEnd: r.guest_can_end !== 0, confirmPrint: !!r.confirm_print, printLimit: r.print_limit ?? 0,
+      emailPhotos: !!r.email_photos, consentText: r.consent_text ?? '',
       look: LOOK_IDS.has(r.look) ? r.look : 'colour', skinSmoothing: r.skin_smoothing, colourCopy: !!r.colour_copy, boomerang: !!r.boomerang,
       backdrop: BACKDROPS.has(r.backdrop) ? r.backdrop : 'none', backgrounds: JSON.parse(r.backgrounds || '[]'), folder: r.folder ?? undefined,
       mode: r.mode === 'video' || r.mode === '360' ? r.mode : 'photo', videoSeconds: r.video_seconds, videoPrompt: r.video_prompt,
@@ -243,6 +251,8 @@ export class BoothDatabase {
       guestCanEnd: e.guestCanEnd ?? true,
       confirmPrint: e.confirmPrint ?? false,
       printLimit: clamp(e.printLimit ?? 0, 0, 100000),
+      emailPhotos: e.emailPhotos ?? false,
+      consentText: (e.consentText ?? '').replace(/\s+/g, ' ').trim().slice(0, 120),
       look: e.look && LOOK_IDS.has(e.look) ? e.look : 'colour',
       skinSmoothing: clamp(e.skinSmoothing ?? 50, 0, 100),
       colourCopy: e.colourCopy ?? false,
@@ -262,12 +272,12 @@ export class BoothDatabase {
     this.db
       .prepare(
         `INSERT INTO events (id, name, date, template_id, photos_per_session, countdown_seconds, retakes_allowed, print_copies, auto_print, gallery_enabled,
-           shot_interval_seconds, photo_review_seconds, done_screen_seconds, show_gallery, guest_can_end, confirm_print, print_limit, look, skin_smoothing, colour_copy, boomerang, backdrop, backgrounds, mode, video_seconds, video_prompt, spin_seconds, spin_fps, overlay_id, music_id, exposure, created_at)
+           shot_interval_seconds, photo_review_seconds, done_screen_seconds, show_gallery, guest_can_end, confirm_print, print_limit, email_photos, consent_text, look, skin_smoothing, colour_copy, boomerang, backdrop, backgrounds, mode, video_seconds, video_prompt, spin_seconds, spin_fps, overlay_id, music_id, exposure, created_at)
          VALUES (@id, @name, @date, @templateId, @photosPerSession, @countdownSeconds, @retakesAllowed, @printCopies, @autoPrint, @galleryEnabled,
-           @shotIntervalSeconds, @photoReviewSeconds, @doneScreenSeconds, @showGallery, @guestCanEnd, @confirmPrint, @printLimit, @look, @skinSmoothing, @colourCopy, @boomerang, @backdrop, @backgrounds, @mode, @videoSeconds, @videoPrompt, @spinSeconds, @spinFps, @overlayId, @musicId, @exposure, @createdAt)
+           @shotIntervalSeconds, @photoReviewSeconds, @doneScreenSeconds, @showGallery, @guestCanEnd, @confirmPrint, @printLimit, @emailPhotos, @consentText, @look, @skinSmoothing, @colourCopy, @boomerang, @backdrop, @backgrounds, @mode, @videoSeconds, @videoPrompt, @spinSeconds, @spinFps, @overlayId, @musicId, @exposure, @createdAt)
          ON CONFLICT(id) DO UPDATE SET name=@name, date=@date, template_id=@templateId, photos_per_session=@photosPerSession,
            countdown_seconds=@countdownSeconds, retakes_allowed=@retakesAllowed, print_copies=@printCopies, auto_print=@autoPrint, gallery_enabled=@galleryEnabled,
-           shot_interval_seconds=@shotIntervalSeconds, photo_review_seconds=@photoReviewSeconds, done_screen_seconds=@doneScreenSeconds, show_gallery=@showGallery, guest_can_end=@guestCanEnd, confirm_print=@confirmPrint, print_limit=@printLimit,
+           shot_interval_seconds=@shotIntervalSeconds, photo_review_seconds=@photoReviewSeconds, done_screen_seconds=@doneScreenSeconds, show_gallery=@showGallery, guest_can_end=@guestCanEnd, confirm_print=@confirmPrint, print_limit=@printLimit, email_photos=@emailPhotos, consent_text=@consentText,
            look=@look, skin_smoothing=@skinSmoothing, colour_copy=@colourCopy, boomerang=@boomerang, backdrop=@backdrop, backgrounds=@backgrounds, mode=@mode, video_seconds=@videoSeconds, video_prompt=@videoPrompt,
            spin_seconds=@spinSeconds, spin_fps=@spinFps, overlay_id=@overlayId, music_id=@musicId`
       )
@@ -280,6 +290,7 @@ export class BoothDatabase {
         boomerang: ev.boomerang ? 1 : 0,
         guestCanEnd: ev.guestCanEnd ? 1 : 0,
         confirmPrint: ev.confirmPrint ? 1 : 0,
+        emailPhotos: ev.emailPhotos ? 1 : 0,
         backgrounds: JSON.stringify(ev.backgrounds),
         overlayId: ev.overlayId ?? null,
         musicId: ev.musicId ?? null,
@@ -299,6 +310,31 @@ export class BoothDatabase {
     if (!ev) throw new Error('Unknown event')
     const { id: _id, createdAt: _created, ...rest } = ev
     return this.saveEvent({ ...rest, name: `${ev.name} (copy)`, date: todayIso() })
+  }
+
+  // ---------- guests' emails ----------
+  /** A guest asked for their photos by email (and maybe ticked the operator's marketing box). */
+  addGuestContact(eventId: string, sessionId: string, email: string, marketing: boolean): void {
+    this.db
+      .prepare('INSERT INTO guest_contacts (id, event_id, session_id, email, marketing, created_at) VALUES (?, ?, ?, ?, ?, ?)')
+      .run(randomUUID(), eventId, sessionId, email, marketing ? 1 : 0, now())
+  }
+
+  /** Emails still to send (oldest first), with the event's name for the subject line. */
+  pendingGuestEmails(): { id: string; sessionId: string; email: string; eventName: string }[] {
+    return this.db
+      .prepare('SELECT g.id, g.session_id AS sessionId, g.email, e.name AS eventName FROM guest_contacts g JOIN events e ON e.id = g.event_id WHERE g.sent_at IS NULL AND g.attempts < 20 ORDER BY g.created_at LIMIT 50')
+      .all() as { id: string; sessionId: string; email: string; eventName: string }[]
+  }
+
+  markGuestEmail(id: string, result: { sent: true } | { error: string }): void {
+    if ('sent' in result) this.db.prepare('UPDATE guest_contacts SET sent_at = ?, last_error = NULL WHERE id = ?').run(now(), id)
+    else this.db.prepare('UPDATE guest_contacts SET attempts = attempts + 1, last_error = ? WHERE id = ?').run(result.error.slice(0, 300), id)
+  }
+
+  guestContacts(eventId: string): { email: string; marketing: boolean; createdAt: string }[] {
+    return (this.db.prepare('SELECT email, marketing, created_at AS createdAt FROM guest_contacts WHERE event_id = ? ORDER BY created_at').all(eventId) as { email: string; marketing: number; createdAt: string }[])
+      .map((r) => ({ ...r, marketing: !!r.marketing }))
   }
 
   /** Prints made or on their way for an event's sessions (cancelled jobs don't count): its print package. */
