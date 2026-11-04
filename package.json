@@ -1,7 +1,7 @@
 {
   "name": "dslr-snap",
   "productName": "DSLR Snap",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "DSLR Snap – Photo Booth Software for Windows",
   "main": "./out/main/index.js",
   "author": "Darshan Subramaniam",
