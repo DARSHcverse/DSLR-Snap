@@ -59,6 +59,8 @@ export interface BoothApi {
   startSession(): Promise<{ sessionId: string; event: BoothEvent }>
   /** Stopped before printing: photos so far are kept, nothing prints or uploads. */
   endSession(sessionId: string): Promise<void>
+  /** Prints made or queued for the event: what its print package has used. */
+  eventPrintCount(eventId: string): Promise<number>
   capture(sessionId: string): Promise<CaptureResult>
   /** 360 booth: the GoPro records a spin, then the edit is made and shared. */
   record360(sessionId: string): Promise<VideoResult>

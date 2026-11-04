@@ -6,7 +6,7 @@ import type { UpdateStatus } from '../shared/updates'
 const invoke = (channel: string) => (...args: unknown[]) => ipcRenderer.invoke(channel, ...args)
 
 const methods = [
-  'getActiveEvent', 'startSession', 'capture', 'endSession', 'recordBoomerang', 'finishVideo', 'record360', 'importAsset', 'overlayPreview', 'finish', 'reprint', 'liveViewStart', 'liveViewFrame', 'aiAvailable', 'liveViewStop', 'galleryList', 'galleryItem',
+  'getActiveEvent', 'startSession', 'capture', 'endSession', 'eventPrintCount', 'recordBoomerang', 'finishVideo', 'record360', 'importAsset', 'overlayPreview', 'finish', 'reprint', 'liveViewStart', 'liveViewFrame', 'aiAvailable', 'liveViewStop', 'galleryList', 'galleryItem',
   'listEvents', 'saveEvent', 'deleteEvent', 'setActiveEvent', 'listTemplates', 'previewTemplate', 'importBackgrounds', 'backgroundImage', 'listSessions', 'openEventFolder', 'photosFolder', 'setPhotosFolder',
   'chooseTemplateFile', 'prepareTemplateImport', 'getTemplateArtwork', 'saveTemplate', 'templateUsers', 'deleteTemplate', 'discardTemplateDraft',
   'previewTemplateDraft', 'testPrintTemplate',

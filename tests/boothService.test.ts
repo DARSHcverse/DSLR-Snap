@@ -52,6 +52,27 @@ describe('BoothService end to end (mock hardware)', () => {
     expect(readdirSync(join(dataDir, 'prints'))).toHaveLength(2) // 2 copies
   })
 
+  it("stops printing when the event's print package is used up, and says so", async () => {
+    const { db, ev, service, printQueue } = await setup()
+    db.saveEvent({ ...ev, printCopies: 2, printLimit: 3 })
+    const run = async (key: string) => {
+      const { sessionId } = service.startSession()
+      const shots = []
+      for (let i = 0; i < 3; i++) shots.push((await service.capture(sessionId)).path)
+      return service.finish(sessionId, shots, key)
+    }
+    const first = await run('a') // 2 of 3
+    const second = await run('b') // only 1 copy fits
+    const third = await run('c') // none left
+    await printQueue.drain()
+    expect(first.printJobId && second.printJobId).toBeTruthy()
+    expect(third.printJobId).toBeUndefined()
+    expect(third).toMatchObject({ printLimitReached: true })
+    expect(db.listPrintJobs().map((j) => j.copies).sort()).toEqual([1, 2])
+    expect(db.eventPrintCount(ev.id)).toBe(3)
+    expect(third.session.status).toBe('complete') // still a finished session with its photos
+  })
+
   it('glam events print black and white, and keep a colour copy for guests when asked', async () => {
     const { db, ev, service } = await setup()
     expect(ev).toMatchObject({ look: 'colour', colourCopy: false }) // events from before looks existed

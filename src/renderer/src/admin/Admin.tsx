@@ -522,6 +522,7 @@ function SessionsTab() {
   const [eventName, setEventName] = useState('')
   const [sessions, setSessions] = useState<SessionRecord[]>([])
   const [stats, setStats] = useState<EventStats | null>(null)
+  const [pkg, setPkg] = useState<{ used: number; limit: number } | null>(null)
   const [originals, setOriginals] = useState(false)
   const [status, setStatus] = useState<string | null>(null)
 
@@ -532,6 +533,7 @@ function SessionsTab() {
     setEventName(a.event.name)
     setSessions(await window.booth.listSessions(a.event.id))
     setStats(await window.booth.eventStats(a.event.id))
+    setPkg(a.event.printLimit ? { used: await window.booth.eventPrintCount(a.event.id), limit: a.event.printLimit } : null)
   }
   useEffect(() => {
     void load()
@@ -558,6 +560,7 @@ function SessionsTab() {
         <div className="stat-grid">
           <Stat value={stats.sessions} label="Guest sessions" />
           <Stat value={stats.prints.sent} label="Prints sent" />
+          {pkg && <Stat value={pkg.used} label={`of ${pkg.limit} prints in the package`} bad={pkg.used >= pkg.limit} detail={pkg.used >= pkg.limit ? 'Used up: guests get their photos digitally. Raise the limit in the event to keep printing.' : `${pkg.limit - pkg.used} left`} />}
           {stats.ended > 0 && <Stat value={stats.ended} label="Ended early" detail="Stopped before printing: no paper used. Their photos are in the event's Photos folder." />}
           <Stat value={stats.prints.pending + stats.prints.failed} label="Prints waiting or failed" bad={stats.prints.failed > 0} detail={stats.prints.lastError} />
           <Stat value={stats.uploads.done} label="QR downloads ready" bad={stats.uploads.failed > 0}

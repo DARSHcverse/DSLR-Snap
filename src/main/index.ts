@@ -42,6 +42,7 @@ import { fromScreen } from './deviceSettings'
 import { SetupTransfer } from './licence/setupTransfer'
 import { paperAlertDue } from '../shared/paper'
 import { CAMERA_LOST_AFTER_MS, OutageWatch, PRINTER_ALERT_EVERY_MS, Throttle } from '../shared/alerts'
+import { packageState } from '../shared/printLimit'
 import { BUILT_IN_TEMPLATES } from '../shared/templates'
 import { AccountService } from './licence/AccountService'
 import { machineHash } from './licence/machineId'
@@ -188,6 +189,7 @@ function sendAlert(kind: 'printer_error' | 'camera_lost' | 'print_limit', extra:
 }
 
 const printerAlerts = new Throttle(PRINTER_ALERT_EVERY_MS)
+const packageAlerted = new Set<string>()
 const cameraWatch = new OutageWatch(CAMERA_LOST_AFTER_MS)
 /** Camera gone for a minute while guests are using the booth (not while it sits in the admin). */
 function watchCamera(): void {
@@ -434,6 +436,7 @@ function registerIpc(): void {
   handle('startSession', () => service.startSession())
   handle('capture', (sessionId: string) => service.capture(sessionId))
   handle('endSession', (sessionId: string) => service.endSession(sessionId))
+  handle('eventPrintCount', (eventId: string) => db.eventPrintCount(eventId))
   handle('finishVideo', (sessionId: string, recording: ArrayBuffer) => service.finishVideo(sessionId, new Uint8Array(recording)))
   handle('record360', (sessionId: string) => service.record360(sessionId))
   /** 360 overlay frame (PNG, kept transparent) or music, copied into the app. */
@@ -1028,7 +1031,16 @@ app.whenReady().then(async () => {
     backgroundPath,
     ffmpeg,
     gopro,
-    assetPath
+    assetPath,
+    // Print package nearly used up / used up: tell the operator once each (the website also dedupes).
+    onPrintPackage: (ev, used) => {
+      const state = packageState(ev.printLimit, used)
+      const key = `${ev.id}:${ev.printLimit}:${state}`
+      if (state !== 'ok' && !packageAlerted.has(key)) {
+        packageAlerted.add(key)
+        sendAlert('print_limit', { used, limit: ev.printLimit })
+      }
+    }
   })
 
   registerIpc()

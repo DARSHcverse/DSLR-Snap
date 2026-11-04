@@ -85,6 +85,8 @@ export interface BoothEvent {
   guestCanEnd: boolean
   /** Only print when the guest taps Print on their last photo; walk-aways don't print. */
   confirmPrint: boolean
+  /** Print package: stop printing after this many prints for the event (0 = no limit); then digital only. */
+  printLimit: number
   /** Guests can browse this event's photos and GIFs from the welcome screen. */
   showGallery: boolean
   /** Camera exposure for this venue; applied whenever the camera connects. */
@@ -143,7 +145,7 @@ export interface EventStats {
 }
 
 /** Fields added after the first release; optional when saving so older callers keep working. */
-type NewerEventFields = 'shotIntervalSeconds' | 'photoReviewSeconds' | 'doneScreenSeconds' | 'guestCanEnd' | 'confirmPrint' | 'showGallery' | 'look' | 'skinSmoothing' | 'colourCopy' | 'boomerang' | 'backdrop' | 'backgrounds' | 'folder' | 'mode' | 'videoSeconds' | 'videoPrompt' | 'spinSeconds' | 'spinFps' | 'overlayId' | 'musicId'
+type NewerEventFields = 'shotIntervalSeconds' | 'photoReviewSeconds' | 'doneScreenSeconds' | 'guestCanEnd' | 'confirmPrint' | 'printLimit' | 'showGallery' | 'look' | 'skinSmoothing' | 'colourCopy' | 'boomerang' | 'backdrop' | 'backgrounds' | 'folder' | 'mode' | 'videoSeconds' | 'videoPrompt' | 'spinSeconds' | 'spinFps' | 'overlayId' | 'musicId'
 export type EventInput = Omit<BoothEvent, 'id' | 'createdAt' | NewerEventFields> & Partial<Pick<BoothEvent, NewerEventFields>> & { id?: string }
 
 export type ExposureKey = 'iso' | 'aperture' | 'shutter' | 'whiteBalance'
@@ -306,6 +308,8 @@ export interface FinishResult {
   galleryUrl?: string
   qrDataUrl?: string
   printJobId?: string
+  /** The event's print package is used up, so this session wasn't printed. */
+  printLimitReached?: boolean
 }
 
 /** Licence status of this booth (see src/main/licence). */

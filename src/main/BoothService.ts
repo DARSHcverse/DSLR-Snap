@@ -1,3 +1,4 @@
+import { printsToMake } from '../shared/printLimit'
 import { existsSync } from 'node:fs'
 import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
@@ -79,6 +80,8 @@ export class BoothService {
       /** 360 booth camera, and where imported overlays/music live. */
       gopro?: Pick<GoPro, 'configure' | 'record' | 'getStatus'>
       assetPath?: (id: string) => string
+      /** After a session is printed (or not, the package being used up) on an event with a print package. */
+      onPrintPackage?: (ev: BoothEvent, used: number) => void
     }
   ) {}
 
@@ -212,15 +215,20 @@ export class BoothService {
     db.updateSession(sessionId, { status: 'composed', photoPaths, compositePath, printPath, ...(gifOk ? { gifPath } : {}) })
 
     let printJobId: string | undefined
+    let printLimitReached = false
     if (ev.autoPrint && ev.printCopies > 0) {
-      printJobId = printQueue.enqueue(sessionId, `auto:${requestKey}`, printPath, template.format, ev.printCopies).id
+      // A print package stops printing when it's used up; the guest still gets the photos on screen and by QR.
+      const copies = printsToMake(ev.printLimit, db.eventPrintCount(ev.id), ev.printCopies)
+      if (copies > 0) printJobId = printQueue.enqueue(sessionId, `auto:${requestKey}`, printPath, template.format, copies).id
+      else printLimitReached = true
+      if (ev.printLimit) this.deps.onPrintPackage?.(ev, db.eventPrintCount(ev.id))
     }
 
     const { galleryUrl, qrDataUrl } = await this.share(ev, sessionId, compositePath)
     db.updateSession(sessionId, { status: 'complete' })
     const boomerangPath = boomerangPathFor(compositePath)
     const boomerang = existsSync(boomerangPath) ? `data:image/gif;base64,${(await readFile(boomerangPath)).toString('base64')}` : undefined
-    return { session: db.getSession(sessionId)!, printPreview: await previewDataUrl(composite, 700), colourPreview, boomerang, galleryUrl, qrDataUrl, printJobId }
+    return { session: db.getSession(sessionId)!, printPreview: await previewDataUrl(composite, 700), colourPreview, boomerang, galleryUrl, qrDataUrl, printJobId, ...(printLimitReached ? { printLimitReached } : {}) }
   }
 
   /** Queues the upload and makes the QR (instant when the link is known up front). */

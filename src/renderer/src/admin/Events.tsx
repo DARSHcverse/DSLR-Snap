@@ -11,7 +11,7 @@ type Draft = Omit<BoothEvent, 'id' | 'createdAt'> & { id?: string }
 
 const blankEvent = (templateId: string): Draft => ({
   name: '', date: todayIso(), templateId, photosPerSession: 3, countdownSeconds: 5, shotIntervalSeconds: 3, photoReviewSeconds: 3, doneScreenSeconds: 20,
-  retakesAllowed: 2, printCopies: 1, autoPrint: true, galleryEnabled: false, showGallery: true, guestCanEnd: true, confirmPrint: false,
+  retakesAllowed: 2, printCopies: 1, autoPrint: true, galleryEnabled: false, showGallery: true, guestCanEnd: true, confirmPrint: false, printLimit: 0,
   look: 'colour', skinSmoothing: 50, colourCopy: false, boomerang: false, backdrop: 'none', backgrounds: [], mode: 'photo', videoSeconds: 20, videoPrompt: '', spinSeconds: 10, spinFps: 120
 })
 
@@ -363,6 +363,12 @@ function PrintStep({ draft, set, template, templates, devices }: {
       {draft.autoPrint && draft.printCopies > 0 && (
         <label className="check"><input type="checkbox" checked={draft.confirmPrint} onChange={(e) => set('confirmPrint', e.target.checked)} /> Only print when the guest taps Print <span className="muted small">(if a group walks away, nothing prints)</span></label>
       )}
+      {draft.printCopies > 0 && (
+        <label className="row-label">Print package <span className="muted small">stop printing after this many prints (0 = no limit), then guests get their photos digitally</span>
+          <input type="number" min={0} max={100000} step={10} value={draft.printLimit} onChange={(e) => set('printLimit', Math.max(0, Math.round(Number(e.target.value) || 0)))} style={{ width: 110 }} />
+        </label>
+      )}
+      {draft.printLimit > 0 && draft.id && <PackageUsed eventId={draft.id} limit={draft.printLimit} />}
       <label className="check"><input type="checkbox" checked={draft.guestCanEnd} onChange={(e) => set('guestCanEnd', e.target.checked)} /> Show an End button so guests can stop their session <span className="muted small">(nothing prints)</span></label>
       <label className="check"><input type="checkbox" checked={draft.galleryEnabled} onChange={(e) => set('galleryEnabled', e.target.checked)} /> Show a QR code so guests can download their photos</label>
       <label className="check"><input type="checkbox" checked={draft.showGallery} onChange={(e) => set('showGallery', e.target.checked)} /> Let guests browse this event's photos and GIFs on the booth screen</label>
@@ -602,4 +608,12 @@ function LaunchStep({ draft, template, devices, onLaunch }: {
       <div className="preview-pane">{preview ? <img src={preview} alt="Print preview" /> : <div className="spinner" />}</div>
     </div>
   )
+}
+
+/** How much of the event's print package is used so far. */
+function PackageUsed({ eventId, limit }: { eventId: string; limit: number }) {
+  const [used, setUsed] = useState<number | null>(null)
+  useEffect(() => void window.booth.eventPrintCount(eventId).then(setUsed).catch(() => setUsed(null)), [eventId])
+  if (used === null) return null
+  return <p className={`small ${used >= limit ? 'warn' : 'muted'}`}>{used} of {limit} prints used so far{used >= limit ? ': printing has stopped for this event.' : '.'}</p>
 }

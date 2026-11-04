@@ -63,7 +63,8 @@ const MIGRATIONS: string[] = [
    ALTER TABLE events ADD COLUMN overlay_id TEXT;
    ALTER TABLE events ADD COLUMN music_id TEXT;`,
   `ALTER TABLE events ADD COLUMN guest_can_end INTEGER NOT NULL DEFAULT 1;
-   ALTER TABLE events ADD COLUMN confirm_print INTEGER NOT NULL DEFAULT 0;`
+   ALTER TABLE events ADD COLUMN confirm_print INTEGER NOT NULL DEFAULT 0;`,
+  `ALTER TABLE events ADD COLUMN print_limit INTEGER NOT NULL DEFAULT 0;`
 ]
 
 const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(min, Math.round(v)))
@@ -207,7 +208,7 @@ export class BoothDatabase {
       printCopies: r.print_copies, autoPrint: !!r.auto_print, galleryEnabled: !!r.gallery_enabled,
       shotIntervalSeconds: r.shot_interval_seconds, photoReviewSeconds: r.photo_review_seconds,
       doneScreenSeconds: r.done_screen_seconds, showGallery: !!r.show_gallery,
-      guestCanEnd: r.guest_can_end !== 0, confirmPrint: !!r.confirm_print,
+      guestCanEnd: r.guest_can_end !== 0, confirmPrint: !!r.confirm_print, printLimit: r.print_limit ?? 0,
       look: LOOK_IDS.has(r.look) ? r.look : 'colour', skinSmoothing: r.skin_smoothing, colourCopy: !!r.colour_copy, boomerang: !!r.boomerang,
       backdrop: BACKDROPS.has(r.backdrop) ? r.backdrop : 'none', backgrounds: JSON.parse(r.backgrounds || '[]'), folder: r.folder ?? undefined,
       mode: r.mode === 'video' || r.mode === '360' ? r.mode : 'photo', videoSeconds: r.video_seconds, videoPrompt: r.video_prompt,
@@ -241,6 +242,7 @@ export class BoothDatabase {
       showGallery: e.showGallery ?? true,
       guestCanEnd: e.guestCanEnd ?? true,
       confirmPrint: e.confirmPrint ?? false,
+      printLimit: clamp(e.printLimit ?? 0, 0, 100000),
       look: e.look && LOOK_IDS.has(e.look) ? e.look : 'colour',
       skinSmoothing: clamp(e.skinSmoothing ?? 50, 0, 100),
       colourCopy: e.colourCopy ?? false,
@@ -260,12 +262,12 @@ export class BoothDatabase {
     this.db
       .prepare(
         `INSERT INTO events (id, name, date, template_id, photos_per_session, countdown_seconds, retakes_allowed, print_copies, auto_print, gallery_enabled,
-           shot_interval_seconds, photo_review_seconds, done_screen_seconds, show_gallery, guest_can_end, confirm_print, look, skin_smoothing, colour_copy, boomerang, backdrop, backgrounds, mode, video_seconds, video_prompt, spin_seconds, spin_fps, overlay_id, music_id, exposure, created_at)
+           shot_interval_seconds, photo_review_seconds, done_screen_seconds, show_gallery, guest_can_end, confirm_print, print_limit, look, skin_smoothing, colour_copy, boomerang, backdrop, backgrounds, mode, video_seconds, video_prompt, spin_seconds, spin_fps, overlay_id, music_id, exposure, created_at)
          VALUES (@id, @name, @date, @templateId, @photosPerSession, @countdownSeconds, @retakesAllowed, @printCopies, @autoPrint, @galleryEnabled,
-           @shotIntervalSeconds, @photoReviewSeconds, @doneScreenSeconds, @showGallery, @guestCanEnd, @confirmPrint, @look, @skinSmoothing, @colourCopy, @boomerang, @backdrop, @backgrounds, @mode, @videoSeconds, @videoPrompt, @spinSeconds, @spinFps, @overlayId, @musicId, @exposure, @createdAt)
+           @shotIntervalSeconds, @photoReviewSeconds, @doneScreenSeconds, @showGallery, @guestCanEnd, @confirmPrint, @printLimit, @look, @skinSmoothing, @colourCopy, @boomerang, @backdrop, @backgrounds, @mode, @videoSeconds, @videoPrompt, @spinSeconds, @spinFps, @overlayId, @musicId, @exposure, @createdAt)
          ON CONFLICT(id) DO UPDATE SET name=@name, date=@date, template_id=@templateId, photos_per_session=@photosPerSession,
            countdown_seconds=@countdownSeconds, retakes_allowed=@retakesAllowed, print_copies=@printCopies, auto_print=@autoPrint, gallery_enabled=@galleryEnabled,
-           shot_interval_seconds=@shotIntervalSeconds, photo_review_seconds=@photoReviewSeconds, done_screen_seconds=@doneScreenSeconds, show_gallery=@showGallery, guest_can_end=@guestCanEnd, confirm_print=@confirmPrint,
+           shot_interval_seconds=@shotIntervalSeconds, photo_review_seconds=@photoReviewSeconds, done_screen_seconds=@doneScreenSeconds, show_gallery=@showGallery, guest_can_end=@guestCanEnd, confirm_print=@confirmPrint, print_limit=@printLimit,
            look=@look, skin_smoothing=@skinSmoothing, colour_copy=@colourCopy, boomerang=@boomerang, backdrop=@backdrop, backgrounds=@backgrounds, mode=@mode, video_seconds=@videoSeconds, video_prompt=@videoPrompt,
            spin_seconds=@spinSeconds, spin_fps=@spinFps, overlay_id=@overlayId, music_id=@musicId`
       )
@@ -297,6 +299,13 @@ export class BoothDatabase {
     if (!ev) throw new Error('Unknown event')
     const { id: _id, createdAt: _created, ...rest } = ev
     return this.saveEvent({ ...rest, name: `${ev.name} (copy)`, date: todayIso() })
+  }
+
+  /** Prints made or on their way for an event's sessions (cancelled jobs don't count): its print package. */
+  eventPrintCount(eventId: string): number {
+    return (this.db
+      .prepare("SELECT COALESCE(SUM(j.copies), 0) AS n FROM print_jobs j JOIN sessions s ON s.id = j.session_id WHERE s.event_id = ? AND j.status != 'cancelled'")
+      .get(eventId) as { n: number }).n
   }
 
   eventStats(eventId: string): EventStats {

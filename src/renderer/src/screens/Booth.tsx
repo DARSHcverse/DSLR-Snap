@@ -343,6 +343,7 @@ export default function Booth({ onNeedSetup }: Props) {
             )}
             <h2 className="title">{result.printJobId ? 'Printing now!' : 'All done!'}</h2>
             {result.printJobId && <p className="muted">Your print will be ready in about 15 seconds.</p>}
+            {result.printLimitReached && <p className="muted">Tonight&apos;s prints have all been used{result.qrDataUrl ? ', so scan the code for your photos' : ''}.</p>}
             {result.qrDataUrl ? (
               <div className="qr">
                 <img src={result.qrDataUrl} alt="QR code for your photos" />
