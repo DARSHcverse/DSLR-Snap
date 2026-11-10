@@ -41,7 +41,7 @@ export const tradingName = site.business.legalName || site.name;
  * Before launch, the homepage and the dashboard say "Coming soon" with this date. On launch day set
  * `comingSoon` to false (and publish the installer) and every pre-launch message disappears.
  */
-export const launch = { comingSoon: true, date: "Thursday 5 November 2026" };
+export const launch = { comingSoon: false, date: "Thursday 5 November 2026" };
 
 /** The one canonical address (no www): sitemap, canonical links, Stripe and email links all use it. */
 export const productionUrl = "https://dslrsnap.com";

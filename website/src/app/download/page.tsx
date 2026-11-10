@@ -63,9 +63,18 @@ export default async function DownloadPage() {
           </>
         ) : (
           <>
-            <p className="mt-5 inline-flex rounded-full bg-accent px-2.5 py-0.5 text-xs font-bold tracking-wider text-accent-ink uppercase">Coming soon</p>
-            <p className="mt-3 text-lg font-semibold">DSLR Snap launches {launch.date}.</p>
-            <p className="mt-2 text-muted">Create your free account now; the download appears on this page on launch day and we&apos;ll email you when it&apos;s out.</p>
+            {launch.comingSoon ? (
+              <>
+                <p className="mt-5 inline-flex rounded-full bg-accent px-2.5 py-0.5 text-xs font-bold tracking-wider text-accent-ink uppercase">Coming soon</p>
+                <p className="mt-3 text-lg font-semibold">DSLR Snap launches {launch.date}.</p>
+                <p className="mt-2 text-muted">Create your free account now; the download appears on this page on launch day and we&apos;ll email you when it&apos;s out.</p>
+              </>
+            ) : (
+              <>
+                <p className="mt-5 text-lg font-semibold">The download is being updated.</p>
+                <p className="mt-2 text-muted">Please try again in a few minutes, or create your free account now and download it from your dashboard.</p>
+              </>
+            )}
             <Link href="/signup" className={`${primaryButton} mt-5`}>Create a free account</Link>
           </>
         )}
