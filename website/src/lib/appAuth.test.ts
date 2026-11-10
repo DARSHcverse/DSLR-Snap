@@ -97,6 +97,9 @@ describe("sign-in helpers", () => {
   it("only redirects within the site", () => {
     expect(safeNext("/app/sign-in?x=1")).toBe("/app/sign-in?x=1");
     for (const bad of ["https://evil.com", "//evil.com", "/\\evil.com", undefined, ""]) expect(safeNext(bad)).toBe("/account");
+    // Browsers drop tabs and newlines from URLs, turning "/\t/evil.com" into "//evil.com" (another site).
+    for (const bad of ["/\t/evil.com", "/\n/evil.com", "/\r/evil.com", "/ /evil.com", "/a\\b", "/\u0000x"]) expect(safeNext(bad)).toBe("/account");
+    expect(safeNext("/account/events?tab=1#top")).toBe("/account/events?tab=1#top");
   });
 
   it("cleans computer names", () => {

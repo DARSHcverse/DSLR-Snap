@@ -51,8 +51,13 @@ export function cleanDeviceName(s: unknown): string {
 }
 
 /** Only same-site paths, so a crafted link can't bounce a signed-in user to another site. */
+/**
+ * Where to go after signing in: only a path on this site. Spaces, control characters (browsers
+ * silently drop tabs and newlines, so "/\t/evil.com" becomes "//evil.com") and backslashes are
+ * refused, as is anything starting "//".
+ */
 export function safeNext(next: unknown, fallback = "/account"): string {
-  return typeof next === "string" && next.startsWith("/") && !next.startsWith("//") && !next.startsWith("/\\") ? next : fallback;
+  return typeof next === "string" && /^\/(?![/\\])[^\s\\\u0000-\u001f\u007f]*$/.test(next) ? next : fallback;
 }
 
 export interface SubscriptionRow {
