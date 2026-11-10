@@ -2,7 +2,8 @@ import { Bell, Building2, KeyRound, LogOut, Mail, TriangleAlert } from "lucide-r
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { signOut } from "@/app/(auth)/actions";
-import { ResetForm } from "@/app/(auth)/reset/ResetForm";
+import { ChangePassword } from "./ChangePassword";
+import { supabaseForRequest } from "@/lib/supabase/server";
 import { Avatar } from "@/components/dash/DashChrome";
 import { btn, btnDanger, btnPrimary, field, IconChip, input, Notice, PageHeader, Panel } from "@/components/dash/ui";
 import { DELETE_CONFIRMATION } from "@/lib/account";
@@ -24,7 +25,8 @@ export default function SettingsPage({ searchParams }: PageProps<"/account/setti
 async function Settings({ searchParams }: Pick<PageProps<"/account/settings">, "searchParams">) {
   const user = await requireDashboardUser("/account/settings");
   const sp = await searchParams;
-  const updates = await updatesOn(user.id);
+  const [updates, { data: auth }] = await Promise.all([updatesOn(user.id), (await supabaseForRequest()).auth.getUser()]);
+  const hasPassword = (auth.user?.identities ?? []).some((i) => i.provider === "email");
 
   return (
     <>
@@ -51,10 +53,8 @@ async function Settings({ searchParams }: Pick<PageProps<"/account/settings">, "
           <p className="mt-2 text-xs text-muted">Shown in your dashboard and on your public homepage.</p>
         </Panel>
 
-        <Panel title={<span className="flex items-center gap-3"><IconChip icon={KeyRound} tone="violet" className="size-9" /> Password</span>} description="Choose a new password for signing in with your email. If you sign in with Google, you don't need one.">
-          <div className="max-w-md">
-            <ResetForm step="new" />
-          </div>
+        <Panel title={<span className="flex items-center gap-3"><IconChip icon={KeyRound} tone="violet" className="size-9" /> Password</span>} description={hasPassword ? "Changing it signs out your other computers and phones." : "You sign in with Google. Add a password if you'd also like to sign in with your email."}>
+          <ChangePassword hasPassword={hasPassword} />
         </Panel>
 
         <Panel id="emails" title={<span className="flex items-center gap-3"><IconChip icon={Bell} tone="blue" className="size-9" /> Emails</span>}>
