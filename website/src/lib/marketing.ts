@@ -114,6 +114,9 @@ export const SOLUTIONS: {
   intro: string;
   points: { title: string; body: string }[];
   hardware: string;
+  /** "How it works", in the order an operator does it. */
+  steps: string[];
+  faq: { q: string; a: string }[];
 }[] = [
   {
     slug: "360-photo-booth-software",
@@ -129,13 +132,23 @@ export const SOLUTIONS: {
       { title: "Start it your way", body: "Tap Start, press a foot pedal, or start the spin from your phone while you work the arm." },
     ],
     hardware: "A Surface Pro or other Windows touch device, a 360 spinner platform and a GoPro HERO9–12 on a USB cable.",
+    steps: [
+      "Plug the GoPro into the booth computer by USB. DSLR Snap finds it and shows a green tick on Home.",
+      "Create a 360 event: pick the slow-motion style, add the overlay frame and a music track.",
+      "Guests step on the platform. Start the spin from the screen, a foot pedal or your phone, and each guest scans a QR code for their video.",
+    ],
+    faq: [
+      { q: "Which GoPro models work for 360 videos?", a: "GoPro HERO9, HERO10, HERO11 and HERO12, connected by USB. There's no pairing and no GoPro app; DSLR Snap finds the camera by itself and reconnects if the cable is unplugged." },
+      { q: "Do I need internet for a 360 booth?", a: "No. Recording, slow motion, overlays and music all happen on the booth computer. Internet is only needed to upload videos for QR sharing, and uploads wait until there's a connection." },
+      { q: "Is the 360 booth included in the plan?", a: "Yes. Every booth type, including 360, is in the one plan. Try it free first: every feature works in the trial, with a small watermark." },
+    ],
   },
   {
     slug: "glam-booth-software",
     name: "Glam booth",
     title: "Glam Booth Software: Hollywood Black and White",
     description:
-      "Glam photo booth software with Hollywood black and white, adjustable skin smoothing and soft contrast. Optional colour copies for guests. For Surface Pro and Windows touch devices, with Canon and Nikon cameras.",
+      "Glam booth software for Windows: Hollywood black and white, adjustable skin smoothing and soft contrast, with Canon or Nikon cameras and colour copies by QR.",
     intro: "The look clients book a glam booth for: soft, bright black and white with smooth skin, straight from your DSLR, on screen and in print.",
     points: [
       { title: "Hollywood B&W", body: "Soft contrast, lifted blacks and a gentle glow, tuned for flattering portraits." },
@@ -144,6 +157,16 @@ export const SOLUTIONS: {
       { title: "Colour copy on request", body: "Print in B&W and let guests download both versions from the QR page." },
     ],
     hardware: "A Surface Pro or other Windows touch device, a Canon or Nikon camera, a flash and a DNP dye-sub printer.",
+    steps: [
+      "Connect a Canon or Nikon camera and a DNP printer by USB.",
+      "Create a glam event and choose Hollywood black and white, then set skin smoothing from off to strong.",
+      "Guests pose to a black and white live view and get their print in seconds, with a colour copy by QR if you turn it on.",
+    ],
+    faq: [
+      { q: "Can guests get a colour version of a glam photo?", a: "Yes. Print in black and white and let guests download both the black and white and the colour version from their QR page." },
+      { q: "Does skin smoothing blur the whole photo?", a: "No. You choose the strength, from off to strong, and eyes, hair and outlines stay sharp." },
+      { q: "Which cameras work for a glam booth?", a: "Canon DSLR and mirrorless cameras, and Nikon Z mirrorless cameras (in beta), connected by USB. Add a flash or continuous light for the bright, soft glam look." },
+    ],
   },
   {
     slug: "green-screen-photo-booth-software",
@@ -159,6 +182,16 @@ export const SOLUTIONS: {
       { title: "Works offline", body: "The AI runs on the booth computer, so there's no per-photo cost and no internet needed." },
     ],
     hardware: "A Surface Pro or other Windows touch device, a Canon or Nikon camera, a DNP printer, and a green or blue backdrop if you want the cleanest edges.",
+    steps: [
+      "Load the client's backgrounds into the event: logos, sponsor walls or scenes.",
+      "Choose green screen, blue screen or AI backgrounds with no backdrop at all.",
+      "Guests pick a background, see themselves on it live, and get a print and QR code with the background swapped in.",
+    ],
+    faq: [
+      { q: "Can I do green screen photos without a green screen?", a: "Yes. AI backgrounds cut people out with no backdrop at all. A green or blue backdrop still gives the cleanest edges, for hair especially." },
+      { q: "Does the AI background removal cost extra per photo?", a: "No. It runs on the booth computer, so there's no per-photo fee and no internet needed." },
+      { q: "Can guests choose their own background?", a: "Yes. Add several backgrounds to the event and guests pick their favourite on the start screen, with a live preview before the countdown." },
+    ],
   },
   {
     slug: "video-guestbook-software",
@@ -174,6 +207,91 @@ export const SOLUTIONS: {
       { title: "Any webcam", body: "Use any USB webcam and microphone, or a GoPro in webcam mode." },
     ],
     hardware: "A Surface Pro or other Windows touch device with a USB webcam and microphone.",
+    steps: [
+      "Plug in a USB webcam and microphone, or a GoPro in webcam mode.",
+      "Create a video guestbook event with your prompt for guests, such as a message for the couple.",
+      "Guests record after a 3-2-1 countdown. Every message is saved as an MP4 and collected on one private page for the hosts.",
+    ],
+    faq: [
+      { q: "How do the couple get all the video messages?", a: "Every message is collected on a private gallery page that the hosts can share with family. Each video is also saved as an MP4 in the event's folder on the booth computer." },
+      { q: "What camera do I need for a video guestbook?", a: "Any USB webcam with a microphone, or a GoPro in webcam mode, on a Windows 10 or 11 computer." },
+      { q: "Can guests watch their message back?", a: "Yes. Messages play back straight away, and guests can scan a QR code to keep their own copy." },
+    ],
+  },
+  {
+    slug: "free-photo-booth-software",
+    name: "Free photo booth software",
+    title: "Free Photo Booth Software for Windows",
+    description:
+      "Try DSLR Snap free on Windows with no time limit: DSLR photos, prints, 360, green screen and QR sharing. A small watermark until you choose a plan.",
+    intro: "Download DSLR Snap and use every feature for free, for as long as you like. Photos carry a small watermark until you choose a plan, so you can test it at a real event first.",
+    points: [
+      { title: "Every feature, free", body: "Photo booth, glam, green screen, AI backgrounds, 360, video guestbook, GIFs and QR sharing all work in the free trial." },
+      { title: "No time limit", body: "The trial doesn't run out. Set up your templates and practise with your camera and printer at your own pace." },
+      { title: "No card to try", body: "Download and install; there's nothing to pay and no card to enter to start using it." },
+      { title: "Remove the watermark in a minute", body: "When you're ready, choose a plan and sign in under Account in the app. The watermark goes, and everything you set up stays." },
+    ],
+    hardware: "A Windows 10 or 11 device (a touch screen works best), plus the camera and printer you already use.",
+    steps: [
+      "Download DSLR Snap for Windows and run the installer.",
+      "Plug in your Canon or Nikon camera and DNP printer, or a webcam or GoPro.",
+      "Create an event, pick a template and run a test session. Choose a plan when you want photos without the watermark.",
+    ],
+    faq: [
+      { q: "Is DSLR Snap really free?", a: "The trial is free with no time limit and every feature works. Photos and videos carry a small watermark. Plans start at $14 a month billed yearly and remove the watermark." },
+      { q: "What's the catch with the free trial?", a: "Only the watermark. There's no time limit, no feature locked and no card needed, so you can test it properly before paying." },
+      { q: "Does the free version work offline?", a: "Yes. Photos, prints and AI backgrounds all work without internet. QR sharing needs a connection to upload, and queues until one is available." },
+    ],
+  },
+  {
+    slug: "surface-pro-photo-booth-software",
+    name: "Surface Pro booth",
+    title: "Surface Pro Photo Booth Software",
+    description:
+      "Photo booth software made for Surface Pro and Windows touch tablets: big touch screens, kiosk lock, Canon or Nikon DSLR, DNP printing and QR sharing.",
+    intro: "A Surface Pro fits neatly in most booth shells. DSLR Snap is designed for touch from the first screen to the last, so guests use it without help.",
+    points: [
+      { title: "Made for touch", body: "Large buttons, a clear countdown and simple choices for guests, on a Surface Pro, Windows tablet or all-in-one touch PC." },
+      { title: "Guests can't wander off", body: "The kiosk lock keeps guests on the booth screen. You control the booth from your phone or a foot pedal." },
+      { title: "One cable to the camera", body: "Connect a Canon or Nikon camera, DNP printer and charger through a powered USB-C hub." },
+      { title: "Checks itself before the doors open", body: "Home shows a green tick for the camera, printer, paper, storage and licence, and every problem comes with its fix." },
+    ],
+    hardware: "A Surface Pro (or other Windows 10 or 11 touch device), a powered USB-C hub, a Canon or Nikon camera and a DNP printer.",
+    steps: [
+      "Install DSLR Snap on the Surface Pro and set Windows to never sleep while plugged in.",
+      "Connect the camera, printer and charger through a powered USB-C hub.",
+      "Start the booth in kiosk mode and run it from the touch screen, your phone or a foot pedal.",
+    ],
+    faq: [
+      { q: "Which Surface Pro do I need?", a: "Any Surface Pro or Windows tablet running Windows 10 or 11 64-bit. A newer model is faster for AI backgrounds and 360 videos." },
+      { q: "Can I use a Windows laptop instead of a Surface?", a: "Yes. A laptop or mini PC works too; a touch monitor makes it easier for guests." },
+      { q: "How do I stop the Surface going to sleep at an event?", a: "Set Windows to never sleep while plugged in and turn off USB selective suspend in Power Options. The user guide shows each step." },
+    ],
+  },
+  {
+    slug: "dslr-photo-booth-software",
+    name: "Canon and Nikon DSLR",
+    title: "DSLR Photo Booth Software for Canon and Nikon",
+    description:
+      "DSLR photo booth software for Windows that controls Canon and Nikon Z cameras over USB, with live view, saved camera settings, DNP prints and QR sharing.",
+    intro: "Real DSLR quality, controlled from the booth screen. Plug in a Canon or Nikon camera and DNP printer and DSLR Snap finds both.",
+    points: [
+      { title: "Official camera SDKs", body: "Canon DSLR and mirrorless cameras through Canon's SDK, and Nikon Z cameras (in beta) through Nikon's." },
+      { title: "Live view for guests", body: "Guests see themselves on screen before the countdown, so they pose for the final photo." },
+      { title: "Camera settings saved", body: "Save your exposure settings as presets and switch between venues in a tap." },
+      { title: "Prints in seconds", body: "4×6 prints and 2×6 strips on DNP dye-sub printers, cut automatically." },
+    ],
+    hardware: "A Windows 10 or 11 device, a Canon DSLR or mirrorless camera or a Nikon Z camera, a USB cable and a DNP printer.",
+    steps: [
+      "Set the camera to manual and turn off auto power off, then plug it in by USB.",
+      "Close Canon EOS Utility or Nikon software, so DSLR Snap can control the camera.",
+      "Check the green tick on Home, set exposure once, save it as a preset and start the booth.",
+    ],
+    faq: [
+      { q: "Which Canon cameras work?", a: "Canon DSLR and mirrorless cameras supported by Canon's official SDK, connected by USB. Check the camera is on and EOS Utility is closed." },
+      { q: "Which Nikon cameras work?", a: "Nikon Z-series mirrorless cameras, in beta: Z 30, Z 50, Z fc, Z 5, Z 6, Z 7, Z 8, Z 9, Zf and their II/III versions. Nikon D-series DSLRs are coming next." },
+      { q: "Does it work with Sony cameras?", a: "Not yet. Sony is on the roadmap. Canon and Nikon Z cameras work today." },
+    ],
   },
 ];
 

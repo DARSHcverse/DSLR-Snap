@@ -6,9 +6,9 @@ import { Icon } from "@/components/Icon";
 import { FEATURES, SOLUTIONS } from "@/lib/marketing";
 
 export const metadata: Metadata = pageMetadata({
-  title: "Features",
+  title: "Photo Booth Software Features",
   description:
-    "Everything DSLR Snap does: DSLR photo booth, prints, glam B&W, green screen and AI backgrounds, 360 with GoPro, video guestbook, boomerangs, QR sharing and an offline-first design.",
+    "Everything in DSLR Snap: DSLR photos and prints, glam B&W, green screen and AI backgrounds, 360 with GoPro, video guestbook, boomerangs and QR sharing.",
   path: "/features",
 });
 

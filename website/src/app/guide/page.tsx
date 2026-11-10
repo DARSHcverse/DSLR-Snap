@@ -7,9 +7,9 @@ import { pageMetadata } from "@/lib/seo";
 import { site } from "@/lib/site";
 
 export const metadata: Metadata = pageMetadata({
-  title: "User guide",
+  title: "User Guide: Photo Booth Setup, Cameras and Printing",
   description:
-    "The DSLR Snap user guide: install, connect a Canon or Nikon camera, camera and flash settings, DNP printer setup with 2×6 cutting, events, templates, QR sharing, 360 and troubleshooting.",
+    "How to set up DSLR Snap: install, connect a Canon or Nikon camera, flash settings, DNP printing with 2×6 cutting, templates, QR sharing, 360 and fixes.",
   path: "/guide",
 });
 
