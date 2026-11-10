@@ -69,7 +69,7 @@ async function Computers() {
             </ul>
           ) : (
             <div className="mt-5">
-              <EmptyState icon={Monitor} title="No computers yet" action={<a href="/download" className={btnPrimary}><Download className="size-4" /> Download DSLR Snap</a>}>
+              <EmptyState icon={Monitor} title="No computers yet" action={<a href="/download/windows?from=dashboard" className={btnPrimary}><Download className="size-4" /> Download DSLR Snap</a>}>
                 Open DSLR Snap on your booth computer and press Sign in under Account.
               </EmptyState>
             </div>
@@ -89,7 +89,7 @@ async function Computers() {
               </li>
             ))}
           </ol>
-          <a href="/download" className={`${btn} mt-5 w-full`}><Download className="size-4" /> Download DSLR Snap</a>
+          <a href="/download/windows?from=dashboard" className={`${btn} mt-5 w-full`}><Download className="size-4" /> Download DSLR Snap</a>
         </Panel>
       </div>
     </>

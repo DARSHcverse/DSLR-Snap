@@ -27,4 +27,4 @@ export function WhoWeAre() {
   );
 }
 
-export const LAST_UPDATED = "30 October 2026";
+export const LAST_UPDATED = "10 November 2026";

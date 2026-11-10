@@ -72,7 +72,7 @@ async function Overview({ searchParams }: Pick<PageProps<"/account">, "searchPar
                 {recent.map((e) => <li key={e.id}><EventCard e={e} live={live.includes(e)} /></li>)}
               </ul>
             ) : (
-              <EmptyState icon={Images} title="No events yet" action={<a href="/download" className={btnPrimary}><Download className="size-4" /> Download DSLR Snap</a>}>
+              <EmptyState icon={Images} title="No events yet" action={<a href="/download/windows?from=dashboard" className={btnPrimary}><Download className="size-4" /> Download DSLR Snap</a>}>
                 Turn on QR downloads for an event in DSLR Snap. Photos upload as guests use the booth, and the event appears here.
               </EmptyState>
             )}
@@ -104,7 +104,7 @@ async function Overview({ searchParams }: Pick<PageProps<"/account">, "searchPar
             <h2 className="px-1 font-semibold">Quick actions</h2>
             <ActionRow icon={Globe} tone="violet" title={user.homepage ? "Edit your homepage" : "Set up your homepage"} hint="Your galleries and a Book now button" href="/account/homepage" />
             <ActionRow icon={Plus} tone="green" title="Add a booth computer" hint="Sign in from DSLR Snap on the booth" href="/account/computers" />
-            <ActionRow icon={Download} tone="blue" title="Download DSLR Snap" hint="For Windows laptops, Surface and touch screens" href="/download" external />
+            <ActionRow icon={Download} tone="blue" title="Download DSLR Snap" hint="For Windows laptops, Surface and touch screens" href="/download/windows?from=dashboard" plain />
             <ActionRow icon={LifeBuoy} title="Help & chat" hint={user.unread ? `${user.unread} new ${user.unread === 1 ? "reply" : "replies"}` : "We usually reply within a day"} href="/account/support" />
           </div>
         </div>

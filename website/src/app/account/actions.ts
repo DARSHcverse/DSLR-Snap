@@ -1,7 +1,9 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { saveSiteEvent, siteEvent } from "@/lib/siteEvents";
 import { after } from "next/server";
 import { appUrl, stripeConfig } from "@/lib/config";
 import type { PlanId } from "@/lib/plans";
@@ -25,6 +27,8 @@ export async function startCheckout(form: FormData): Promise<void> {
   const plan = form.get("plan") as PlanId;
   if (!stripeConfig || (plan !== "monthly" && plan !== "yearly")) redirect("/account/billing?error=billing");
   if ((await entitlementFor(user.id)).active) return openBillingPortal();
+  const started = await siteEvent(await headers(), { name: "checkout_started", label: plan, path: "/account/billing" });
+  after(() => saveSiteEvent(started));
 
   const session = await stripe().checkout.sessions.create({
     mode: "subscription",

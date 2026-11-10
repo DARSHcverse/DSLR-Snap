@@ -10,7 +10,7 @@ import { launch, site, siteUrl } from "@/lib/site";
 export const metadata: Metadata = pageMetadata({
   title: "Download DSLR Snap for Windows",
   description:
-    "Download DSLR Snap free for Windows 10 and 11, on Surface Pro, tablets, touch PCs and laptops. Every feature works in the trial, with a small watermark until you choose a plan.",
+    "Download DSLR Snap free for Windows 10 and 11, Surface Pro and touch PCs. Every feature works in the trial, with a small watermark until you choose a plan.",
   path: "/download",
 });
 
@@ -52,7 +52,7 @@ export default async function DownloadPage() {
         </div>
         {release ? (
           <>
-            <a href={release.url} className={`${primaryButton} mt-5 w-full sm:w-auto`} download>
+            <a href="/download/windows?from=download-page" rel="nofollow" className={`${primaryButton} mt-5 w-full sm:w-auto`}>
               Download for Windows
             </a>
             <p className="mt-3 text-sm text-muted">

@@ -20,6 +20,8 @@ export async function GET(request: Request) {
   if (!accountsEnabled) return Response.json({ deleted: 0 });
 
   const db = supabaseAdmin();
+  // Website visit and click records are kept for 13 months, enough to compare a year on year.
+  await db.from("site_events").delete().lt("at", new Date(Date.now() - 400 * 86_400_000).toISOString());
   const cutoff = new Date(Date.now() - RETENTION_DAYS * 86_400_000).toISOString();
   const { data: old } = await db.from("gallery_sessions").select("id, files").lt("created_at", cutoff).limit(BATCH);
   const rows = (old ?? []) as { id: string; files: GalleryFile[] }[];

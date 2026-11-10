@@ -26,6 +26,7 @@ async function Panel({ children }: { children: React.ReactNode }) {
   const unread = await unreadCount();
   const links = [
     { href: adminHref(), label: "Dashboard" },
+    { href: adminHref("website"), label: "Website" },
     { href: adminHref("customers"), label: "Customers" },
     { href: adminHref("support"), label: "Support", badge: unread },
     { href: adminHref("emails"), label: "Emails" },

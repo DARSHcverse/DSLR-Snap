@@ -138,7 +138,7 @@ function Sidebar({ user, path }: { user: ChromeUser; path: string }) {
             <span className="mt-0.5 block text-xs text-muted">Choose a plan to remove the watermark.</span>
           </Link>
         )}
-        <a href="/download" className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted hover:bg-surface-2 hover:text-fg">
+        <a href="/download/windows?from=dashboard-menu" className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted hover:bg-surface-2 hover:text-fg">
           <Download className="size-4" aria-hidden /> Download DSLR Snap
         </a>
       </div>

@@ -91,7 +91,8 @@ export function Meter({ value, max, tone = "accent" }: { value: number; max: num
 }
 
 /** A big tappable row: icon, title, hint, chevron. For "quick actions". */
-export function ActionRow({ icon, tone, title, hint, href, external }: { icon: LucideIcon; tone?: Tone; title: string; hint?: string; href: string; external?: boolean }) {
+/** `plain`: an ordinary link with no prefetching, for links that do something when opened (a download). */
+export function ActionRow({ icon, tone, title, hint, href, external, plain }: { icon: LucideIcon; tone?: Tone; title: string; hint?: string; href: string; external?: boolean; plain?: boolean }) {
   const inner = (
     <>
       <IconChip icon={icon} tone={tone} />
@@ -103,6 +104,7 @@ export function ActionRow({ icon, tone, title, hint, href, external }: { icon: L
     </>
   );
   const cls = "group flex items-center gap-4 rounded-2xl border border-line bg-surface p-4 transition-colors hover:border-accent/60 hover:bg-surface-2/40";
+  if (plain) return <a href={href} className={cls}>{inner}</a>;
   return external ? (
     <a href={href} target="_blank" rel="noopener" className={cls}>{inner}</a>
   ) : (
